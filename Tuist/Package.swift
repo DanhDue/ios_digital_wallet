@@ -17,6 +17,7 @@ let package = Package(
     name: "iOSDigitalWallet",
     dependencies: [
         // tuist:packages:begin
+        .package(path: "../Packages/AppUIKit"),
         .package(path: "../Packages/Core"),
         .package(path: "../Packages/Framework"),
         .package(path: "../Packages/Network"),

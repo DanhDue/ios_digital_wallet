@@ -1,13 +1,13 @@
 ---
 id: "task_7_ios_appuikit_package"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T15:27:22Z"
 labels: ["architecture", "spm", "design-system"]
 order: "a7"
 ---
