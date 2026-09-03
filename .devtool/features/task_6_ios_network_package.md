@@ -1,6 +1,6 @@
 ---
 id: "task_6_ios_network_package"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"

@@ -1,6 +1,6 @@
 ---
 id: "task_9_ios_rewire_arch_doc"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
