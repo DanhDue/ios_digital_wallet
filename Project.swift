@@ -12,6 +12,7 @@ let project = Project(
             bundleId: "com.danhdue.iOSDigitalWallet",
             dependencies: [
                 // tuist:app-deps:begin
+                .external(name: "Core"),
                 // tuist:app-deps:end
             ]
         ),

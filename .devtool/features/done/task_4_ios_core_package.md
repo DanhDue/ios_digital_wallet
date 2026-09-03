@@ -1,13 +1,13 @@
 ---
 id: "task_4_ios_core_package"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T11:02:21Z"
 labels: ["architecture", "spm", "core"]
 order: "a4"
 ---
