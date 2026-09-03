@@ -1,13 +1,13 @@
 ---
 id: "task_9_ios_rewire_arch_doc"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T15:57:51Z"
 labels: ["architecture", "docs", "governance"]
 order: "a9"
 ---
