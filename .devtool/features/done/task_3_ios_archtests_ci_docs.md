@@ -1,13 +1,13 @@
 ---
 id: "task_3_ios_archtests_ci_docs"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T10:34:26Z"
 labels: ["governance", "ci", "swift-syntax", "foundation"]
 order: "a3"
 ---

@@ -1,0 +1,4 @@
+# ArchTests baseline — pre-existing architecture-rule violations tolerated until
+# their dedicated clean-up task. Format: `ruleId:relative/path/to/File.swift`.
+# Blank lines and `#` comments are ignored. EMPTY on purpose: this repo is
+# greenfield (Source Spec Changelog #10) — nothing is baselined.

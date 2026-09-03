@@ -65,6 +65,17 @@ opt_in_rules:
   - vertical_parameter_alignment_on_call
   - yoda_condition
 
+# "whitelist" is domain vocabulary here: the checked-in governance artefact is
+# `scripts/module_boundary_whitelist.txt` (Source Spec §9.3) and its parser type
+# `BoundaryWhitelist` / the ArchTests that exercise it mirror that name 1:1.
+# `override_terms` drops only "whitelist" from the flagged set — the other
+# non-inclusive terms stay enforced.
+inclusive_language:
+  override_terms:
+    - blacklist
+    - master
+    - slave
+
 line_length:
   warning: 120
   error: 160

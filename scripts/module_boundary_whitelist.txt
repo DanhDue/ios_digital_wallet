@@ -1,0 +1,7 @@
+# Module boundary whitelist — temporarily-allowed cross-feature import edges.
+# Format: `FeatureA->FeatureB` (one per line). Blank lines and `#` comments are
+# ignored. Consumed by both scripts/check_module_boundaries.sh and
+# ArchTestSupport/BoundaryWhitelist.swift.
+#
+# EMPTY on purpose: features must never import each other (Source Spec §9.3,
+# Changelog #10). Add an edge here only as a reviewed, time-boxed exception.

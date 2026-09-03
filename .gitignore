@@ -5,9 +5,11 @@
 Derived/
 **/xcuserdata/
 
-# Tuist / SPM
+# Tuist / SPM build products (SwiftPM writes .build/ next to every Package.swift,
+# e.g. ArchTests/.build/). Package.resolved IS committed.
 Tuist/.build/
 .build/
+**/.build/
 
 # macOS
 .DS_Store
