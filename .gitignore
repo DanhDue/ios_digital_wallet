@@ -1,0 +1,13 @@
+# Tuist-generated Xcode project graph — never committed, always regenerated.
+*.xcodeproj/
+*.xcworkspace/
+.tuist/
+Derived/
+**/xcuserdata/
+
+# Tuist / SPM
+Tuist/.build/
+.build/
+
+# macOS
+.DS_Store
