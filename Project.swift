@@ -13,6 +13,7 @@ let project = Project(
             dependencies: [
                 // tuist:app-deps:begin
                 .external(name: "Core"),
+                .external(name: "Framework"),
                 // tuist:app-deps:end
             ]
         ),

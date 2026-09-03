@@ -18,6 +18,7 @@ let package = Package(
     dependencies: [
         // tuist:packages:begin
         .package(path: "../Packages/Core"),
+        .package(path: "../Packages/Framework"),
         // tuist:packages:end
     ]
 )
