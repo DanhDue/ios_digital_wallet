@@ -5,77 +5,105 @@ priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
-created: "2026-09-02T00:00:00Z"
-modified: "2026-09-02T00:00:00Z"
+created: "2026-09-03T00:00:00Z"
+modified: "2026-09-03T00:00:00Z"
 completedAt: null
 labels: ["architecture", "spm", "navigation", "events"]
 order: "a8"
 ---
 
-# Task 8: Create `Platform` SPM local package (AppRouter + AppEventBus)
+# Task 8: Create `Platform` SPM package (per-tab AppRouter + AppEventBus)
 
 Epic: [ios_super_app_template](../epic/ios_super_app_template/ios_super_app_template.en.md)
 
+**Testing tier: A (behavioral).** Per-tab path isolation and event-bus type filtering are the high-risk areas.
+
 ## Requirement Analysis
 
-Create `Sources/Platform/` — the cross-feature seam. Depends on `Core` + `Framework`. Contains:
+`Packages/Platform/` — depends on `Core` **only** (Changelog #7: nothing here needs `Framework`). The cross-feature seam. Min iOS 16 (`NavigationPath`).
 
-**Navigation**:
-- `AppRoute` protocol (`Hashable`)
-- `AppRoutes` enum — shared route structs (`SettingsRoute`, `ScannerRoute`)
-- `RouteProvider` protocol — Features implement this to register their screens with Shell (equivalent to Android's `EntryProviderInstaller`)
-- `AppRouter: ObservableObject` — wraps `NavigationPath` (iOS 16+), holds registered `RouteProvider` array, exposes `navigate(to:)`, `pop()`, `popToRoot()`, `view(for:)`
+`Sources/Platform/Navigation/`:
+- `AppRoute.swift` — `public protocol AppRoute: Hashable {}`.
+- `AppRoutes.swift` — namespace enum of cross-feature route values: `struct SettingsRoot: AppRoute`, `struct ScannerRoot: AppRoute`.
+- `RouteProvider.swift` — `protocol RouteProvider { func canHandle(_ route: any AppRoute) -> Bool; @ViewBuilder func destination(for route: any AppRoute) -> AnyView }`.
+- `AppRouter.swift` — `@MainActor final class AppRouter: ObservableObject` per Source Spec §6.1: `@Published var selectedTab`, `@Published var tabPaths: [NavigationPath]` (one per tab), `register(_:)`, `navigate(to:inTab:)`, `pop(inTab:)`, `popToRoot(inTab:)`, `switchTab(_:)`, `destination(for:)`.
 
-**Events**:
-- `AppEvent` protocol — base for all lifecycle events
-- Minimum vocabulary: `ShellTabVisibilityChanged`, `AppLifecycleChanged`, `UserLoggedOut`
-- `AppEventBus` — singleton, `PassthroughSubject<any AppEvent, Never>`, exposes `publish(_:)` and `on<T>(_:) -> AnyPublisher<T, Never>`
+`Sources/Platform/Events/`:
+- `AppEvent.swift` — `protocol AppEvent {}` + `ShellTabVisibilityChanged`, `AppLifecycleChanged`, `UserLoggedOut`.
+- `AppEventBus.swift` — `final class AppEventBus` with `static let shared`, a `PassthroughSubject<any AppEvent, Never>` (replay 0), `publish(_:)`, `on<T: AppEvent>(_:) -> AnyPublisher<T, Never>`.
 
-**Note on NavigationPath**: requires iOS 16+. This is a documented gap — `Core`/`Framework`/business logic remain iOS 13+; the navigation layer accepts iOS 16+ floor. Document this split in `ARCHITECTURE.md` (Task 9).
-
-`Package.swift`: depends on `Core` (local) + `Framework` (local). No external dependencies.
+`Package.swift`: `Platform` (depends `Core`) + `PlatformTests`, `.iOS(.v16)`.
 
 ## Relevant Files & Context Pointers
 
-- `Sources/Platform/Package.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Navigation/AppRoute.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Navigation/AppRoutes.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Navigation/RouteProvider.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Navigation/AppRouter.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Events/AppEvent.swift` — **NEW**
-- `Sources/Platform/Sources/Platform/Events/AppEventBus.swift` — **NEW**
-- `Sources/Platform/Tests/PlatformTests/` — **NEW**
-- `iOSDigitalWallet.xcodeproj` — add `Platform` package reference
-- Reference: source spec §6 (full Platform code)
-- Reference: Android `:platform` in `.devtool/epic/android_super_app_template/` Task 1
+- `Packages/Platform/Package.swift`, `Packages/Platform/Sources/Platform/{Navigation,Events}/*.swift`, `Packages/Platform/Tests/PlatformTests/**` — **NEW**
+- `Tuist/Package.swift` — marker-region entry for `Packages/Platform`
+- Source Spec §6 (full code), Changelog #7 (Core-only), §8
 
 ## Design Rationale
 
-`AppEventBus` uses `replay = 0` (no replay) matching Android's `MutableSharedFlow(replay = 0, extraBufferCapacity = 64)`. Events published before any subscriber are dropped — fire-and-forget broadcast. This is intentional: lifecycle events (tab visibility, app foreground) are momentary and consumers that miss them should wait for the next one.
+`tabPaths: [NavigationPath]` gives Android's `NestedNavigator` semantics on native iOS 16 APIs — each tab keeps its own back stack across tab switches. `AppEventBus` uses replay 0: lifecycle events are momentary; a consumer that missed one waits for the next. `AppRouter` keeps providers in a plain array (O(10) features max).
 
-`AppRouter` holds providers as a simple array because the number of registered features is small (3 in template, O(10) in real apps). A `Dictionary<AnyHashable, RouteProvider>` lookup is unnecessary optimization.
+**Applicable skills:** none specific.
 
-## TDD Checklist
+### BDD Scenarios
 
-- [ ] **RED**: `AppEventBusTests` — `publish` then `on(type:)` delivers only matching type; two subscribers both receive; publish with no subscriber does not crash. Use `XCTestExpectation` or Combine sink.
-- [ ] **RED**: `AppRouterTests` — `navigate(to:)` appends to `path`; `pop()` removes last; `popToRoot()` empties path; `view(for:)` returns nil for unregistered route.
-- [ ] **RED**: `RouteProviderTests` — mock `RouteProvider` returns `true` for its own route, `false` for unknown.
-- [ ] **GREEN**: Implement all Platform types.
-- [ ] **REFACTOR**: KDoc all public API. SwiftLint + SwiftFormat clean.
+```gherkin
+# Happy path
+Scenario: navigate(to: SettingsRoot(), inTab: 2) appends to tabPaths[2] only
+Scenario: destination(for:) returns the AnyView from the first provider whose canHandle is true
+
+# Boundary / equivalence
+Scenario: AppRouter(tabCount: 3, initialTab: 2) starts with 3 empty paths and selectedTab 2
+Scenario: pop(inTab:) on an empty path is a no-op (no crash)
+Scenario: popToRoot(inTab: 1) empties tabPaths[1] and leaves the others untouched
+Scenario: destination(for:) with no matching provider returns an EmptyView-equivalent
+
+# State transitions — per-tab isolation
+Scenario: navigate twice in tab 0, switch to tab 1, navigate once -> tab 0 depth 2, tab 1 depth 1
+Scenario: switchTab(1) then switchTab(0) preserves both tabs' stacks
+Scenario: re-selecting the active tab via popToRoot(inTab: selectedTab) clears only that tab
+
+# Async / race
+Scenario: 10 rapid navigate() calls on tabPaths[0] leave depth exactly 10, order preserved
+Scenario: publish() from a background thread is delivered on the bus without crash
+
+# Event bus
+Scenario: publish(A) then on(A.self) subscriber receives it; on(B.self) subscriber receives nothing (type filter)
+Scenario: two subscribers on the same type both receive one publish
+Scenario: a subscriber that subscribes AFTER publish receives nothing (replay 0)
+Scenario: cancelling the AnyCancellable stops further delivery
+Scenario: rapid publish(A),publish(B),publish(A) delivered to on(A.self) in order [A, A]
+
+# Resource teardown
+Scenario: dropping all AnyCancellables leaves the bus with no retained subscribers
+```
+
+### TDD Tests
+
+- `AppRouterTests` — construction; `navigate/pop/popToRoot/switchTab` per-tab isolation matrix (the transition scenarios); rapid navigate order; `destination(for:)` provider resolution + no-match.
+- `AppEventBusTests` — type filtering; multi-subscriber; late subscriber gets nothing; cancel stops delivery; ordering of rapid publishes; background-thread publish (`DispatchQueue.global().async`).
+- `RouteProviderTests` — a `MockRouteProvider` returns true only for its route; `destination(for:)` returns its view.
+- `@MainActor` for router tests; Combine assertions via a `record()` sink helper.
+
+### RED → GREEN
+
+- RED: per-tab isolation tests fail hard if `AppRouter` uses a single shared `NavigationPath` (the v1 design) — final depths would be wrong.
+- GREEN: implement `tabPaths` array indexing + the event bus.
 
 ## Definition of Done
 
-- `Sources/Platform/` builds. Unit tests green. App imports `Platform` without error.
-- `AppEventBus.shared.publish()` / `on()` verified end-to-end in test.
-- `AppRouter.register()` + `view(for:)` resolution verified.
-- SwiftLint + SwiftFormat clean. Coverage ≥ 80%.
+- `swift test --package-path Packages/Platform` green; every scenario has a passing test.
+- Per-tab path isolation proven (navigate in one tab never mutates another).
+- Event-bus type filtering + replay-0 + cancellation proven.
+- `Package.swift` deps == `[Core]` (verified — no `Framework`). Coverage ≥ 80%. SwiftLint/SwiftFormat clean.
 
 ## Dependencies & Blockers
 
-- Blocked by [Task 4](task_4_ios_core_package.md) and [Task 5](task_5_ios_framework_package.md).
-- Blocks [Task 9](task_9_ios_rewire_arch_doc.md), [Task 11](task_11_ios_shell.md), [Task 12](task_12_ios_features_and_routing.md).
+- Blocked by [Task 4](task_4_ios_core_package.md).
+- Blocks [Task 10](task_10_ios_shell.md), [Task 11](task_11_ios_settings_feature.md), [Task 12](task_12_ios_scanner_and_composition.md).
 
 ## References & Rollback
 
-- Source spec §6 (full Platform code + NavigationPath iOS 16 gap note).
-- Rollback: remove `Sources/Platform/` + package reference.
+- Source Spec §6, §8, Changelog #7.
+- Rollback: remove `Packages/Platform/` + marker line.

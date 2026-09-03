@@ -5,83 +5,107 @@ priority: "medium"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
-created: "2026-09-02T00:00:00Z"
-modified: "2026-09-02T00:00:00Z"
+created: "2026-09-03T00:00:00Z"
+modified: "2026-09-03T00:00:00Z"
 completedAt: null
 labels: ["architecture", "spm", "design-system"]
 order: "a7"
 ---
 
-# Task 7: Create `AppUIKit` SPM local package
+# Task 7: Create `AppUIKit` SPM package
 
 Epic: [ios_super_app_template](../epic/ios_super_app_template/ios_super_app_template.en.md)
 
+**Testing tier: A (behavioral — light).** SwiftUI view coverage is limited without a snapshot lib; scenarios focus on token correctness + no-crash instantiation + accessibility.
+
 ## Requirement Analysis
 
-Create `Sources/AppUIKit/` — the iOS equivalent of Flutter `packages/ui_kit` and Android `:ui_kit`. Provides the Design System and reusable SwiftUI components shared across all Features. Named `AppUIKit` (not `UIKit`) to avoid collision with Apple's `UIKit` framework.
-
-**Critical invariant**: `AppUIKit` depends on `Core` ONLY — NOT on `Framework`. Design system components do not manage state via `MviViewModel`; they receive data via `@Binding`/`let` and emit actions via closures. This matches the Android invariant (`:ui_kit` does not depend on `:framework`).
-
-**Contents** (template-level, not digital-wallet-specific):
+`Packages/AppUIKit/` — depends on `Core` **only**, **never** `Framework` (hard invariant; ArchTests K checks the manifest). Named `AppUIKit` to avoid colliding with Apple's `UIKit`. Purely presentational: `@Binding`, `@State` for local transient UI state, closures for actions. No `ObservableObject`, no `@StateObject`.
 
 ```
-Sources/AppUIKit/Sources/AppUIKit/
+Sources/AppUIKit/
 ├── DesignSystem/
-│   ├── Color/AppColor.swift           ← semantic color tokens (SwiftUI Color extensions)
-│   ├── Typography/AppFont.swift       ← typography scale (Font extensions)
-│   ├── Spacing/AppSpacing.swift       ← spacing constants (8pt grid)
-│   └── Theme/AppTheme.swift           ← light/dark mode configuration
+│   ├── Color/AppColor.swift        semantic tokens as Color extensions (light + dark)
+│   ├── Typography/AppFont.swift    type scale
+│   ├── Spacing/AppSpacing.swift    xs=4 sm=8 md=16 lg=24 xl=32
+│   └── Theme/AppTheme.swift        light/dark config
 ├── Components/
-│   ├── Button/AppButton.swift         ← primary/secondary/destructive variants
-│   ├── TextField/AppTextField.swift   ← styled text input
-│   ├── LoadingView/AppLoadingView.swift ← loading indicator
-│   ├── ErrorView/AppErrorView.swift   ← error state with retry
-│   └── EmptyView/AppEmptyStateView.swift
+│   ├── Button/AppButton.swift          primary / secondary / destructive; disabled + loading states
+│   ├── TextField/AppTextField.swift
+│   ├── State/AppLoadingView.swift
+│   ├── State/AppErrorView.swift        message + retry closure
+│   └── State/AppEmptyStateView.swift
 └── Extensions/
-    ├── View+Modifiers.swift            ← common SwiftUI view modifiers
+    ├── View+Modifiers.swift
     └── Color+Hex.swift
 ```
 
-All components are purely presentational — no `@StateObject`, no `ObservableObject`. Only `@Binding`, `@State` for local transient UI state (e.g. text field focus), and closures for actions.
-
 ## Relevant Files & Context Pointers
 
-- `Sources/AppUIKit/Package.swift` — **NEW** (depends on `Core` only)
-- `Sources/AppUIKit/Sources/AppUIKit/` — all files above
-- `Sources/AppUIKit/Tests/AppUIKitTests/` — snapshot tests (if XCTest snapshot available) or basic init tests
-- `iOSDigitalWallet.xcodeproj` — add `AppUIKit` local package reference
-- Reference: `bloc_digital_wallet/packages/ui_kit/lib/` (Flutter — structural mirror)
+- `Packages/AppUIKit/Package.swift`, `Packages/AppUIKit/Sources/AppUIKit/**`, `Packages/AppUIKit/Tests/AppUIKitTests/**` — **NEW**
+- `Tuist/Package.swift` — marker-region entry for `Packages/AppUIKit`
+- Source Spec §4.2 (`AppUIKit` does NOT depend on `Framework`), §4.3 invariant
 
 ## Design Rationale
 
-Not depending on `Framework` is architecturally significant: it means the design system can be extracted and reused in any SwiftUI project without pulling in the MVI machinery. Components use closures for callbacks (not Combine publishers) — this keeps them framework-agnostic and easy to preview in Xcode Previews without a ViewModel.
+Not depending on `Framework` means the design system is extractable into any SwiftUI project without the MVI machinery, and components preview in Xcode with no ViewModel. Tokens are value-type extensions (`Color.appPrimary`, `AppSpacing.md`) — zero-overhead, no theme environment object.
 
-Color/typography tokens are value-type extensions on SwiftUI `Color`/`Font` (e.g. `Color.appPrimary`) — no configuration object or theme environment. Simple and zero-overhead.
+**Applicable skills:** check `.agents/skills/` for a `mobile-uiux` / design-system skill; note it here if present.
 
-TDD adaptation: SwiftUI view testing is limited without a snapshot framework. Unit tests focus on token correctness (color values, spacing values, font names). Component instantiation tests confirm no crash at init.
+### BDD Scenarios
 
-## TDD Checklist
+```gherkin
+# Happy path / token correctness (boundary + equivalence)
+Scenario Outline: spacing constants have the exact 8pt-grid values
+  Then AppSpacing.<name> == <value>
+  Examples: | name | value | (xs,4) (sm,8) (md,16) (lg,24) (xl,32)
 
-- [ ] **RED**: `AppColorTests` — `AppColor.primary` returns expected hex; dark mode variant differs from light.
-- [ ] **RED**: `AppSpacingTests` — spacing constants (xs=4, sm=8, md=16, lg=24, xl=32) match expected values.
-- [ ] **RED**: `AppButtonTests` — `AppButton(title:action:)` initializes without crash; disabled state toggles `isEnabled`.
-- [ ] **GREEN**: Implement design tokens + components.
-- [ ] **REFACTOR**: Add Xcode Previews to each component. SwiftLint + SwiftFormat clean.
+Scenario: AppColor.primary resolves to the documented hex in light mode
+Scenario: AppColor.primary resolves to a different hex in dark mode
+Scenario: Color(hex:) parses "#RRGGBB", "RRGGBB", and "#RGB"; returns nil for "xyz"
+
+# State transitions
+Scenario: AppButton(loading: true) shows a spinner and ignores taps
+Scenario: AppButton(enabled: false) renders the disabled style and ignores taps
+Scenario: AppButton tap invokes the action closure exactly once
+
+# Failure / edge
+Scenario: AppErrorView with a nil retry closure hides the retry button
+Scenario: AppTextField with an empty binding shows the placeholder
+Scenario: AppEmptyStateView renders with a very long title without truncation crash
+
+# Accessibility
+Scenario: AppButton exposes its title as the accessibility label
+Scenario: AppLoadingView is marked as an accessibility element with "Loading" label
+
+# Resource teardown — n/a (value types / no subscriptions)
+```
+
+### TDD Tests
+
+- `AppSpacingTests`, `AppColorTests` — exact values; light vs dark differ; `Color(hex:)` parse matrix incl. the nil case.
+- `AppButtonTests` — init without crash; tap fires action once; `loading`/`disabled` suppress the action (drive via a test closure counter; host in `UIHostingController` for the render path).
+- `AppErrorViewTests` — retry closure nil → no retry affordance (inspect via `ViewInspector` if added, else assert the view builds and the closure is `nil`).
+- `AccessibilityTests` — assert `.accessibilityLabel` values.
+
+### RED → GREEN
+
+- RED: token tests fail (constants absent); component tests fail to compile.
+- GREEN: implement tokens then components; keep every component free of `ObservableObject`.
 
 ## Definition of Done
 
-- `Sources/AppUIKit/` builds. Unit tests green. App imports `AppUIKit` without error.
-- **`AppUIKit/Package.swift` does NOT list `Framework` as a dependency** — verified by reading the file.
-- All components have Xcode Previews (visual verification without CI).
-- SwiftLint + SwiftFormat clean.
+- `swift test --package-path Packages/AppUIKit` green; every scenario has a passing test.
+- **`Package.swift` does NOT list `Framework`** — verified by reading the file and by ArchTests (Task 9).
+- Every component has an Xcode Preview.
+- SwiftLint/SwiftFormat clean. Coverage ≥ 70% (token + logic paths).
 
 ## Dependencies & Blockers
 
-- Blocked by [Task 4](task_4_ios_core_package.md) (depends on `Core`).
-- Does NOT depend on [Task 5](task_5_ios_framework_package.md) — intentional.
-- Blocks [Task 11](task_11_ios_shell.md) (Shell imports `AppUIKit`), [Task 12](task_12_ios_features_and_routing.md).
+- Blocked by [Task 4](task_4_ios_core_package.md). Does **not** depend on [Task 5](task_5_ios_framework_package.md) — intentional.
+- Blocks [Task 10](task_10_ios_shell.md), [Task 11](task_11_ios_settings_feature.md), [Task 12](task_12_ios_scanner_and_composition.md).
 
 ## References & Rollback
 
-- Source spec §4.2 (module map — `AppUIKit` does not depend on `Framework`), §4.3 (dependency graph invariant).
-- Rollback: remove `Sources/AppUIKit/` + package reference. No other files changed.
+- Source Spec §4.2, §4.3.
+- Rollback: remove `Packages/AppUIKit/` + marker line.

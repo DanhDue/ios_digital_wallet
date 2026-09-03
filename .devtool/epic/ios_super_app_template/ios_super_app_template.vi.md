@@ -14,10 +14,11 @@
 
 ## 1. Meta Data
 - **Epic Name**: `ios_super_app_template`
-- **Trạng thái**: Queued (backlog) — xếp sau `android_super_app_template` (đang có task active trong `.devtool/features/`). Chuyển task `backlog → todo` khi `android_super_app_template` hoàn tất, hoặc theo quyết định người phụ trách.
+- **Trạng thái**: Rollout theo phase — task Phase 0 (1–3) là `todo`; task Phase 1–3 (4–15) giữ `backlog`, nâng lên `todo` từng phase một khi phase trước hoàn tất.
+- **Cập nhật**: 2026-09-03 (v2 — xem changelog trong Spec gốc). v2: mỗi Feature và Shell là 1 SPM package, dùng Tuist, thay governance regex bằng package `ArchTests` (swift-syntax), thống nhất deployment target iOS 16, thêm Chuẩn Testing & Acceptance BDD+TDD.
 - **Target Release**: Branch `epic/ios-super-app-template` (git worktree của repo này); merge vào `develop` quyết định theo từng phase.
 - **Spec gốc**: [2026-09-02-ios-super-app-template-design.md](2026-09-02-ios-super-app-template-design.md)
-- **Epic liên quan**: `flutter_super_app_template` (Flutter, trong `bloc_digital_wallet` — nguồn kiến trúc), `android_super_app_template` (Android native — gương module mà epic này port sang iOS).
+- **Epic liên quan**: `flutter_super_app_template` (Flutter, trong `bloc_digital_wallet` — nguồn kiến trúc), `android_super_app_template` (Android native — đã hoàn tất; bản mẫu đã build mà epic này port sang iOS).
 
 ## 2. Bối cảnh
 
@@ -36,22 +37,23 @@ Epic này port khung governance đã được chứng minh đó sang **iOS Nativ
 
 ### Mục tiêu
 - **G1 — Giữ nguyên kiến trúc**: Clean Architecture + MVI + Feature-First đúng như `ARCHITECTURE.md` Flutter: `Presentation → Domain ← Data`, Domain thuần Swift (cấm `import UIKit/SwiftUI/Combine`), Unidirectional Data Flow, single entry `dispatch()` → `onAction()`, naming `*Action/*State/*Event/*ViewModel/*UseCase/*View/*Repository`.
-- **G2 — 5 SPM local packages hạ tầng**: `Core`, `Framework`, `Network`, `AppUIKit`, `Platform` — 1:1 với Flutter `packages/` và Android `:*`. Mọi Feature chỉ phụ thuộc các package này, không phụ thuộc Feature khác.
-- **G3 — Host là container thuần**: App + Shell chỉ wire DI, dựng `AppRouter` + `ShellView` + tab layout. `HomeStubView` nằm trong Shell (không phải Feature module riêng).
-- **G4 — Giao tiếp cross-feature tập trung**: `Platform` chứa `AppRouter` (route registry) + `AppEventBus`. Feature đăng ký route qua `RouteProvider` protocol. Cấm `import` chéo giữa `Features/*`.
-- **G5 — State isolation**: mỗi Feature giữ `MviViewModel` riêng (từ `Framework`). Constructor Injection thủ công. Type trong `Features/*/Data/` phải `internal`.
-- **G6 — Governance ép bằng cấu trúc**: SwiftLint custom rules; `check_module_boundaries.sh`; GitHub Actions CI.
-- **G7 — Feature mới = 1 lệnh Mason**: `mason make ios_mvi_feature --name X` sinh đủ scaffold. Không đụng Feature khác.
-- **G8 — Template**: 5 infra packages + Shell + 3 feature. `scripts/rename_project.sh` là cửa vào duy nhất sau clone.
-- **G9 — Sandbox development**: mỗi Feature build/test độc lập.
+- **G2 — Package cho mỗi module**: 5 infra SPM package (`Core`, `Framework`, `Network`, `AppUIKit`, `Platform`) + package `Shell` + **mỗi Feature là 1 SPM package** (`SettingsFeature`, `ScannerFeature`). Feature chỉ import được cái khai trong `Package.swift` — compiler chặn mọi import chéo Feature.
+- **G3 — Host là container thuần**: `App` target chỉ `@main`, DI wiring, đăng ký `RouteProvider`, publish lifecycle event. Package `Shell` dựng tab layout + per-tab `NavigationStack`, **mù feature**. `HomeStubView` nằm trong `Shell` (không phải Feature).
+- **G4 — Giao tiếp cross-feature tập trung**: `Platform` chứa `AppRouter` (per-tab route registry) + `AppEventBus`. `App` là **nơi duy nhất** gom Feature. Feature không bao giờ `import` nhau.
+- **G5 — State isolation**: mỗi Feature giữ `MviViewModel` riêng (từ `Framework`) + pattern async-effect cancel-on-new-action. Constructor Injection thủ công. Type trong `Sources/*Feature/Data/` phải `internal`.
+- **G6 — Governance ép bằng cấu trúc**: (a) đồ thị SPM — Feature không khai package thì không import được; (b) package `ArchTests` (swift-syntax/AST) ép layer + naming + route-location + host-privilege (K1–K9); (c) `check_module_boundaries.sh` là lưới phòng thủ thứ 2; (d) GitHub Actions CI chạy cả bộ.
+- **G7 — Feature mới = 1 lệnh Mason**: `mason make ios_mvi_feature --name X` sinh **package Feature đầy đủ** + tự sửa manifest Tuist trong vùng đánh dấu, rồi `tuist generate`. Không đụng Feature khác.
+- **G8 — Template**: 5 infra package + `Shell` + 3 feature (home stub trong Shell / scanner stub package / settings real package). `scripts/rename_project.sh` là cửa vào duy nhất sau clone.
+- **G9 — Sandbox development**: mỗi package `swift build` / `swift test` độc lập, không cần app target.
 
 ### Không làm gì
-- DI framework (Swinject, Needle) — Constructor Injection thủ công.
-- `@Observable` / swift-perception — Combine + `ObservableObject`, min iOS 13.
+- DI framework (Swinject, Needle, Factory) — Constructor Injection thủ công.
+- `@Observable` / Observation framework — Combine + `ObservableObject`. Chỉ xét lại nếu sàn nâng ≥ iOS 17.
 - App Extension — ngoài phạm vi.
 - Dynamic on-demand loading — iOS không có DFM tương đương. Gap đã biết.
-- CocoaPods — SPM-only.
+- CocoaPods — SPM-only. Sửa `.pbxproj` tay — Tuist sinh `.xcodeproj`/`.xcworkspace`, không commit.
 - KMP / Flutter integration — iOS Native App đơn thuần.
+- Worktree-per-task khi thực thi — 1 worktree cho cả epic (theo `epic-implementation`).
 
 ## 4. Kiến trúc & Thiết kế kỹ thuật
 
@@ -133,91 +135,99 @@ flowchart LR
     CI["CI Pipeline\n(GitHub Actions)"]
     User["End User"]
 
-    Dev -->|"mason make ios_mvi_feature --name X"| Scaffold["Feature module mới\nData/Domain/Presentation\n+ RouteProvider scaffold"]
-    Dev -->|"mở PR thêm import chéo Feature"| CI
-    CI -->|"chặn merge khi vi phạm"| Lint["SwiftLint + boundary check"]
-    CI -->|"diff sạch / trong whitelist"| Merge["Cho merge"]
+    Dev -->|"mason make ios_mvi_feature --name X"| Scaffold["PACKAGE Feature mới\nPackages/Features/XFeature/\nData/Domain/Presentation + RouteProvider\n+ tự wire manifest Tuist"]
+    Dev -->|"mở PR"| CI
+    CI -->|"chặn merge khi vi phạm"| Gate["swift test ArchTests (K1-K9)\n+ đồ thị SPM + swiftlint + boundary check"]
+    CI -->|"tất cả xanh"| Merge["Cho merge"]
 
-    Consumer -->|"clone + scripts/rename_project.sh MyApp com.co.app"| Renamed["Template đã đổi tên, build được"]
+    Consumer -->|"clone + scripts/rename_project.sh MyApp com.co.app"| Renamed["Template đã đổi tên, tuist generate, build được"]
     Consumer -->|"mason make ios_mvi_feature ..."| Scaffold
 
-    User -->|"bấm tab bottom-nav"| SHELL["Host Shell (ShellView)"]
-    SHELL -->|"feature install-time"| Nav["appRouter.navigate(to: AppRoutes.SettingsRoute())"]
-    SHELL -->|"mọi feature"| Event["AppEventBus.shared.publish(ShellTabVisibilityChanged(...))"]
+    User -->|"bấm tab bottom-nav"| SHELL["Shell (ShellView, mù feature)"]
+    SHELL -->|"đổi tab"| Nav["appRouter.switchTab(i)\nappRouter.tabPaths[i] điều khiển NavigationStack của tab đó"]
+    SHELL -->|"khi đổi tab"| Event["AppEventBus.publish(ShellTabVisibilityChanged(...))"]
 ```
 
 ### 4.3 Sequence Diagram — Luồng chính (Feature Navigation)
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Shell as Shell (ShellViewModel)
+    participant App as App (composition root)
     participant Router as AppRouter (Platform)
+    participant User
+    participant Shell as Shell (ShellView / ShellViewModel)
     participant Bus as AppEventBus (Platform)
-    participant Settings as Features/Settings
+    participant Settings as SettingsFeature
 
-    User->>Shell: bấm tab Settings
+    Note over App: cold start
+    App->>Router: register(SettingsRouteProvider(...)) · register(ScannerRouteProvider(...))
+    App->>Shell: RootView host ShellView(router:)
+
+    User->>Shell: bấm tab Settings (index 2)
+    Shell->>Router: switchTab(2)
     Shell->>Bus: publish(ShellTabVisibilityChanged(tabIndex: 2, isVisible: true))
-    Shell->>Router: navigate(to: AppRoutes.SettingsRoute())
-    Router->>Router: path.append(SettingsRoute())
-    Router-->>Settings: NavigationStack resolve SettingsRouteProvider.view(for:)
-    Settings-->>User: render SettingsView
+    Shell->>Router: destination(for: AppRoutes.SettingsRoot())
+    Router-->>Shell: SettingsRouteProvider.destination(for:) → AnyView
+    Shell-->>User: render SettingsView trong NavigationStack của tab 2
 
     Note over Settings: User thực hiện action
-    Settings->>Settings: viewModel.dispatch(.saveSettings(data))
-    Settings->>Settings: viewModel.onAction → reduce state
-    Settings->>Bus: publish(UserPreferencesUpdated())
-    Bus-->>Shell: on(UserPreferencesUpdated.self) → phản ứng
+    Settings->>Settings: viewModel.dispatch(.toggleDarkMode)
+    Settings->>Settings: onAction → launch(effect) → UseCase → reduce → viewState: loading → content
+    Settings->>Bus: publish(UserLoggedOut()) — chỉ khi 401 từ Network interceptor
+    Bus-->>Shell: on(UserLoggedOut.self) → phản ứng
 ```
+
+Luồng rút gọn: `Shell → appRouter.destination(for: route) → RouteProvider resolve → render Feature view trong NavigationStack của tab đó`. Không có `SplitInstallManager`/`ServiceLoader` (iOS không có DFM). Push/pop sâu là per-tab qua `appRouter.navigate(to:inTab:)` / `pop(inTab:)`.
 
 ### 4.4 Các kênh giao tiếp cross-feature
 
 | Kênh | Ở đâu | Hình dạng | Enforce |
 |---|---|---|---|
-| **`AppRoutes`** (registry route) | `Platform` | `struct XxxRoute: AppRoute`; điều hướng: `appRouter.navigate(to: AppRoutes.SettingsRoute())` | không cần — route không lộ implementation |
-| **`AppEventBus`** | `Platform` | `PassthroughSubject<any AppEvent, Never>` broadcast | không cần |
-| **`RouteProvider`** protocol | cơ chế ở `Platform`, mỗi Feature implement | Feature: `class SettingsRouteProvider: RouteProvider`; Shell đăng ký lúc khởi động | Shell không bao giờ import Feature trực tiếp |
-| **Direct composition** | App, Shell | DI wiring root + tab layout | `check_module_boundaries.sh` — đặc quyền chỉ Host |
+| **`AppRoutes`** (registry route) | `Platform` | `struct XxxRoot: AppRoute`; điều hướng: `appRouter.navigate(to: AppRoutes.SettingsRoot(), inTab:)` | không cần — route không lộ implementation |
+| **`AppEventBus`** | `Platform` | `PassthroughSubject<any AppEvent, Never>` broadcast (replay 0); `publish(_:)` / `on(_:)` | không cần |
+| **`RouteProvider`** protocol | cơ chế ở `Platform`, mỗi Feature implement | Feature: `class SettingsRouteProvider: RouteProvider`; **`App`** gọi `appRouter.register(...)` lúc khởi động | `Shell` không bao giờ import Feature; `ArchTests` HostRules — chỉ `App` được phụ thuộc > 1 Feature |
+| **Direct composition** | chỉ `App` | DI wiring root + đăng ký `RouteProvider` + wire lifecycle | `ArchTests` HostRules + `check_module_boundaries.sh` |
 
 Không có kênh request/response giữa 2 Feature. Cần kết quả typed → Dependency Inversion: protocol ở `Core`, Feature kia implement.
 
-**Từ vựng lifecycle event tối thiểu** (mirror bộ Android/Flutter): `ShellTabVisibilityChanged` (Shell publish khi đổi tab), `AppLifecycleChanged` (AppDelegate publish), `UserLoggedOut` (Network interceptor 401 publish).
+**Từ vựng lifecycle event tối thiểu** (mirror bộ Android/Flutter): `ShellTabVisibilityChanged` (`Shell` publish khi đổi tab), `AppLifecycleChanged` (`LifecycleObserver` của `App` publish từ `ScenePhase`), `UserLoggedOut` (`Network` interceptor 401 → `AuthEventSink` ở `Core` → `App` publish).
 
 ## 5. Chiến lược triển khai & Giảm thiểu rủi ro
 
-**Hướng incremental, 4 phase, branch `epic/ios-super-app-template`.** App phải build & chạy được ở mọi ranh giới phase.
+**Greenfield construction — 4 phase, branch `epic/ios-super-app-template`.** App build & chạy được ở mọi ranh giới phase. Cơ chế whitelist giữ nhưng rỗng suốt (không có spaghetti để gỡ). Mỗi task gắn Tier test (A behavioral / B tooling-script-config / C integration-acceptance) theo Spec gốc §9A.
 
 | Phase | Kết quả | Khả năng đảo ngược |
 |---|---|---|
-| **Phase 0 — Nền móng** (Task 1–3) | `quality/` tooling, `check_module_boundaries.sh`, `.github/workflows/ci.yml`, Mason brick scaffold (chưa `post_gen`). **Không đổi hành vi app.** CI xanh trên Hello World. | Xoá files mới; không đụng gì khác. |
-| **Phase 1 — 5 SPM Infra Packages + ARCHITECTURE.md** (Task 4–9) | `Sources/Core`, `Framework`, `Network`, `AppUIKit`, `Platform` build. Unit tests xanh. SwiftLint layer rules bật. `docs/architecture/ARCHITECTURE.md` bản iOS. `xcodebuild` xanh. | Mỗi package là 1 PR; revert PR. |
-| **Phase 2 — Shell + Features + Governance** (Task 10–12) | Tổ chức lại `App/` + `Shell/` + `Features/`. `ShellView` + `ShellViewModel`, `HomeStubView`. `Settings` thật, `Scanner` stub. `RouteProvider` wire. App 3 tab chạy. Boundary check sạch. | Whitelist là đòn bẩy rollback. |
-| **Phase 3 — Trích template + Mason brick + rename + nghiệm thu** (Task 13–16) | `ios_mvi_feature` brick hoàn chỉnh (checklist `post_gen`). `rename_project.sh`. Generic hoá docs/agents. Test nghiệm thu: clone → rename → `mason make ios_mvi_feature` → `xcodebuild test` xanh. | Template trên worktree riêng; `develop` không bị ảnh hưởng. |
+| **Phase 0 — Toolchain & skeleton** (Task 1–3) | Tuist (`Project.swift`/`Workspace.swift`/`Tuist/Package.swift`/helpers, pin version), `.gitignore` cho `.xcodeproj`/`.xcworkspace` sinh ra; `quality/` SwiftLint + SwiftFormat; skeleton package `ArchTests` (swift-syntax pin, 1 rule trivial xanh) + `check_module_boundaries.sh` + whitelist rỗng; `.github/workflows/ci.yml`; root docs (`AGENTS.md`, `PROJECT_RULES.md`, `README.md`, `.editorconfig`). App placeholder; CI xanh. | Xoá files mới. |
+| **Phase 1 — 5 infra package + ARCHITECTURE.md** (Task 4–9) | `Core`, `Framework` (+ async-effect), `Network`, `AppUIKit`, `Platform` build có test; wire vào app qua Tuist. `ArchTests` K2/K3/K4/K5/K7 bật. `docs/architecture/ARCHITECTURE.md` + root pointer mỏng. | Mỗi package 1 PR; revert PR. |
+| **Phase 2 — Shell + Features + navigation** (Task 10–12) | Package `Shell` (3× per-tab `NavigationStack`, `ShellViewModel : MviViewModel`, `HomeStubView`); package `SettingsFeature` (thật); package `ScannerFeature` (stub); `App` composition root đăng ký `RouteProvider`, publish lifecycle event, wire 401→bus. `ArchTests` K1/K6/K9 bật. App 3 tab chạy. | Whitelist là đòn bẩy; mỗi package 1 PR. |
+| **Phase 3 — Template-hoá & nghiệm thu** (Task 13–15) | 4 Mason brick (`ios_mvi_feature`, `ios_mvi_subfeature`, `ios_remove_feature`, `ios_remove_subfeature`) auto-wire manifest Tuist an toàn; `scripts/rename_project.sh`; generic hoá docs/asset; acceptance E2E trên worktree. | Template trên worktree riêng; `develop` không bị ảnh hưởng tới khi merge chủ ý. |
 
-**Đòn bẩy giảm rủi ro:** whitelist Konsist là cơ chế rollback theo từng phase. SwiftLint bắt đầu ở baseline, siết từng phase. `post_gen.dart` xuất checklist thủ công thay vì tự sửa `.pbxproj` — tránh corrupt project file.
+**Đòn bẩy giảm rủi ro:** đồ thị SPM khiến import chéo Feature là compile error, không phải lint finding. `ArchTests` bắt đầu ở baseline, siết từng phase. Mason brick sửa manifest Tuist **trong vùng đánh dấu** (`// tuist:packages:begin/end`), `tuist generate` validate ngay, `ios_remove_feature` đảo ngược. `.xcodeproj`/`.xcworkspace` là artifact sinh ra, không commit — `rename_project.sh` chỉ đụng manifest.
 
 ## 6. Phân rã task Kanban
 
-### Phase 0 — Nền móng
-- [Task 1: SwiftLint + SwiftFormat setup](../../features/task_1_ios_quality_tooling.md)
-- [Task 2: Module boundary check script + GitHub Actions CI](../../features/task_2_ios_boundary_ci.md)
-- [Task 3: Mason brick scaffold `ios_mvi_feature`](../../features/task_3_ios_mason_brick_scaffold.md)
+Task Phase 0 là `todo`; task Phase 1–3 là `backlog`, nâng lên `todo` từng phase một.
 
-### Phase 1 — 5 SPM Infra Packages
-- [Task 4: Tạo SPM package `Core`](../../features/task_4_ios_core_package.md)
-- [Task 5: Tạo SPM package `Framework` (MviViewModel)](../../features/task_5_ios_framework_package.md)
-- [Task 6: Tạo SPM package `Network`](../../features/task_6_ios_network_package.md)
-- [Task 7: Tạo SPM package `AppUIKit`](../../features/task_7_ios_appuikit_package.md)
-- [Task 8: Tạo SPM package `Platform` (AppRouter + AppEventBus)](../../features/task_8_ios_platform_package.md)
-- [Task 9: Rewire app target + bật layer rules + ARCHITECTURE.md iOS](../../features/task_9_ios_rewire_arch_doc.md)
+### Phase 0 — Toolchain & skeleton
+- [Task 1: Tuist bootstrap + gitignore project sinh ra](../../features/task_1_ios_tuist_bootstrap.md) — *Tier B*
+- [Task 2: SwiftLint + SwiftFormat quality tooling](../../features/task_2_ios_quality_tooling.md) — *Tier B*
+- [Task 3: ArchTests skeleton + boundary script + GitHub Actions CI + root docs](../../features/task_3_ios_archtests_ci_docs.md) — *Tier B*
 
-### Phase 2 — Shell + Features + Governance
-- [Task 10: Tổ chức lại app target thành App/ + Shell/ + Features/](../../features/task_10_ios_app_structure.md)
-- [Task 11: Implement ShellView + ShellViewModel + HomeStubView](../../features/task_11_ios_shell.md)
-- [Task 12: Implement Settings (thật) + Scanner (stub) + RouteProvider wiring](../../features/task_12_ios_features_and_routing.md)
+### Phase 1 — 5 infra package + ARCHITECTURE.md
+- [Task 4: Tạo SPM package `Core`](../../features/task_4_ios_core_package.md) — *Tier A*
+- [Task 5: Tạo SPM package `Framework` (MviViewModel + async-effect)](../../features/task_5_ios_framework_package.md) — *Tier A*
+- [Task 6: Tạo SPM package `Network`](../../features/task_6_ios_network_package.md) — *Tier A*
+- [Task 7: Tạo SPM package `AppUIKit`](../../features/task_7_ios_appuikit_package.md) — *Tier A*
+- [Task 8: Tạo SPM package `Platform` (per-tab AppRouter + AppEventBus)](../../features/task_8_ios_platform_package.md) — *Tier A*
+- [Task 9: Rewire app + `ARCHITECTURE.md` + bật ArchTests layer rules](../../features/task_9_ios_rewire_arch_doc.md) — *Tier C*
 
-### Phase 3 — Trích template
-- [Task 13: Hoàn thiện brick `ios_mvi_feature` với post_gen checklist](../../features/task_13_ios_mason_brick_complete.md)
-- [Task 14: Implement `rename_project.sh`](../../features/task_14_ios_rename_script.md)
-- [Task 15: Generic hoá docs / agents / template cleanup](../../features/task_15_ios_template_cleanup.md)
-- [Task 16: Kiểm thử nghiệm thu end-to-end](../../features/task_16_ios_acceptance_test.md)
+### Phase 2 — Shell + Features + navigation
+- [Task 10: Package `Shell` — ShellView + ShellViewModel + HomeStubView](../../features/task_10_ios_shell.md) — *Tier A*
+- [Task 11: Package `SettingsFeature` (thật, full MVI + Clean)](../../features/task_11_ios_settings_feature.md) — *Tier A*
+- [Task 12: `ScannerFeature` stub + App composition root + bật ArchTests K1/K6/K9](../../features/task_12_ios_scanner_and_composition.md) — *Tier A + C*
+
+### Phase 3 — Template-hoá & nghiệm thu
+- [Task 13: 4 Mason brick auto-wire manifest Tuist](../../features/task_13_ios_mason_bricks.md) — *Tier B*
+- [Task 14: `rename_project.sh` + generic hoá docs / asset / README](../../features/task_14_ios_rename_and_genericize.md) — *Tier B*
+- [Task 15: Kiểm thử nghiệm thu end-to-end](../../features/task_15_ios_acceptance_e2e.md) — *Tier C*
