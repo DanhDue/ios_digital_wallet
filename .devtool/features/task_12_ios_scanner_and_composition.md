@@ -1,6 +1,6 @@
 ---
 id: "task_12_ios_scanner_and_composition"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"

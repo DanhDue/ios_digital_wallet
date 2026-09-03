@@ -1,6 +1,6 @@
 ---
 id: "task_11_ios_settings_feature"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
