@@ -58,57 +58,71 @@ The three structural problems this epic solves (analogous to Android's):
 ### 4.1 High-Level Architecture
 
 ```mermaid
-graph TD
-    subgraph Host["Host (pure container)"]
-        APP["iOSDigitalWallet.app\n(@main, DI wiring, AppCoordinator)"]
-        SHELL["Shell\nShellView, ShellViewModel\nHomeStubView"]
+flowchart TD
+    %% Layer 1 · Application (Host) — App is the ONLY feature aggregator
+    subgraph L1 ["Layer 1 · Application (Host)"]
+        APP["iOSDigitalWallet.app\n@main · DI wiring · registers RouteProviders"]
+        SHELL["Shell\nShellView · ShellViewModel · HomeStubView\n(feature-blind)"]
     end
 
-    subgraph Platform["Platform (cross-feature seam)"]
-        ROUTES["AppRouter\n(AppRoutes registry, NavigationPath)"]
-        BUS["AppEventBus\n(PassthroughSubject<any AppEvent, Never>)"]
-        RP["RouteProvider protocol\n(≈ EntryProviderInstaller Android)"]
+    %% Layer 2 · Features — vertical slices, blind to each other
+    subgraph L2 ["Layer 2 · Features (vertical slices — blind to each other)"]
+        F_SET["Features/Settings\nFull MVI · Data / Domain / Presentation"]
+        F_SCAN["Features/Scanner\nStub scaffold"]
     end
 
-    subgraph Features["Features/* (blind to each other)"]
-        F_SET["Features/Settings\n(real, install-time)"]
-        F_SCAN["Features/Scanner\n(stub, install-time)"]
+    %% Layer 3 · Shared Infrastructure — sibling modules, no intra-layer edge
+    subgraph L3 ["Layer 3 · Shared Infrastructure"]
+        PLATFORM["Platform\nAppRoutes · RouteProvider · AppRouter (per-tab) · AppEventBus"]
+        FRAMEWORK["Framework\nMviViewModel · MvvmViewModel · ViewState"]
+        NETWORK["Network\nAPIClient · Interceptor · Environment"]
+        UIKIT["AppUIKit\nDesign System · Common Components"]
     end
 
-    subgraph Infra["Infrastructure (SPM local packages)"]
-        FRAMEWORK["Framework\nMviViewModel, MvvmViewModel\nViewState"]
-        NETWORK["Network\nAPIClient, Interceptor\nEnvironment"]
-        UIKIT["AppUIKit\nDesign System SwiftUI\nCommon Components"]
-        CORE["Core\nDataState, Logger, SafeExecution\nReplayQueue, CacheStore\nSessionManager, Extensions"]
+    %% Layer 4 · Foundation
+    subgraph L4 ["Layer 4 · Foundation"]
+        CORE["Core\nDataState · Logger · SafeExecution · ReplayQueue\nCacheStore · SessionManager · AuthEventSink · Extensions"]
     end
 
+    %% Host — App is the ONLY feature aggregator; Shell is feature-blind
     APP --> SHELL
     APP --> F_SET & F_SCAN
-    SHELL --> F_SET & F_SCAN
-    SHELL --> Platform & FRAMEWORK & UIKIT
+    APP --> PLATFORM
+    SHELL --> PLATFORM & FRAMEWORK & UIKIT
 
-    F_SET --> Platform & FRAMEWORK & NETWORK & UIKIT
-    F_SCAN --> Platform & FRAMEWORK & UIKIT
+    %% Features → infrastructure
+    F_SET --> PLATFORM & FRAMEWORK & NETWORK & UIKIT
+    F_SCAN --> PLATFORM & FRAMEWORK & UIKIT
 
-    ROUTES --> CORE & FRAMEWORK
-    BUS --> CORE
+    %% Infrastructure flows toward Core (Platform depends on Core only)
+    PLATFORM --> CORE
     FRAMEWORK --> CORE
     NETWORK --> CORE
     UIKIT --> CORE
 
-    BOUNDARY["check_module_boundaries.sh\n(architecture gate)"] -.-|"checks, not in build"| F_SET & F_SCAN
+    %% Architecture gate — checks, not in build
+    ARCH["ArchTests (swift-syntax) + SPM graph\nArchitecture gate"] -.->|"no Feature ↔ Feature import"| F_SET & F_SCAN
 
-    classDef host fill:#1a5c1a,stroke:#2d9e2d,color:#fff
-    classDef infra fill:#0d4d7a,stroke:#1a82cc,color:#fff
-    classDef feat fill:#5c4d00,stroke:#cca300,color:#fff
-    classDef plat fill:#4a004a,stroke:#aa00aa,color:#fff
+    classDef host fill:#1b4332,stroke:#2d6a4f,color:#fff
+    classDef feat fill:#7c4a03,stroke:#d97706,color:#fff
+    classDef plat fill:#4a044e,stroke:#c026d3,color:#fff
+    classDef infra fill:#0f4c81,stroke:#2563eb,color:#fff
+    classDef core fill:#312e81,stroke:#6366f1,color:#fff
+    classDef tool fill:#374151,stroke:#9ca3af,color:#fff
+
     class APP,SHELL host
-    class CORE,FRAMEWORK,NETWORK,UIKIT infra
     class F_SET,F_SCAN feat
-    class ROUTES,BUS,RP plat
+    class PLATFORM,FRAMEWORK,NETWORK,UIKIT infra
+    class CORE core
+    class ARCH tool
+
+    style L1 fill:none,stroke:#2d6a4f,stroke-dasharray: 4 4
+    style L2 fill:none,stroke:#d97706,stroke-dasharray: 4 4
+    style L3 fill:none,stroke:#2563eb,stroke-dasharray: 4 4
+    style L4 fill:none,stroke:#6366f1,stroke-dasharray: 4 4
 ```
 
-**Invariants (enforced):** Every solid arrow flows toward `Core`; no Feature points to another Feature; only App/Shell aggregate multiple Features; `AppUIKit` does not depend on `Framework`.
+**Invariants (enforced):** Every solid arrow flows toward `Core`; no Feature points to another Feature; only `App` aggregates multiple Features (`Shell` is feature-blind — it reaches features only via `AppRouter` / `RouteProvider`); `AppUIKit` does not depend on `Framework`; each layer points only to lower layers (one-way DAG).
 
 ### 4.2 Use Cases
 
