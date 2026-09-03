@@ -1,0 +1,16 @@
+# SwiftFormat configuration for the iOS Super App Template.
+# One config at repo root serves the app target and every local SPM package.
+# Kept intentionally close to SwiftLint's style rules so the two never fight.
+
+--indent 4
+--maxwidth 120
+--importgrouping testable-bottom
+--self remove
+--trailingcommas always
+--swift-version 6.0
+
+# Never format generated / vendored / legacy-stub trees.
+# NOTE: SwiftFormat resolves --exclude relative to the directory holding this
+# file (`quality/`), not the working directory, so the paths are written
+# relative to it (`../<name>`).
+--exclude ../iOSDigitalWalletTests,../iOSDigitalWalletUITests,../Derived,../.build,../**/Derived,../**/.build

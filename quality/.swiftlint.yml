@@ -1,0 +1,116 @@
+# SwiftLint configuration for the iOS Super App Template.
+#
+# One config at repo root (`--config quality/.swiftlint.yml`) serves the app
+# target and every local SPM package. SwiftLint here is STYLE + a thin
+# defence-in-depth safety net only — real architectural enforcement lives in
+# ArchTests (AST-based). The two `custom_rules` below are deliberately cheap
+# regex heuristics, not a substitute for that.
+#
+# NOTE ON PATHS: SwiftLint resolves `included` / `excluded` relative to the
+# directory holding THIS file (`quality/`), not the working directory, so the
+# entries are written relative to it (`../App/Sources`, …). The `custom_rules`
+# `included:` regexes match against absolute file paths and need no prefix.
+
+# Only real product / test code is linted.
+included:
+  - ../App/Sources
+  - ../Packages
+  - ../ArchTests/Sources
+  - ../ArchTests/Tests
+
+# Generated graph, Tuist manifests, and pre-existing Xcode template stubs that
+# are NOT wired into the Tuist project must never be linted.
+excluded:
+  - ../Tuist
+  - ../Project.swift
+  - ../Workspace.swift
+  - ../Tuist.swift
+  - ../iOSDigitalWalletTests
+  - ../iOSDigitalWalletUITests
+  - ../Derived
+  - ../.build
+  - "../**/Derived"
+  - "../**/.build"
+
+opt_in_rules:
+  - array_init
+  - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - explicit_init
+  - fatal_error_message
+  - first_where
+  - force_unwrapping
+  - identical_operands
+  - joined_default_parameter
+  - last_where
+  - legacy_multiple
+  - literal_expression_end_indentation
+  - lower_acl_than_parent
+  - modifier_order
+  - operator_usage_whitespace
+  - overridden_super_call
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_urls: true
+  ignores_comments: true
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 500
+  error: 800
+  ignore_comment_only_lines: true
+
+function_body_length:
+  warning: 60
+  error: 120
+
+# `@main struct iOSDigitalWalletApp` inherits a leading-lowercase name from the
+# original project. Do NOT rename it — exclude the one symbol from `type_name`.
+type_name:
+  excluded:
+    - iOSDigitalWalletApp
+
+identifier_name:
+  excluded:
+    - id
+    - to
+    - x
+    - y
+
+# Keep in step with SwiftFormat's `--trailingcommas always`.
+trailing_comma:
+  mandatory_comma: true
+
+custom_rules:
+  no_ui_in_domain:
+    name: "No UI frameworks in Domain"
+    included: ".*/Domain/.*\\.swift"
+    regex: "^\\s*import\\s+(UIKit|SwiftUI|Combine)\\b"
+    message: "Domain must stay pure — no UIKit / SwiftUI / Combine imports. (Enforced for real by ArchTests.)"
+    severity: error
+  no_public_in_data:
+    name: "No public API in Data"
+    included: ".*/Data/.*\\.swift"
+    regex: "^\\s*(public|open)\\s+(final\\s+)?(class|struct|enum|actor|protocol|func|var|let)"
+    message: "Data types must stay internal — expose behaviour via Domain protocols. (Enforced for real by ArchTests.)"
+    severity: error

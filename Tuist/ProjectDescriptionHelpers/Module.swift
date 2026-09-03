@@ -13,6 +13,27 @@ public enum Module {
     /// Platforms every target in the template ships to.
     public static let destinations: Destinations = .iOS
 
+    /// Pre-build SwiftLint gate, attached to every target the factory produces
+    /// (app today, local SPM packages in Phase 1) so a style violation fails the
+    /// build the same way in Xcode and in CI. One config at repo root
+    /// (`quality/.swiftlint.yml`) serves every target.
+    ///
+    /// It degrades gracefully: if `swiftlint` is not on `PATH` the phase emits a
+    /// warning instead of failing, so a fresh checkout without the toolchain can
+    /// still build. `basedOnDependencyAnalysis: false` keeps it running on every
+    /// build rather than being skipped when inputs look unchanged.
+    public static let swiftLintScript: TargetScript = .pre(
+        script: #"""
+        if which swiftlint >/dev/null; then
+          swiftlint lint --config "$SRCROOT/quality/.swiftlint.yml" --quiet
+        else
+          echo "warning: swiftlint not installed"
+        fi
+        """#,
+        name: "SwiftLint",
+        basedOnDependencyAnalysis: false
+    )
+
     /// Builds the thin host application target.
     ///
     /// - Parameters:
@@ -34,6 +55,7 @@ public enum Module {
             infoPlist: .file(path: "App/Resources/Info.plist"),
             sources: ["App/Sources/**"],
             resources: ["App/Resources/Assets.xcassets"],
+            scripts: [swiftLintScript],
             dependencies: dependencies
         )
     }
