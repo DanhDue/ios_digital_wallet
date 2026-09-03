@@ -254,20 +254,32 @@ open class MviViewModel<STATE, ACTION, EVENT>: MvvmViewModel {
 ```swift
 extension MviViewModel {
     /// Chạy async effect; nếu đã có effect cùng `key` đang chạy thì hủy nó trước.
+    /// `operation` isolate `@MainActor` để gọi `reduce`/`handleError`/`emit` đồng bộ
+    /// (Swift 6 strict concurrency).
     public func launch(_ key: AnyHashable = "default",
-                       _ operation: @escaping () async -> Void) {
+                       _ operation: @escaping @MainActor () async -> Void) {
         effectTasks[key]?.cancel()
+        let token = UUID()
+        effectTokens[key] = token
         effectTasks[key] = Task { [weak self] in
             await operation()
+            // Chỉ effect hiện tại được dọn slot của chính nó — một effect bị thay
+            // thế mà kết thúc SAU `launch` mới không được xoá slot của effect mới.
+            guard self?.effectTokens[key] == token else { return }
             self?.effectTasks[key] = nil
+            self?.effectTokens[key] = nil
         }
     }
-    public func cancelEffects() { effectTasks.values.forEach { $0.cancel() }; effectTasks.removeAll() }
+    public func cancelEffects() {
+        effectTasks.values.forEach { $0.cancel() }
+        effectTasks.removeAll(); effectTokens.removeAll()
+    }
 }
-// effectTasks: [AnyHashable: Task<Void, Never>] — lưu trong MviViewModel; onClear() gọi cancelEffects().
+// effectTasks: [AnyHashable: Task<Void, Never>], effectTokens: [AnyHashable: UUID]
+// — lưu trong MviViewModel; onClear() (isolated deinit làm backstop) gọi cancelEffects().
 ```
 
-**Hệ quả test (§9A Tier A, task Framework):** dispatch 3 lần nhanh cùng key → chỉ effect cuối chạy tới `reduce`; sau `onClear()` không còn emission; `effectTasks` rỗng.
+**Hệ quả test (§9A Tier A, task Framework):** dispatch 3 lần nhanh cùng key → chỉ effect cuối chạy tới `reduce`, effect 1&2 quan sát `CancellationError`; distinct key chạy song song; sau `onClear()` không còn emission; `effectTasks` + `effectTokens` rỗng. `Package.swift` khai thêm `.macOS(.v13)` để `swift test` chạy được trên host (Combine).
 
 ---
 
