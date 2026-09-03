@@ -22,6 +22,7 @@ let package = Package(
         .package(path: "../Packages/Framework"),
         .package(path: "../Packages/Network"),
         .package(path: "../Packages/Platform"),
+        .package(path: "../Packages/Shell"),
         // tuist:packages:end
     ]
 )
