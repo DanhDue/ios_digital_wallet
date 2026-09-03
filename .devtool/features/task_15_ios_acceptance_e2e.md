@@ -1,6 +1,6 @@
 ---
 id: "task_15_ios_acceptance_e2e"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"

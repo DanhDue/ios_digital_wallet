@@ -1,6 +1,6 @@
 ---
 id: "task_14_ios_rename_and_genericize"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
