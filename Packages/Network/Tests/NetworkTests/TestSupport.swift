@@ -1,0 +1,166 @@
+import Core
+import Foundation
+import XCTest
+@testable import Network
+
+// MARK: - URL / response helpers
+
+/// `URL(string:)` is failable and `force_unwrapping` is a lint error even in
+/// tests — funnel literal URLs through here.
+func requireURL(_ string: String, file: StaticString = #filePath, line: UInt = #line) -> URL {
+    guard let url = URL(string: string) else {
+        XCTFail("not a valid URL: \(string)", file: file, line: line)
+        return URL(fileURLWithPath: "/invalid")
+    }
+    return url
+}
+
+/// `XCTAssertThrowsError` for an `async` operation. Closure form (not an
+/// autoclosure) so SwiftFormat's `hoistAwait` cannot strip the inner `await`.
+func assertThrowsAsync(
+    _ operation: () async throws -> some Any,
+    _ message: String = "",
+    file: StaticString = #filePath,
+    line: UInt = #line,
+    onError: (Error) -> Void = { _ in }
+) async {
+    do {
+        _ = try await operation()
+        XCTFail(message.isEmpty ? "expected an error to be thrown" : message, file: file, line: line)
+    } catch {
+        onError(error)
+    }
+}
+
+// MARK: - Test models
+
+struct Widget: Codable, Equatable, Sendable {
+    let id: Int
+    let name: String
+}
+
+struct RequiredFieldModel: Codable, Equatable, Sendable {
+    let mustExist: String
+}
+
+// MARK: - Spy Logger
+
+/// Records every call so tests can assert on level + substring. Lock-guarded /
+/// `@unchecked Sendable` per the repo pattern.
+final class SpyLogger: Logger, @unchecked Sendable {
+    struct Entry: Sendable {
+        let level: String
+        let message: String
+    }
+
+    private let lock = NSLock()
+    private var storage: [Entry] = []
+
+    var entries: [Entry] {
+        lock.withLock { storage }
+    }
+
+    func messages(level: String) -> [String] {
+        lock.withLock { storage.filter { $0.level == level }.map(\.message) }
+    }
+
+    func debug(_ message: String, file _: String, function _: String, line _: Int) {
+        append("debug", message)
+    }
+
+    func info(_ message: String, file _: String, function _: String, line _: Int) {
+        append("info", message)
+    }
+
+    func error(_ message: String, file _: String, function _: String, line _: Int) {
+        append("error", message)
+    }
+
+    private func append(_ level: String, _ message: String) {
+        lock.withLock { storage.append(Entry(level: level, message: message)) }
+    }
+}
+
+// MARK: - Spy AuthEventSink
+
+/// Counts `onUnauthorized()` calls.
+final class SpyAuthEventSink: AuthEventSink, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var callCount: Int {
+        lock.withLock { count }
+    }
+
+    func onUnauthorized() {
+        lock.withLock { count += 1 }
+    }
+}
+
+// MARK: - Call recorder + recording interceptor
+
+/// Ordered log of interceptor events shared by several `RecordingInterceptor`s.
+final class CallRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+
+    var calls: [String] {
+        lock.withLock { storage }
+    }
+
+    func record(_ entry: String) {
+        lock.withLock { storage.append(entry) }
+    }
+}
+
+/// A `RequestInterceptor` that appends `"<name>.adapt"` / `"<name>.didReceive"`
+/// to a shared `CallRecorder`, and optionally stamps a header so `adapt`
+/// ordering is observable on the wire too.
+final class RecordingInterceptor: RequestInterceptor, @unchecked Sendable {
+    let name: String
+    private let recorder: CallRecorder
+    private let stampHeader: Bool
+
+    init(name: String, recorder: CallRecorder, stampHeader: Bool = false) {
+        self.name = name
+        self.recorder = recorder
+        self.stampHeader = stampHeader
+    }
+
+    func adapt(_ request: URLRequest) async -> URLRequest {
+        recorder.record("\(name).adapt")
+        guard stampHeader else { return request }
+        var mutated = request
+        let existing = mutated.value(forHTTPHeaderField: "X-Chain") ?? ""
+        mutated.setValue(existing.isEmpty ? name : "\(existing),\(name)", forHTTPHeaderField: "X-Chain")
+        return mutated
+    }
+
+    func didReceive(_: HTTPURLResponse) {
+        recorder.record("\(name).didReceive")
+    }
+}
+
+// MARK: - Retry-once wrapper
+
+/// Minimal client wrapper: on `NetworkError.unauthorized` it retries the request
+/// exactly once. Proves the 401 → `onUnauthorized()` count equals the number of
+/// distinct 401 *responses*, not the number of *attempts*.
+struct RetryOnceClient: APIClient {
+    let wrapped: APIClient
+
+    func send<T: Decodable>(_ request: APIRequest) async throws -> T {
+        do {
+            return try await wrapped.send(request)
+        } catch NetworkError.unauthorized {
+            return try await wrapped.send(request)
+        }
+    }
+}
+
+// MARK: - Environments
+
+struct FixedEnvironment: Environment {
+    let baseURL: URL
+    var defaultHeaders: [String: String] = [:]
+}

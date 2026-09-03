@@ -14,6 +14,7 @@ let project = Project(
                 // tuist:app-deps:begin
                 .external(name: "Core"),
                 .external(name: "Framework"),
+                .external(name: "Network"),
                 // tuist:app-deps:end
             ]
         ),
