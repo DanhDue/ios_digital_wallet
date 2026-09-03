@@ -19,6 +19,7 @@ let package = Package(
         // tuist:packages:begin
         .package(path: "../Packages/AppUIKit"),
         .package(path: "../Packages/Core"),
+        .package(path: "../Packages/Features/SettingsFeature"),
         .package(path: "../Packages/Framework"),
         .package(path: "../Packages/Network"),
         .package(path: "../Packages/Platform"),

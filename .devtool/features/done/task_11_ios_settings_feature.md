@@ -1,13 +1,13 @@
 ---
 id: "task_11_ios_settings_feature"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T22:54:09Z"
 labels: ["architecture", "spm", "feature", "mvi"]
 order: "a11"
 ---
