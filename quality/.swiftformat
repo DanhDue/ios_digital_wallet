@@ -9,8 +9,10 @@
 --trailingcommas always
 --swift-version 6.0
 
-# Never format generated / vendored / legacy-stub trees.
+# Never format generated / vendored / legacy-stub trees, nor `bricks/` — the
+# Mason brick templates under `bricks/*/__brick__/**/*.swift` hold Mustache
+# tokens (`{{name.pascalCase()}}`) and are not parseable Swift (Task 13).
 # NOTE: SwiftFormat resolves --exclude relative to the directory holding this
 # file (`quality/`), not the working directory, so the paths are written
 # relative to it (`../<name>`).
---exclude ../iOSDigitalWalletTests,../iOSDigitalWalletUITests,../Derived,../.build,../**/Derived,../**/.build
+--exclude ../iOSDigitalWalletTests,../iOSDigitalWalletUITests,../Derived,../.build,../**/Derived,../**/.build,../bricks

@@ -1,13 +1,13 @@
 ---
 id: "task_13_ios_mason_bricks"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T23:55:31Z"
 labels: ["mason", "tooling", "template"]
 order: "a13"
 ---

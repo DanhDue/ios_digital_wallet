@@ -1,0 +1,20 @@
+name: ios_mvi_subfeature
+description: >-
+  Adds a Presentation/<Name>/ MVI sub-screen (Action/State/Event/ViewModel/View +
+  a starter test) to an existing feature package. No manifest edit — same SPM
+  module. Source Spec §10.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  feature:
+    type: string
+    description: The existing feature to add the sub-screen to (PascalCase, no "Feature" suffix).
+    prompt: Which feature does this sub-screen belong to?
+  name:
+    type: string
+    description: Sub-screen name in PascalCase.
+    prompt: Sub-screen name (PascalCase)?

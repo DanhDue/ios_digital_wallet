@@ -1,0 +1,35 @@
+import Core
+import Network
+
+/// Talks to the `{{name.pascalCase()}}` backend (Source Spec §4.4). Generated
+/// because this feature was scaffolded with `--has_network true`; delete this
+/// file and the `Network` dependency in `Package.swift` if the feature becomes
+/// local-only.
+///
+/// `internal` (ArchTests K4). Reached only by `{{name.pascalCase()}}RepositoryImpl`.
+struct {{name.pascalCase()}}APIService {
+    private let apiClient: any APIClient
+
+    init(apiClient: any APIClient) {
+        self.apiClient = apiClient
+    }
+
+    /// Fetches the remote representation. Maps any transport / decode failure to
+    /// a typed `AppError` so the repository never has to catch.
+    func fetch() async -> DataState<{{name.pascalCase()}}DTO> {
+        do {
+            let dto: {{name.pascalCase()}}DTO = try await apiClient.send(
+                APIRequest(method: .get, path: "{{name.paramCase()}}")
+            )
+            return .success(dto)
+        } catch {
+            return .error(
+                AppError(
+                    code: "{{name.camelCase()}}.fetch",
+                    message: "Failed to load {{name.pascalCase()}}",
+                    underlying: "\(error)"
+                )
+            )
+        }
+    }
+}

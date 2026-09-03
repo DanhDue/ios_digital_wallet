@@ -1,0 +1,21 @@
+name: ios_remove_subfeature
+description: >-
+  The inverse of ios_mvi_subfeature: deletes Presentation/<Name>/ and its
+  <Name>ViewModelTests.swift from <Feature>Feature, then rebuilds the package.
+  Idempotent — a second run exits non-zero with a "nothing to remove" message.
+  Source Spec §10.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  feature:
+    type: string
+    description: The feature the sub-screen belongs to (PascalCase, no "Feature" suffix).
+    prompt: Which feature is the sub-screen in?
+  name:
+    type: string
+    description: Sub-screen name in PascalCase to remove.
+    prompt: Sub-screen name to remove (PascalCase)?

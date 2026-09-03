@@ -1,0 +1,17 @@
+name: ios_remove_feature
+description: >-
+  The exact inverse of ios_mvi_feature: deletes Packages/Features/<Name>Feature/
+  and removes the two lines it added to Tuist/Package.swift and Project.swift,
+  then regenerates the Xcode project. Idempotent — a second run is a clean no-op
+  that exits non-zero with a "nothing to remove" message. Source Spec §10.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  name:
+    type: string
+    description: Feature name in PascalCase (without the trailing "Feature").
+    prompt: Feature name to remove (PascalCase, no "Feature" suffix)?

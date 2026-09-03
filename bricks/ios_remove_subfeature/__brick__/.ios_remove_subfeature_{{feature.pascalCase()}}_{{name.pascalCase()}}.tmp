@@ -1,0 +1,3 @@
+Scratch marker written by
+`mason make ios_remove_subfeature --feature {{feature.pascalCase()}} --name {{name.pascalCase()}}`.
+The brick's post_gen.dart deletes this file immediately.

@@ -1,0 +1,23 @@
+name: ios_mvi_feature
+description: >-
+  Scaffolds a new MVI + Clean-Architecture feature package
+  (Packages/Features/<Name>Feature/) mirroring SettingsFeature, then auto-wires
+  it into the Tuist manifests. Source Spec §10 / §4.4.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  name:
+    type: string
+    description: Feature name in PascalCase (without the trailing "Feature").
+    prompt: Feature name (PascalCase, no "Feature" suffix)?
+  has_network:
+    type: boolean
+    description: >-
+      Whether the feature talks to a backend. true adds the Network dependency
+      and a Data/Remote/<Name>APIService.swift; false is local-only.
+    default: true
+    prompt: Does this feature use the Network package?

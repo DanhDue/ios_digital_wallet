@@ -1,0 +1,4 @@
+Scratch marker written by `mason make ios_remove_feature --name {{name.pascalCase()}}`.
+The brick's post_gen.dart deletes this file immediately; if you are seeing it,
+the hook did not run (were bricks fetched with `mason get`? was `--no-hooks`
+passed?).
