@@ -17,10 +17,24 @@ let project = Project(
                 .external(name: "Framework"),
                 .external(name: "Network"),
                 .external(name: "Platform"),
+                .external(name: "ScannerFeature"),
                 .external(name: "SettingsFeature"),
                 .external(name: "Shell"),
                 // tuist:app-deps:end
             ]
+        ),
+        Module.appTestTarget(
+            appName: "iOSDigitalWallet",
+            bundleId: "com.danhdue.iOSDigitalWalletTests"
+        ),
+    ],
+    schemes: [
+        .scheme(
+            name: "iOSDigitalWallet",
+            shared: true,
+            buildAction: .buildAction(targets: ["iOSDigitalWallet"]),
+            testAction: .targets(["iOSDigitalWalletTests"]),
+            runAction: .runAction(executable: "iOSDigitalWallet")
         ),
     ]
 )

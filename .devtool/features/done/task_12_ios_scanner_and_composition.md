@@ -1,13 +1,13 @@
 ---
 id: "task_12_ios_scanner_and_composition"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-03T23:16:57Z"
 labels: ["architecture", "spm", "feature", "composition", "governance"]
 order: "a12"
 ---

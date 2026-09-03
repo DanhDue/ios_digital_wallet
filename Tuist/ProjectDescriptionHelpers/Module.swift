@@ -59,4 +59,28 @@ public enum Module {
             dependencies: dependencies
         )
     }
+
+    /// The host-app unit-test target (`App/Tests/**`). Runs the Tier A / Tier C
+    /// composition-root tests under `xcodebuild test`; hosted by the app target
+    /// it depends on. Added to `Project.swift` alongside `appTarget`.
+    ///
+    /// - Parameters:
+    ///   - appName: the host app target name; the test target is `<appName>Tests`.
+    ///   - bundleId: bundle identifier for the test bundle.
+    public static func appTestTarget(
+        appName: String,
+        bundleId: String
+    ) -> Target {
+        .target(
+            name: "\(appName)Tests",
+            destinations: destinations,
+            product: .unitTests,
+            bundleId: bundleId,
+            deploymentTargets: .iOS(iOSDeploymentTarget),
+            infoPlist: .default,
+            sources: ["App/Tests/**"],
+            scripts: [swiftLintScript],
+            dependencies: [.target(name: appName)]
+        )
+    }
 }
