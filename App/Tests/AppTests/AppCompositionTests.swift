@@ -11,10 +11,14 @@ import XCTest
 final class AppCompositionTests: XCTestCase {
     // MARK: Route-provider registration
 
-    func testCompositionRegistersExactlyTwoRouteProviders() {
+    func testCompositionRegistersAProviderForEachShippedFeatureRoot() {
+        // Asserts presence, not an exact count: a consumer adding a feature via
+        // `mason make ios_mvi_feature` + wiring it into AppComposition must NOT
+        // break this shipped test. It only guarantees the two template features
+        // stay wired.
         let sut = AppComposition(eventBus: AppEventBus())
 
-        XCTAssertEqual(sut.routeProviders.count, 2)
+        XCTAssertFalse(sut.routeProviders.isEmpty)
 
         let handlesSettings = sut.routeProviders.filter { $0.canHandle(AppRoutes.SettingsRoot()) }
         let handlesScanner = sut.routeProviders.filter { $0.canHandle(AppRoutes.ScannerRoot()) }
