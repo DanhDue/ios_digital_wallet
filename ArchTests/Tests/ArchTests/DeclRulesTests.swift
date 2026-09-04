@@ -14,7 +14,7 @@ import XCTest
 ///   `class`; an `*Action` / `*State` / `*Event` trio should co-exist per
 ///   presentation folder (soft — a partial set only prints a warning).
 ///
-/// K5 is scoped to `Packages/Features/**` on purpose: the infra packages *define*
+/// K5 is scoped to `Features/**` on purpose: the infra packages *define*
 /// the base types the conventions point at (`MviViewModel`, `RouteProvider`,
 /// SwiftUI's `View`) and are not themselves feature code. No feature packages
 /// exist yet, so K5 passes; it is armed for Task 11 / Task 12.
@@ -143,7 +143,7 @@ final class DeclRulesTests: XCTestCase {
     }
 
     private func featureSourceFiles() -> [URL] {
-        SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Packages/Features"))
+        SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Features"))
             .filter { $0.path.contains("/Sources/") }
     }
 

@@ -4,12 +4,12 @@ import 'package:mason/mason.dart';
 
 /// `ios_mvi_feature` post-generation hook (Source Spec §10).
 ///
-///   1. Inserts `.package(path: "../Packages/Features/<Name>Feature"),` into
+///   1. Inserts `.package(path: "../Features/<Name>"),` into
 ///      `Tuist/Package.swift` inside `// tuist:packages:begin/end`, kept sorted.
-///   2. Inserts `.external(name: "<Name>Feature"),` into `Project.swift` inside
+///   2. Inserts `.external(name: "<Name>"),` into `Project.swift` inside
 ///      `// tuist:app-deps:begin/end`, kept sorted.
 ///   3. Runs `tuist install` + `tuist generate --no-open` and
-///      `swift build --package-path Packages/Features/<Name>Feature`; a failure
+///      `swift build --package-path Features/<Name>`; a failure
 ///      is reported loudly and sets a non-zero exit code. (If `tuist` is not on
 ///      PATH the manifest edits above still stand — re-run `tuist generate`
 ///      manually.)
@@ -21,9 +21,11 @@ import 'package:mason/mason.dart';
 Future<void> run(HookContext context) async {
   final logger = context.logger;
   final root = Directory.current.path;
-  final name = pascalCase(context.vars['name'] as String);
+  var rawName = context.vars['name'] as String;
+  rawName = rawName.replaceAll(RegExp(r'Feature$', caseSensitive: false), '');
+  final name = pascalCase(rawName);
   final hasNetwork = context.vars['has_network'] == true;
-  final pkgPath = 'Packages/Features/${name}Feature';
+  final pkgPath = 'Features/$name';
 
   _insertSorted(
     context,
@@ -37,7 +39,7 @@ Future<void> run(HookContext context) async {
     file: File('$root/Project.swift'),
     begin: '// tuist:app-deps:begin',
     end: '// tuist:app-deps:end',
-    entry: '.external(name: "${name}Feature"),',
+    entry: '.external(name: "$name"),',
   );
 
   final tuistOk = await _run(context, 'tuist', ['install'], root) &&
@@ -49,7 +51,7 @@ Future<void> run(HookContext context) async {
     logger
       ..err('')
       ..err('================================================================')
-      ..err('  ${name}Feature was generated and wired into the Tuist')
+      ..err('  $name was generated and wired into the Tuist')
       ..err('  manifests, but VERIFICATION FAILED:')
       ..err('      tuist        : ${tuistOk ? "ok" : "FAILED / not on PATH"}')
       ..err('      swift build  : ${buildOk ? "ok" : "FAILED"}')
@@ -67,7 +69,7 @@ Future<void> run(HookContext context) async {
     ..info('     App/Sources/Composition/AppComposition.swift, inside the')
     ..info('     // app:route-providers:begin / :end region, e.g.:')
     ..info('         let ${_lcFirst(name)}Provider = '
-        '${name}FeatureModule.makeRouteProvider(')
+        '${name}Module.makeRouteProvider(')
     ..info('             cache: cache, ${vmArgs}logger: logger)')
     ..info('         router.register(${_lcFirst(name)}Provider)')
     ..info('     ...and append it to the `routeProviders` array.')

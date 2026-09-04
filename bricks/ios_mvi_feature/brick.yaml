@@ -1,7 +1,7 @@
 name: ios_mvi_feature
 description: >-
   Scaffolds a new MVI + Clean-Architecture feature package
-  (Packages/Features/<Name>Feature/) mirroring SettingsFeature, then auto-wires
+  (Features/<Name>/) mirroring Settings, then auto-wires
   it into the Tuist manifests. Source Spec §10 / §4.4.
 
 version: 0.1.0+1

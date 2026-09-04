@@ -17,10 +17,10 @@ let package = Package(
     name: "iOSDigitalWallet",
     dependencies: [
         // tuist:packages:begin
+        .package(path: "../Features/Scanner"),
+        .package(path: "../Features/Settings"),
         .package(path: "../Packages/AppUIKit"),
         .package(path: "../Packages/Core"),
-        .package(path: "../Packages/Features/ScannerFeature"),
-        .package(path: "../Packages/Features/SettingsFeature"),
         .package(path: "../Packages/Framework"),
         .package(path: "../Packages/Network"),
         .package(path: "../Packages/Platform"),

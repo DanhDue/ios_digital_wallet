@@ -48,7 +48,7 @@ jobs:
         run: |
           shopt -s nullglob
           tested=0
-          for dir in Packages/* Packages/Features/*; do
+          for dir in Packages/* Features/*; do
             [ -f "$dir/Package.swift" ] || continue
             tested=1
             echo "== swift test --package-path $dir =="

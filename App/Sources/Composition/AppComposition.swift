@@ -2,8 +2,8 @@ import AppUIKit
 import Core
 import Foundation
 import Platform
-import ScannerFeature
-import SettingsFeature
+import Scanner
+import Settings
 import Shell
 import SwiftUI
 
@@ -43,8 +43,8 @@ struct AppComposition {
         let logger = ConsoleLogger()
         let cache = UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
 
-        let settingsProvider = SettingsFeatureModule.makeRouteProvider(cache: cache, logger: logger)
-        let scannerProvider = ScannerFeatureModule.makeRouteProvider()
+        let settingsProvider = SettingsModule.makeRouteProvider(cache: cache, logger: logger)
+        let scannerProvider = ScannerModule.makeRouteProvider()
 
         // app:route-providers:begin
         router.register(settingsProvider)

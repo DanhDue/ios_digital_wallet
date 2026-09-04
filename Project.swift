@@ -17,8 +17,8 @@ let project = Project(
                 .external(name: "Framework"),
                 .external(name: "Network"),
                 .external(name: "Platform"),
-                .external(name: "ScannerFeature"),
-                .external(name: "SettingsFeature"),
+                .external(name: "Scanner"),
+                .external(name: "Settings"),
                 .external(name: "Shell"),
                 // tuist:app-deps:end
             ]

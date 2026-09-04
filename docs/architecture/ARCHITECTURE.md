@@ -274,13 +274,13 @@ backstop) calls `cancelEffects()`, so no emission survives teardown.
 
 ### 1. Directory layout of a feature package
 
-A feature is its **own local SPM package** at `Packages/Features/{Name}Feature/`.
+A feature is its **own local SPM package** at `Features/{Name}/`.
 `mason make ios_mvi_feature --name {Name}` scaffolds it (Phase 3).
 
 ```text
-Packages/Features/{Name}Feature/
-├── Package.swift              name "{Name}Feature"; deps: Platform, Framework, (Network), AppUIKit
-├── Sources/{Name}Feature/
+Features/{Name}/
+├── Package.swift              name "{Name}"; deps: Platform, Framework, (Network), AppUIKit
+├── Sources/{Name}/
 │   ├── Data/                  🔵 internal — RepositoryImpl, DataSource, DTO, Mapper
 │   │   ├── Remote/            {Name}APIService.swift, {Name}DTO.swift
 │   │   ├── Local/             {Name}LocalDataSource.swift
@@ -294,7 +294,7 @@ Packages/Features/{Name}Feature/
 │       ├── {Screen}/          {Screen}Action.swift · {Screen}State.swift · {Screen}Event.swift
 │       │                      {Screen}ViewModel.swift · {Screen}View.swift
 │       └── {Name}RouteProvider.swift   (implements Platform.RouteProvider)
-└── Tests/{Name}FeatureTests/  BDD scenario → TDD test (Testing Standard Tier A)
+└── Tests/{Name}Tests/         BDD scenario → TDD test (Testing Standard Tier A)
 ```
 
 Rules `ArchTests` checks per feature: `Data/` has no `public`/`open` (**K4**);
@@ -317,7 +317,7 @@ package on a tier has an edge to a sibling on the same tier.
 | `Network` | `Packages/Network` | `APIClient` / `URLSessionAPIClient`, interceptors, `Environment` / `AppEnvironment`, `NetworkError`, `MockAPIClient`. A 401 is surfaced via `Core.AuthEventSink`. | `Core` |
 | `AppUIKit` | `Packages/AppUIKit` | SwiftUI design system: `AppColor` / `AppFont` / `AppSpacing` / `AppTheme` tokens, `AppButton` / `AppTextField` / `AppLoadingView` / `AppErrorView` / `AppEmptyStateView`. Purely presentational. | `Core` — **not** `Framework` |
 | `Platform` | `Packages/Platform` | Cross-feature seam: `AppRoute` / `AppRoutes`, `RouteProvider`, per-tab `AppRouter`, `AppEvent` / `AppEventBus`. | `Core` |
-| `Features/*` | `Packages/Features/*` | One product feature each (`Data` / `Domain` / `Presentation` + `RouteProvider`). Ships `SettingsFeature` (real) + `ScannerFeature` (stub). **Blind to every other feature.** | `Platform`, `Framework`, `AppUIKit` (+ `Network` when it does IO) |
+| `Features/*` | `Features/*` | One product feature each (`Data` / `Domain` / `Presentation` + `RouteProvider`). Ships `Settings` (real) + `Scanner` (stub). **Blind to every other feature.** | `Platform`, `Framework`, `AppUIKit` (+ `Network` when it does IO) |
 | `ArchTests` | `ArchTests/` | Standalone swift-syntax architecture gate (K1–K9). Never linked into the app. | `swift-syntax` |
 
 ### 3. The 4-tier dependency graph
@@ -423,7 +423,7 @@ Feature scaffolding arrives in **Phase 3** as four bricks.
 
 | Command | Effect |
 |---|---|
-| `mason make ios_mvi_feature --name X [--has_network]` | Create `Packages/Features/XFeature/` (Package.swift + `Data`/`Domain`/`Presentation` + `XRouteProvider` + tests); append `.package(path:)` to `Tuist/Package.swift` and `"XFeature"` to the app deps in `Project.swift` — both inside `// tuist:*:begin/end` marker regions; run `tuist generate`. |
+| `mason make ios_mvi_feature --name X [--has_network]` | Create `Features/X/` (Package.swift + `Data`/`Domain`/`Presentation` + `XRouteProvider` + tests); append `.package(path:)` to `Tuist/Package.swift` and `"X"` to the app deps in `Project.swift` — both inside `// tuist:*:begin/end` marker regions; run `tuist generate`. |
 | `mason make ios_mvi_subfeature --feature X --name Y` | Add `Presentation/Y/{YAction,YState,YEvent,YViewModel,YView}.swift` + test to an existing feature. |
 | `mason make ios_remove_feature --name X` | Unwind the three wire points and delete the package. |
 | `mason make ios_remove_subfeature --feature X --name Y` | Delete `Presentation/Y/`. |
@@ -593,7 +593,7 @@ greenfield.
 | **K2** | `Presentation/**` does not reach into `Data/**`; `Domain/**` reaches into neither | swift-syntax: bucket feature files by `/Data/` `/Domain/` `/Presentation/` path segment, then flag cross-layer module imports and cross-layer type-name references | **enabled** (empty tree → passes; armed for Phase 2) |
 | **K3** | no `import SwiftUI` / `UIKit` / `Combine` on a `/Domain/` path | swift-syntax import scan | **enabled** |
 | **K4** | no `public` / `open` top-level type / func / typealias / extension on a `/Data/` path | swift-syntax modifier check on top-level declarations | **enabled** |
-| **K5** | naming: `*ViewModel` inherits `MviViewModel` / `MvvmViewModel`; `*RouteProvider` conforms to `RouteProvider`; `*View` conforms to `View`; `*Repository` in `Domain/` is a `protocol`; `*RepositoryImpl` in `Data/` is a `struct` / `class`; an `*Action` / `*State` / `*Event` triad co-exists per presentation folder (soft) | swift-syntax name + inheritance-clause check, scoped to `Packages/Features/**` | **enabled** (armed for Phase 2) |
+| **K5** | naming: `*ViewModel` inherits `MviViewModel` / `MvvmViewModel`; `*RouteProvider` conforms to `RouteProvider`; `*View` conforms to `View`; `*Repository` in `Domain/` is a `protocol`; `*RepositoryImpl` in `Data/` is a `struct` / `class`; an `*Action` / `*State` / `*Event` triad co-exists per presentation folder (soft) | swift-syntax name + inheritance-clause check, scoped to `Features/**` | **enabled** (armed for Phase 2) |
 | **K6** | only `App` depends on more than one feature; `Shell` depends on zero | manifest assertion (`Project.swift` + `Packages/*/Package.swift`) | Phase 2 (Task 12) |
 | **K7** | `Core` declares no sibling infra dependency and imports none of `Framework` / `Network` / `AppUIKit` / `Platform` | manifest string check + swift-syntax import scan | **enabled** |
 | **K8** | *(no iOS analogue — Android's DFM inverted-dependency exemption; iOS has no Dynamic Feature Modules)* | — | n/a |
@@ -617,7 +617,7 @@ restores green.
 ### 2. `check_module_boundaries.sh`
 
 `bash scripts/check_module_boundaries.sh` — a defence-in-depth `grep` for
-`^\s*import <OtherFeatureModule>` under each `Packages/Features/*/Sources/`. Any
+`^\s*import <OtherFeatureModule>` under each `Features/*/Sources/`. Any
 edge not in `scripts/module_boundary_whitelist.txt` exits 1. This is the second
 net behind the SPM graph and `ArchTests` K1, not the primary mechanism. With no
 feature packages it is a no-op that exits 0.
@@ -628,7 +628,7 @@ feature packages it is a no-op that exits 0.
 
 - **quality** — `swiftlint --strict`, `swiftformat --lint`,
   `check_module_boundaries.sh`, `swift test --package-path ArchTests`.
-- **packages** — `swift test` for every `Packages/*` and `Packages/Features/*`.
+- **packages** — `swift test` for every `Packages/*` and `Features/*`.
 - **app** — `tuist install` → `tuist generate` → `xcodebuild test` (falls back
   to `xcodebuild build` until test targets exist), `CODE_SIGNING_ALLOWED=NO`.
 

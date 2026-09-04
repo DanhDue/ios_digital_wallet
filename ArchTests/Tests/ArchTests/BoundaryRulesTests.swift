@@ -6,22 +6,22 @@ import XCTest
 /// (Source Spec §9.2, §9.3, Changelog #10).
 ///
 /// Three nets, all enforced with an empty baseline and an empty whitelist:
-///   1. every `Packages/Features/<X>/Package.swift` names no other feature
-///      package (neither a `.package(path: "../<Y>Feature")` nor a
-///      `.product(... package: "<Y>Feature")`);
-///   2. no `Packages/Features/<X>/Sources/**` file `import`s another feature
+///   1. every `Features/<X>/Package.swift` names no other feature
+///      package (neither a `.package(path: "../<Y>")` nor a
+///      `.product(... package: "<Y>")`);
+///   2. no `Features/<X>/Sources/**` file `import`s another feature
 ///      module;
 ///   3. `scripts/check_module_boundaries.sh` exits 0.
 ///
 /// A violation injected into any feature manifest (e.g.
-/// `SettingsFeature` gaining a dependency on `ScannerFeature`) must make
+/// `Settings` gaining a dependency on `Scanner`) must make
 /// `testK1_NoFeatureManifestDependsOnAnotherFeature` fail and name the edge.
 final class BoundaryRulesTests: XCTestCase {
     // MARK: K1 — manifest assertion
 
     func testK1_NoFeatureManifestDependsOnAnotherFeature() throws {
         let names = try Self.featurePackageNames()
-        XCTAssertGreaterThanOrEqual(names.count, 2, "expected at least ScannerFeature + SettingsFeature")
+        XCTAssertGreaterThanOrEqual(names.count, 2, "expected at least Scanner + Settings")
 
         var offenders: [String] = []
         let whitelist = BoundaryWhitelist.load()
@@ -56,7 +56,7 @@ final class BoundaryRulesTests: XCTestCase {
         var offenders: [String] = []
 
         for from in names {
-            let sources = RepoRoot.url(for: "Packages/Features/\(from)/Sources")
+            let sources = RepoRoot.url(for: "Features/\(from)/Sources")
             for file in SyntaxScanner.swiftFiles(under: sources) {
                 let imports = Self.headModules(ofFileAt: file)
                 let crossFeature = imports.intersection(names).subtracting([from])
@@ -99,7 +99,7 @@ final class BoundaryRulesTests: XCTestCase {
     // MARK: Helpers
 
     static func featurePackageDirectories() throws -> [URL] {
-        let dir = RepoRoot.url(for: "Packages/Features")
+        let dir = RepoRoot.url(for: "Features")
         let entries = try FileManager.default.contentsOfDirectory(
             at: dir,
             includingPropertiesForKeys: [.isDirectoryKey],
@@ -116,7 +116,7 @@ final class BoundaryRulesTests: XCTestCase {
 
     static func manifestSource(for feature: String) throws -> String {
         try String(
-            contentsOf: RepoRoot.url(for: "Packages/Features/\(feature)/Package.swift"),
+            contentsOf: RepoRoot.url(for: "Features/\(feature)/Package.swift"),
             encoding: .utf8
         )
     }

@@ -15,6 +15,7 @@
 included:
   - ../App/Sources
   - ../Packages
+  - ../Features
   - ../ArchTests/Sources
   - ../ArchTests/Tests
 

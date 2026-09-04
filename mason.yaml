@@ -4,19 +4,19 @@
 # `bricks/{mvi_feature,mvi_subfeature,remove_feature,remove_subfeature}`:
 #
 #   ios_mvi_feature       --name X [--has_network true]
-#       Scaffolds Packages/Features/XFeature/ (Data/Domain/Presentation + tests),
+#       Scaffolds Features/X/ (Data/Domain/Presentation + tests),
 #       then auto-wires it into Tuist/Package.swift and Project.swift inside the
 #       // tuist:packages:begin/end and // tuist:app-deps:begin/end regions.
 #
 #   ios_mvi_subfeature    --feature X --name Y
-#       Adds Presentation/Y/* to an existing XFeature package. No manifest edit.
+#       Adds Presentation/Y/* to an existing X package. No manifest edit.
 #
 #   ios_remove_feature    --name X
 #       Exact inverse of ios_mvi_feature: deletes the package and removes both
 #       manifest lines. Idempotent (a second run is a clean no-op).
 #
 #   ios_remove_subfeature --feature X --name Y
-#       Deletes Presentation/Y/ and its test from XFeature.
+#       Deletes Presentation/Y/ and its test from X.
 #
 # Usage:  mason get   (once, to resolve)   then   mason make <brick> ...
 bricks:

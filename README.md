@@ -74,7 +74,7 @@ mason get                                        # once, to resolve bricks/
 mason make ios_mvi_feature --name Payments        # add --has_network true for a remote data source
 ```
 
-`ios_mvi_feature` scaffolds a full `Packages/Features/PaymentsFeature` package
+`ios_mvi_feature` scaffolds a full `Features/Payments` package
 (`Data` / `Domain` / `Presentation` + `PaymentsViewModel` + `PaymentsRouteProvider`
 + tests), edits the Tuist manifests **inside their `// tuist:*:begin/end` marker
 regions**, re-runs `tuist generate`, and prints a manual checklist (register the
@@ -99,9 +99,9 @@ existing feature), `ios_remove_feature --name X` (exact inverse of
 │   ├── Network/             # APIClient, interceptors, AppEnvironment (placeholder URLs) (→ Core)
 │   ├── AppUIKit/            # design system + components                        (→ Core)
 │   ├── Platform/            # AppRoute(s), RouteProvider, AppRouter, AppEventBus (→ Core)
-│   ├── Shell/               # tab layout + per-tab NavigationStack; feature-blind; HomeStubView
-│   │                        #                                                   (→ Platform, Framework, AppUIKit)
-│   └── Features/            # SettingsFeature (real reference), ScannerFeature (stub) — never import each other
+│   └── Shell/               # tab layout + per-tab NavigationStack; feature-blind; HomeStubView
+│                            #                                                   (→ Platform, Framework, AppUIKit)
+├── Features/                # Settings (real reference), Scanner (stub) — never import each other
 ├── ArchTests/               # Standalone swift-syntax architecture gate (K1–K9) — NEVER linked into the app
 │   ├── Sources/ArchTestSupport/  # RepoRoot, SyntaxScanner, Baseline, BoundaryWhitelist
 │   ├── Tests/ArchTests/          # the K1–K9 rule bodies + support unit tests (31 tests)
@@ -147,7 +147,7 @@ Every task in this repo is graded against a three-tier standard — see
 
 - **quality** — `mise install` → `swiftlint --strict` → `swiftformat --lint` →
   `check_module_boundaries.sh` → `swift test --package-path ArchTests`.
-- **packages** — `swift test` over every `Packages/*` and `Packages/Features/*`.
+- **packages** — `swift test` over every `Packages/*` and `Features/*`.
 - **app** — `needs: [quality, packages]` → `tuist install` →
   `tuist generate --no-open` → `xcodebuild test` (falls back to
   `xcodebuild build`).

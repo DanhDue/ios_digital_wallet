@@ -11,7 +11,7 @@ import XCTest
 /// feature also references — that shared vocabulary belongs in `Platform`.
 ///
 /// Mechanism: find every `AppRoute`-conforming type declared under a
-/// `Packages/Features/*/Sources/**` tree (AST inheritance clause + a regex net
+/// `Features/*/Sources/**` tree (AST inheritance clause + a regex net
 /// for types nested inside a namespace `enum`). For each, if its bare name is
 /// referenced as an identifier token in a *different* feature's sources, and it
 /// is not (re)declared in `Platform/AppRoutes.swift`, that is a K9 violation.
@@ -26,7 +26,7 @@ final class RouteLocationRulesTests: XCTestCase {
         var declared: [String: Set<String>] = [:]
         for feature in features {
             declared[feature] = appRouteTypeNames(
-                inSourcesOf: RepoRoot.url(for: "Packages/Features/\(feature)/Sources")
+                inSourcesOf: RepoRoot.url(for: "Features/\(feature)/Sources")
             )
         }
 
@@ -48,7 +48,7 @@ final class RouteLocationRulesTests: XCTestCase {
                 for other in declared.keys where other != owner {
                     if sourcesReferenceIdentifier(
                         typeName,
-                        under: RepoRoot.url(for: "Packages/Features/\(other)/Sources")
+                        under: RepoRoot.url(for: "Features/\(other)/Sources")
                     ) {
                         offenders.append(
                             "\(owner) declares AppRoute `\(typeName)` which \(other) also references "
@@ -80,7 +80,7 @@ final class RouteLocationRulesTests: XCTestCase {
     func testK9_NoFeatureRedeclaresAScreenRootFromAppRoutes() throws {
         var offenders: [String] = []
         for feature in try featurePackageNames() {
-            let names = appRouteTypeNames(inSourcesOf: RepoRoot.url(for: "Packages/Features/\(feature)/Sources"))
+            let names = appRouteTypeNames(inSourcesOf: RepoRoot.url(for: "Features/\(feature)/Sources"))
             for shared in ["SettingsRoot", "ScannerRoot"] where names.contains(shared) {
                 offenders.append("\(feature) re-declares AppRoutes.\(shared)")
             }
@@ -128,7 +128,7 @@ final class RouteLocationRulesTests: XCTestCase {
     }
 
     private func featurePackageNames() throws -> [String] {
-        let dir = RepoRoot.url(for: "Packages/Features")
+        let dir = RepoRoot.url(for: "Features")
         let entries = try FileManager.default.contentsOfDirectory(
             at: dir,
             includingPropertiesForKeys: [.isDirectoryKey],

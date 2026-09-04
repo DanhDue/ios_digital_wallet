@@ -25,7 +25,7 @@ final class AggregatorRulesTests: XCTestCase {
         }
         XCTAssertFalse(
             manifest.contains("Features/"),
-            "K6: Shell must not reference the Packages/Features/ tree at all"
+            "K6: Shell must not reference the Features/ tree at all"
         )
     }
 
@@ -77,7 +77,7 @@ final class AggregatorRulesTests: XCTestCase {
     // MARK: Helpers
 
     private func featurePackageNames() throws -> [String] {
-        let dir = RepoRoot.url(for: "Packages/Features")
+        let dir = RepoRoot.url(for: "Features")
         let entries = try FileManager.default.contentsOfDirectory(
             at: dir,
             includingPropertiesForKeys: [.isDirectoryKey],
@@ -94,6 +94,6 @@ final class AggregatorRulesTests: XCTestCase {
     }
 
     private func manifestSource(forFeature feature: String) throws -> String {
-        try String(contentsOf: RepoRoot.url(for: "Packages/Features/\(feature)/Package.swift"), encoding: .utf8)
+        try String(contentsOf: RepoRoot.url(for: "Features/\(feature)/Package.swift"), encoding: .utf8)
     }
 }

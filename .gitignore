@@ -13,3 +13,10 @@ Tuist/.build/
 
 # macOS
 .DS_Store
+
+# AI docs
+docs/superpowers/
+
+# Mason
+.mason/
+mason-lock.json

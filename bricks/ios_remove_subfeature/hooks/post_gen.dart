@@ -5,7 +5,7 @@ import 'package:mason/mason.dart';
 /// `ios_remove_subfeature` post-generation hook — the inverse of
 /// `ios_mvi_subfeature` (Source Spec §10).
 ///
-///   1. Deletes `Packages/Features/<Feature>Feature/Sources/<Feature>Feature/
+///   1. Deletes `Features/<Feature>/Sources/<Feature>/
 ///      Presentation/<Name>/`.
 ///   2. Deletes the matching `<Name>ViewModelTests.swift` test file.
 ///   3. Rebuilds the package with `swift build`.
@@ -18,25 +18,27 @@ import 'package:mason/mason.dart';
 Future<void> run(HookContext context) async {
   final logger = context.logger;
   final root = Directory.current.path;
-  final featureName = _pascalCase(context.vars['feature'] as String);
+  var rawFeature = context.vars['feature'] as String;
+  rawFeature = rawFeature.replaceAll(RegExp(r'Feature$', caseSensitive: false), '');
+  final featureName = _pascalCase(rawFeature);
   final subName = _pascalCase(context.vars['name'] as String);
 
   final scratch =
       File('$root/.ios_remove_subfeature_${featureName}_$subName.tmp');
   if (scratch.existsSync()) scratch.deleteSync();
 
-  final pkgPath = 'Packages/Features/${featureName}Feature';
+  final pkgPath = 'Features/$featureName';
   final presentationDir = Directory(
-    '$root/$pkgPath/Sources/${featureName}Feature/Presentation/$subName',
+    '$root/$pkgPath/Sources/$featureName/Presentation/$subName',
   );
   final testFile = File(
-    '$root/$pkgPath/Tests/${featureName}FeatureTests/${subName}ViewModelTests.swift',
+    '$root/$pkgPath/Tests/${featureName}Tests/${subName}ViewModelTests.swift',
   );
 
   var changed = false;
   if (presentationDir.existsSync()) {
     presentationDir.deleteSync(recursive: true);
-    logger.info('removed Presentation/$subName/ from ${featureName}Feature');
+    logger.info('removed Presentation/$subName/ from $featureName');
     changed = true;
   }
   if (testFile.existsSync()) {
@@ -47,7 +49,7 @@ Future<void> run(HookContext context) async {
 
   if (!changed) {
     logger.err(
-      'Nothing to remove: ${featureName}Feature has no Presentation/$subName/ '
+      'Nothing to remove: $featureName has no Presentation/$subName/ '
       'folder or ${subName}ViewModelTests.swift.',
     );
     exitCode = 1;

@@ -12,9 +12,11 @@ import 'package:mason/mason.dart';
 Future<void> run(HookContext context) async {
   final logger = context.logger;
   final root = Directory.current.path;
-  final featureName = _pascalCase(context.vars['feature'] as String);
+  var rawFeature = context.vars['feature'] as String;
+  rawFeature = rawFeature.replaceAll(RegExp(r'Feature$', caseSensitive: false), '');
+  final featureName = _pascalCase(rawFeature);
   final subName = _pascalCase(context.vars['name'] as String);
-  final pkgPath = 'Packages/Features/${featureName}Feature';
+  final pkgPath = 'Features/$featureName';
 
   if (!Directory('$root/$pkgPath').existsSync()) {
     logger.err('post_gen: $pkgPath does not exist — generate the feature first '
@@ -33,7 +35,7 @@ Future<void> run(HookContext context) async {
     logger
       ..err('')
       ..err('================================================================')
-      ..err('  Presentation/$subName/ was added to ${featureName}Feature but')
+      ..err('  Presentation/$subName/ was added to $featureName but')
       ..err('  `swift build` FAILED — see the errors above. Undo with:')
       ..err('      mason make ios_remove_subfeature '
           '--feature $featureName --name $subName')
@@ -44,7 +46,7 @@ Future<void> run(HookContext context) async {
 
   logger
     ..info('')
-    ..info('Added Presentation/$subName/ to ${featureName}Feature.')
+    ..info('Added Presentation/$subName/ to $featureName.')
     ..info('Next steps:')
     ..info('  - Present ${subName}View from ${featureName}View (or push a '
         'feature-private AppRoute).')

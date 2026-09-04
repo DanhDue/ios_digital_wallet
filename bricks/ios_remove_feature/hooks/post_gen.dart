@@ -5,10 +5,10 @@ import 'package:mason/mason.dart';
 /// `ios_remove_feature` post-generation hook — the exact inverse of
 /// `ios_mvi_feature` (Source Spec §10).
 ///
-///   1. Deletes `Packages/Features/<Name>Feature/`.
-///   2. Removes `.package(path: "../Packages/Features/<Name>Feature"),` from
+///   1. Deletes `Features/<Name>/`.
+///   2. Removes `.package(path: "../Features/<Name>"),` from
 ///      `Tuist/Package.swift`.
-///   3. Removes `.external(name: "<Name>Feature"),` from `Project.swift`.
+///   3. Removes `.external(name: "<Name>"),` from `Project.swift`.
 ///   4. Runs `tuist install` + `tuist generate --no-open`, then prints the
 ///      manual-cleanup checklist.
 ///
@@ -20,13 +20,15 @@ import 'package:mason/mason.dart';
 Future<void> run(HookContext context) async {
   final logger = context.logger;
   final root = Directory.current.path;
-  final name = _pascalCase(context.vars['name'] as String);
+  var rawName = context.vars['name'] as String;
+  rawName = rawName.replaceAll(RegExp(r'Feature$', caseSensitive: false), '');
+  final name = _pascalCase(rawName);
 
   // 0. Drop the scratch marker Mason just wrote (the brick needs one file).
   final scratch = File('$root/.ios_remove_feature_$name.tmp');
   if (scratch.existsSync()) scratch.deleteSync();
 
-  final pkgPath = 'Packages/Features/${name}Feature';
+  final pkgPath = 'Features/$name';
   var changed = false;
 
   final dir = Directory('$root/$pkgPath');
@@ -49,13 +51,13 @@ Future<void> run(HookContext context) async {
         File('$root/Project.swift'),
         '// tuist:app-deps:begin',
         '// tuist:app-deps:end',
-        '.external(name: "${name}Feature"),',
+        '.external(name: "$name"),',
       ) ||
       changed;
 
   if (!changed) {
     logger.err(
-      'Nothing to remove: ${name}Feature is not present in the workspace — '
+      'Nothing to remove: $name is not present in the workspace — '
       'the package dir, the Tuist/Package.swift entry and the Project.swift '
       'entry are all already clean.',
     );
@@ -68,7 +70,7 @@ Future<void> run(HookContext context) async {
 
   logger
     ..info('')
-    ..info('${name}Feature removed. Manual cleanup still needed:')
+    ..info('$name removed. Manual cleanup still needed:')
     ..info('  1. Delete the ${name}RouteProvider registration from')
     ..info('     App/Sources/Composition/AppComposition.swift (the')
     ..info('     // app:route-providers:begin/end region + the routeProviders array).')

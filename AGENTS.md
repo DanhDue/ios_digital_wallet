@@ -30,9 +30,9 @@ it.
   `Core` only (**not** `Framework`).
 - **`Packages/Platform/`** — the cross-feature seam: `AppRoute` / `AppRoutes`,
   `RouteProvider`, `AppRouter`, `AppEventBus`. Depends on `Core` only.
-- **`Packages/Features/*`** — one feature each, with `Data` / `Domain` /
-  `Presentation`. Ships `SettingsFeature` (a real reference feature) and
-  `ScannerFeature` (a stub). Depend only on the infrastructure packages —
+- **`Features/*`** — one feature each, with `Data` / `Domain` /
+  `Presentation`. Ships `Settings` (a real reference feature) and
+  `Scanner` (a stub). Depend only on the infrastructure packages —
   **never on another feature**.
 - **`ArchTests/`** — standalone swift-syntax architecture gate (rules K1–K9).
   Never linked into the app. Run with `swift test --package-path ArchTests`.

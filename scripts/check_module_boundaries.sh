@@ -6,25 +6,25 @@
 # The primary mechanism is the SPM dependency graph + ArchTests rule K1; this
 # grep is the second net.
 #
-# For every Packages/Features/<X>/, scan its Sources/**/*.swift for a top-level
+# For every Features/<X>/, scan its Sources/**/*.swift for a top-level
 #   import <Y>
 # where <Y> is another feature package's module name (module names are derived
-# from the Packages/Features/* directory names). Any edge X->Y that is not listed
+# from the Features/* directory names). Any edge X->Y that is not listed
 # in scripts/module_boundary_whitelist.txt is a VIOLATION and exits 1.
 #
 # Commented-out imports (`// import Y`) are ignored: the match anchors on
 # `^\s*import`.
 #
-# No Packages/Features/ (or an empty one) => nothing to check, exit 0.
+# No Features/ (or an empty one) => nothing to check, exit 0.
 
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-features_dir="$repo_root/Packages/Features"
+features_dir="$repo_root/Features"
 whitelist_file="$repo_root/scripts/module_boundary_whitelist.txt"
 
 if [[ ! -d "$features_dir" ]]; then
-  echo "check_module_boundaries: no feature packages yet (Packages/Features/ absent) — nothing to check."
+  echo "check_module_boundaries: no feature packages yet (Features/ absent) — nothing to check."
   exit 0
 fi
 
@@ -34,7 +34,7 @@ while IFS= read -r dir; do
 done < <(find "$features_dir" -mindepth 1 -maxdepth 1 -type d | sort)
 
 if [[ ${#feature_names[@]} -eq 0 ]]; then
-  echo "check_module_boundaries: no feature packages yet (Packages/Features/ empty) — nothing to check."
+  echo "check_module_boundaries: no feature packages yet (Features/ empty) — nothing to check."
   exit 0
 fi
 

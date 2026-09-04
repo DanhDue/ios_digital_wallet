@@ -72,8 +72,8 @@ final class SupportClassesTests: XCTestCase {
         # a comment
           # indented comment
 
-        K3 : Packages/Features/ScannerFeature/Sources/Domain/Bad.swift
-        K4:Packages/Features/SettingsFeature/Sources/Data/Leak.swift
+        K3 : Features/Scanner/Sources/Domain/Bad.swift
+        K4:Features/Settings/Sources/Data/Leak.swift
         malformed-line-without-separator
         :missing-rule
         K9:
@@ -82,11 +82,11 @@ final class SupportClassesTests: XCTestCase {
         XCTAssertEqual(baseline.count, 2)
         XCTAssertTrue(baseline.isBaselined(
             rule: "K3",
-            path: "Packages/Features/ScannerFeature/Sources/Domain/Bad.swift"
+            path: "Features/Scanner/Sources/Domain/Bad.swift"
         ))
         XCTAssertTrue(baseline.isBaselined(
             rule: "K4",
-            path: "Packages/Features/SettingsFeature/Sources/Data/Leak.swift"
+            path: "Features/Settings/Sources/Data/Leak.swift"
         ))
         XCTAssertFalse(baseline.isBaselined(rule: "K3", path: "some/other/File.swift"))
     }
@@ -106,8 +106,8 @@ final class SupportClassesTests: XCTestCase {
         let contents = """
         # allowed edges
 
-        ScannerFeature->SettingsFeature
-          SettingsFeature -> ScannerFeature
+        Scanner->Settings
+          Settings -> Scanner
         malformed line
         A->
         ->B
@@ -115,9 +115,9 @@ final class SupportClassesTests: XCTestCase {
         """
         let whitelist = BoundaryWhitelist.parse(contents)
         XCTAssertEqual(whitelist.count, 2)
-        XCTAssertTrue(whitelist.isAllowed(from: "ScannerFeature", to: "SettingsFeature"))
-        XCTAssertTrue(whitelist.isAllowed(from: "SettingsFeature", to: "ScannerFeature"))
-        XCTAssertFalse(whitelist.isAllowed(from: "SettingsFeature", to: "PaymentsFeature"))
+        XCTAssertTrue(whitelist.isAllowed(from: "Scanner", to: "Settings"))
+        XCTAssertTrue(whitelist.isAllowed(from: "Settings", to: "Scanner"))
+        XCTAssertFalse(whitelist.isAllowed(from: "Settings", to: "Payments"))
     }
 
     func testBoundaryWhitelistEmptyContentsAllowsNothing() {

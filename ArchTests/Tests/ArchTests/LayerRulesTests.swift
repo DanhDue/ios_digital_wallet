@@ -93,13 +93,14 @@ final class LayerRulesTests: XCTestCase {
     /// Every `.swift` file under `Packages/**/Sources/**` whose path contains a
     /// `/Domain/` segment.
     private func domainFiles() -> [URL] {
-        SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Packages"))
+        (SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Packages"))
+            + SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Features")))
             .filter { $0.path.contains("/Sources/") && $0.path.contains("/Domain/") }
     }
 
     /// `Sources` root of every feature package, or `[]` when none exist yet.
     private func featurePackageSourceRoots() -> [URL] {
-        let featuresDir = RepoRoot.url(for: "Packages/Features")
+        let featuresDir = RepoRoot.url(for: "Features")
         let fileManager = FileManager.default
         guard let entries = try? fileManager.contentsOfDirectory(
             at: featuresDir,
