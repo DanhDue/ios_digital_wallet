@@ -8,7 +8,7 @@ final class ProtocolSeamsTests: XCTestCase {
 
     private final class SpySink: AuthEventSink, @unchecked Sendable {
         private(set) var unauthorizedCount = 0
-        func onUnauthorized() {
+        func onUnauthorized(reason _: LogoutReason) {
             unauthorizedCount += 1
         }
     }
@@ -18,6 +18,32 @@ final class ProtocolSeamsTests: XCTestCase {
         sink.onUnauthorized()
         sink.onUnauthorized()
         XCTAssertEqual((sink as? SpySink)?.unauthorizedCount, 2)
+    }
+
+    func testParameterlessOverloadReportsUnauthorizedToAReasonOnlyConformer() {
+        let spy = SpyAuthEventSink()
+        let sink: any AuthEventSink = spy
+        sink.onUnauthorized()
+        XCTAssertEqual(spy.reasons, [.unauthorized])
+    }
+
+    func testExplicitReasonIsForwardedVerbatimForEveryLogoutReason() {
+        let spy = SpyAuthEventSink()
+        let sink: any AuthEventSink = spy
+        let allReasons: [LogoutReason] = [
+            .unauthorized, .refreshFailed, .retryStillUnauthorized, .missingRefreshToken,
+        ]
+        for reason in allReasons {
+            sink.onUnauthorized(reason: reason)
+        }
+        XCTAssertEqual(spy.reasons, allReasons)
+    }
+
+    func testLogoutReasonsAreDistinctFromOneAnother() {
+        XCTAssertNotEqual(LogoutReason.unauthorized, .refreshFailed)
+        XCTAssertNotEqual(LogoutReason.refreshFailed, .retryStillUnauthorized)
+        XCTAssertNotEqual(LogoutReason.retryStillUnauthorized, .missingRefreshToken)
+        XCTAssertNotEqual(LogoutReason.missingRefreshToken, .unauthorized)
     }
 
     // MARK: Logger

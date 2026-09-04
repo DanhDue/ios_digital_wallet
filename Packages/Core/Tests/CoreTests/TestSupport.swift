@@ -67,6 +67,58 @@ final class InMemoryKeychainBackend: KeychainBackend {
     }
 }
 
+// MARK: - Auth event sink spy
+
+/// Records every `LogoutReason` the system under test reports, in order, so a
+/// test can assert both the count and the exact reasons.
+final class SpyAuthEventSink: AuthEventSink, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [LogoutReason] = []
+
+    var reasons: [LogoutReason] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func onUnauthorized(reason: LogoutReason) {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.append(reason)
+    }
+}
+
+// MARK: - TokenRefresher stub
+
+/// A `TokenRefresher` that returns a canned result and counts how many times it
+/// was asked to refresh.
+final class StubTokenRefresher: TokenRefresher, @unchecked Sendable {
+    private let result: TokenRefreshResult
+    private let lock = NSLock()
+    private var calls = 0
+
+    init(result: TokenRefreshResult) {
+        self.result = result
+    }
+
+    var callCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return calls
+    }
+
+    func refresh(refreshToken _: String) async -> TokenRefreshResult {
+        recordCall()
+        return result
+    }
+
+    private func recordCall() {
+        lock.lock()
+        defer { lock.unlock() }
+        calls += 1
+    }
+}
+
 // MARK: - Codable fixtures
 
 /// A nested `Codable` value for round-trip tests.
