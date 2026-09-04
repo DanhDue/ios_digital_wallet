@@ -103,6 +103,51 @@ final class SpyAuthEventSink: AuthEventSink, @unchecked Sendable {
     }
 }
 
+// MARK: - Spy TokenRefresher
+
+/// Records every `refresh(refreshToken:)` call (count + the refresh token seen)
+/// and returns a scripted `TokenRefreshResult`, optionally after an artificial
+/// delay so tests can drive concurrency / cancellation timing. Lock-guarded /
+/// `@unchecked Sendable` per the repo pattern.
+final class SpyTokenRefresher: TokenRefresher, @unchecked Sendable {
+    private let lock = NSLock()
+    private var seen: [String] = []
+    /// Maps the 1-based call number to the result to return.
+    private let results: @Sendable (Int) -> TokenRefreshResult
+    private let delay: Duration
+
+    init(delay: Duration = .zero, results: @escaping @Sendable (Int) -> TokenRefreshResult) {
+        self.delay = delay
+        self.results = results
+    }
+
+    /// Convenience for a fixed result on every call.
+    convenience init(_ canned: TokenRefreshResult, delay: Duration = .zero) {
+        self.init(delay: delay, results: { _ in canned })
+    }
+
+    /// Number of `refresh` calls made so far.
+    var callCount: Int {
+        lock.withLock { seen.count }
+    }
+
+    /// The most recent `refreshToken` argument, or `nil` if never called.
+    var lastRefreshToken: String? {
+        lock.withLock { seen.last }
+    }
+
+    func refresh(refreshToken: String) async -> TokenRefreshResult {
+        let callNumber = lock.withLock { () -> Int in
+            seen.append(refreshToken)
+            return seen.count
+        }
+        if delay != .zero {
+            try? await Task.sleep(for: delay)
+        }
+        return results(callNumber)
+    }
+}
+
 // MARK: - Test gate
 
 /// A latch for coordinating async test interceptors: closed until `openGate()`.

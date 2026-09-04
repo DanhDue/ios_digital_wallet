@@ -1,13 +1,13 @@
 ---
 id: "task_4_network_refresh_machinery"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_networking_module"
 dueDate: null
 created: "2026-09-04T11:36:40Z"
-modified: "2026-09-04T11:36:40Z"
-completedAt: null
+modified: "2026-09-04T15:54:22Z"
+completedAt: "2026-09-04T15:54:22Z"
 labels: ["architecture", "network", "interceptor", "auth"]
 order: "a4"
 ---

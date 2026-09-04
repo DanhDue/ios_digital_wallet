@@ -70,11 +70,15 @@ public final class URLSessionAPIClient: APIClient, @unchecked Sendable {
         }
     }
 
-    /// Send `initial`, and — only on a first-attempt `401` that an interceptor
-    /// elects to resend — send once more. Returns the `(body, response)` of the
-    /// attempt whose `validate` passed; otherwise rethrows the mapped
-    /// `NetworkError` from the final `validate`. `didReceive` fires for every
-    /// physical response; `Task.checkCancellation()` bounds each attempt.
+    /// Send `initial`; on **every** `401` whose `validate` fails, ask the
+    /// interceptors (via `firstResend`) whether to resend — the ask is *not*
+    /// gated on the attempt number, so an auth interceptor sees the second `401`
+    /// too and can force-logout on it. The actual resend is still capped at one:
+    /// `maxAttempts` (2) is the hard backstop, so at most one extra `perform`
+    /// runs. Returns the `(body, response)` of the attempt whose `validate`
+    /// passed; otherwise rethrows the mapped `NetworkError` from the final
+    /// `validate`. `didReceive` fires for every physical response;
+    /// `Task.checkCancellation()` bounds each attempt.
     private func performWithBoundedRetry(_ initial: URLRequest) async throws -> (Data, HTTPURLResponse) {
         var currentRequest = initial
 
@@ -94,11 +98,14 @@ public final class URLSessionAPIClient: APIClient, @unchecked Sendable {
                 try validate(http, body: data)
                 return (data, http)
             } catch let validationError {
-                guard
-                    attempt < Self.maxAttempts,
-                    http.statusCode == HTTPStatusCode.unauthorized.rawValue,
-                    let resent = await firstResend(of: currentRequest, dueTo: .unauthorized(http))
-                else {
+                guard http.statusCode == HTTPStatusCode.unauthorized.rawValue else {
+                    throw validationError
+                }
+                // Asked on EVERY 401 so the auth interceptor sees the second one
+                // (and can clear the session / notify the sink); the resend
+                // itself stays capped by `maxAttempts`.
+                let resend = await firstResend(of: currentRequest, dueTo: .unauthorized(http))
+                guard attempt < Self.maxAttempts, let resent = resend else {
                     throw validationError
                 }
                 currentRequest = resent

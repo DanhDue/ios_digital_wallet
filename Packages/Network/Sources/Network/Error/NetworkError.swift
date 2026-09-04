@@ -15,8 +15,10 @@ public enum NetworkError: Error {
     case client(Int)
     /// The body could not be decoded into the requested model.
     case decoding(Error)
-    /// A `401` response. `URLSessionAPIClient` has already notified the
-    /// `AuthEventSink` exactly once by the time this is thrown.
+    /// A `401` for which no interceptor elected (or was able) to recover. Any
+    /// `AuthEventSink` notification is the responsibility of the auth
+    /// interceptor (`AuthTokenInterceptor` / `RefreshingAuthInterceptor`), not
+    /// `URLSessionAPIClient`.
     case unauthorized
     /// The response was missing or was not an `HTTPURLResponse`.
     case invalidResponse
