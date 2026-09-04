@@ -1,13 +1,13 @@
 ---
 id: "task_2_core_session_refresh_persistence"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_networking_module"
 dueDate: null
 created: "2026-09-04T11:36:40Z"
-modified: "2026-09-04T11:36:40Z"
-completedAt: null
+modified: "2026-09-04T12:06:06Z"
+completedAt: "2026-09-04T12:06:06Z"
 labels: ["architecture", "core", "session", "keychain"]
 order: "a2"
 ---
