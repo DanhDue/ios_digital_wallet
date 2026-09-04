@@ -8,13 +8,12 @@ public enum AppEnvironment: String, Environment, CaseIterable {
     case staging
     case production
 
-    /// Placeholder API host. Intentionally identical across cases so the
-    /// template ships no real infrastructure URLs.
-    private static let placeholderHost = "https://api.example.com"
+    /// Configured API host pointing to the backend.
+    public static let configuredHost = "https://digital-wallet-93c4ba68a41d.herokuapp.com"
 
     public var baseURL: URL {
-        guard let url = URL(string: Self.placeholderHost) else {
-            preconditionFailure("AppEnvironment.placeholderHost must be a valid URL literal")
+        guard let url = URL(string: Self.configuredHost) else {
+            preconditionFailure("AppEnvironment.configuredHost must be a valid URL literal")
         }
         return url
     }

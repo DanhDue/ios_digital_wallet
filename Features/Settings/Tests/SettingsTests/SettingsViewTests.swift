@@ -49,4 +49,66 @@ final class SettingsViewTests: XCTestCase {
         _ = SettingsView(viewModel: viewModel).body
         await gate.open()
     }
+
+    func testLanguagePickerBottomSheetBuilds() {
+        var selectedCode: String?
+        let sheet = LanguagePickerBottomSheet(
+            languages: AvailableLanguage.defaultLanguages,
+            currentLanguageCode: "vi",
+            onSelect: { selectedCode = $0 }
+        )
+        _ = sheet.body
+        XCTAssertNil(selectedCode)
+    }
+
+    func testLanguagePickerBottomSheetBuildsWithManyLanguages() {
+        let many = (0 ..< 12).map {
+            AvailableLanguage(languageCode: "code\($0)", languageName: "Lang \($0)", isDefault: false, isActive: true)
+        }
+        let sheet = LanguagePickerBottomSheet(
+            languages: many,
+            currentLanguageCode: "code0",
+            onSelect: { _ in }
+        )
+        _ = sheet.body
+    }
+
+    func testSettingsSectionCardBuilds() {
+        let card = SettingsSectionCard(title: "Header") {
+            Text("Content")
+        }
+        _ = card.body
+    }
+
+    func testSettingsItemRowVariantsBuild() {
+        let row1 = SettingsItemRow(
+            icon: "person.fill",
+            title: "Profile",
+            accessory: .chevron,
+            action: {}
+        )
+        _ = row1.body
+
+        let row2 = SettingsItemRow(
+            icon: "moon.fill",
+            title: "Dark",
+            accessory: .toggle(.constant(true))
+        )
+        _ = row2.body
+
+        let row3 = SettingsItemRow(
+            icon: "globe",
+            title: "Lang",
+            accessory: .navigation(value: "English", tag: "Bật"),
+            action: {}
+        )
+        _ = row3.body
+
+        let row4 = SettingsItemRow(
+            icon: "info.circle",
+            title: "Version",
+            accessory: .value("1.0.0")
+        )
+        _ = row4.body
+    }
 }

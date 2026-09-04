@@ -49,3 +49,21 @@ public struct UserLoggedOut: AppEvent {
         self.reason = reason
     }
 }
+
+/// The color appearance theme changed across the application.
+public struct ThemeModeChanged: AppEvent, Equatable {
+    public let mode: AppThemeMode
+
+    public init(mode: AppThemeMode) {
+        self.mode = mode
+    }
+}
+
+/// The active language locale changed across the application.
+public struct AppLanguageChanged: AppEvent, Equatable {
+    public let languageCode: String
+
+    public init(languageCode: String) {
+        self.languageCode = languageCode
+    }
+}

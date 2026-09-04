@@ -1,4 +1,5 @@
 import Combine
+import Core
 import Foundation
 import SwiftUI
 import XCTest
@@ -73,5 +74,27 @@ final class RetainProbe {
 
     func touch() {
         touchCount += 1
+    }
+}
+
+// MARK: - Cache test double
+
+final class InMemoryCacheStore: CacheStore {
+    private var storage: [String: Any] = [:]
+
+    func get<T: Codable>(_: T.Type, key: String) -> T? {
+        storage[key] as? T
+    }
+
+    func set(_ value: some Codable, key: String) {
+        storage[key] = value
+    }
+
+    func remove(key: String) {
+        storage.removeValue(forKey: key)
+    }
+
+    func clearAll() {
+        storage.removeAll()
     }
 }

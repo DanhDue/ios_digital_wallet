@@ -9,17 +9,26 @@ public struct SettingsEntity: Equatable, Sendable {
     public var language: String
     /// Whether local / push notifications are enabled.
     public var notificationsEnabled: Bool
+    /// Available languages loaded from cache or server.
+    public var availableLanguages: [AvailableLanguage]
 
-    public init(isDarkMode: Bool, language: String, notificationsEnabled: Bool) {
+    public init(
+        isDarkMode: Bool,
+        language: String,
+        notificationsEnabled: Bool,
+        availableLanguages: [AvailableLanguage] = AvailableLanguage.defaultLanguages
+    ) {
         self.isDarkMode = isDarkMode
         self.language = language
         self.notificationsEnabled = notificationsEnabled
+        self.availableLanguages = availableLanguages
     }
 
     /// The entity a fresh install (or an unreadable cache) starts from.
     public static let `default` = SettingsEntity(
         isDarkMode: false,
         language: "en",
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        availableLanguages: AvailableLanguage.defaultLanguages
     )
 }

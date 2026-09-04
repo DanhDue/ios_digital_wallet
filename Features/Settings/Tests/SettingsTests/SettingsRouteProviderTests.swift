@@ -82,4 +82,36 @@ final class SettingsRouteProviderTests: XCTestCase {
 
         XCTAssertEqual(viewModel.uiState.settings.language, "vi")
     }
+
+    func testModuleFactoryWiresThemeManagerAndLocalizationService() async {
+        let logger = SpyLogger()
+        let cache = InMemoryCacheStore(logger: logger)
+        let eventBus = AppEventBus()
+        let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
+        let locManager = AppLocalizationManager(cache: cache, eventBus: eventBus)
+
+        let provider = SettingsModule.makeRouteProvider(
+            cache: cache,
+            apiClient: nil,
+            themeManager: themeManager,
+            localizationService: locManager,
+            logger: logger
+        )
+        XCTAssertTrue(provider.canHandle(AppRoutes.SettingsRoot()))
+
+        let viewModel = SettingsModule.makeViewModel(
+            cache: cache,
+            apiClient: nil,
+            themeManager: themeManager,
+            localizationService: locManager,
+            logger: logger
+        )
+
+        viewModel.dispatch(.toggleDarkMode)
+        XCTAssertEqual(themeManager.mode, .dark)
+
+        viewModel.dispatch(.selectLanguage("vi"))
+        await poll { locManager.currentLanguageCode == "vi" }
+        XCTAssertEqual(locManager.currentLanguageCode, "vi")
+    }
 }

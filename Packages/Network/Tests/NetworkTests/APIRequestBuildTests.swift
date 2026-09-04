@@ -73,9 +73,9 @@ final class APIRequestBuildTests: XCTestCase {
         }
     }
 
-    func testAppEnvironmentUsesPlaceholderHost() {
+    func testAppEnvironmentUsesConfiguredHost() {
         for env in AppEnvironment.allCases {
-            XCTAssertEqual(env.baseURL, requireURL("https://api.example.com"))
+            XCTAssertEqual(env.baseURL, requireURL("https://digital-wallet-93c4ba68a41d.herokuapp.com"))
         }
     }
 

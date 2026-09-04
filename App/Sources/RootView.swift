@@ -10,16 +10,23 @@ import SwiftUI
 /// real `Shell` is hosted — Task 12.)
 struct RootView: View {
     @StateObject private var router: AppRouter
+    @ObservedObject private var themeManager: AppThemeManager
+    @ObservedObject private var localizationManager: AppLocalizationManager
     private let composition: AppComposition
 
     init(composition: AppComposition) {
         self.composition = composition
         _router = StateObject(wrappedValue: composition.router)
+        _themeManager = ObservedObject(wrappedValue: composition.themeManager)
+        _localizationManager = ObservedObject(wrappedValue: composition.localizationManager)
     }
 
     var body: some View {
         composition.rootView
             .environmentObject(router)
+            .environmentObject(themeManager)
+            .environmentObject(localizationManager)
+            .preferredColorScheme(themeManager.colorScheme)
     }
 }
 

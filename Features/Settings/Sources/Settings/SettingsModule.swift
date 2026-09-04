@@ -1,4 +1,6 @@
 import Core
+import Network
+import Platform
 
 /// The Settings feature's composition root — the **only** place `Data` →
 /// `Domain` → `Presentation` are wired together.
@@ -9,19 +11,30 @@ import Core
 /// still being `public` for the `App` composition root (Task 12) to call.
 public enum SettingsModule {
     /// Builds a ready-to-register `SettingsRouteProvider`. A fresh
-    /// `SettingsViewModel` (with a `SettingsRepositoryImpl` over `cache`) is
-    /// created per navigation.
+    /// `SettingsViewModel` is created per navigation.
     ///
     /// - Parameters:
     ///   - cache: where the `"settings"` slot is persisted.
+    ///   - apiClient: the remote client for translations & preferences.
+    ///   - themeManager: app-wide theme mode coordinator.
+    ///   - localizationService: app-wide localization coordinator.
     ///   - logger: sink for the "using defaults" fallback line.
     @MainActor
     public static func makeRouteProvider(
         cache: any CacheStore,
+        apiClient: (any APIClient)? = nil,
+        themeManager: AppThemeManager? = nil,
+        localizationService: (any LocalizationService)? = nil,
         logger: any Logger
     ) -> SettingsRouteProvider {
         SettingsRouteProvider {
-            SettingsViewModel(repository: SettingsRepositoryImpl(cache: cache, logger: logger))
+            makeViewModel(
+                cache: cache,
+                apiClient: apiClient,
+                themeManager: themeManager,
+                localizationService: localizationService,
+                logger: logger
+            )
         }
     }
 
@@ -30,8 +43,20 @@ public enum SettingsModule {
     @MainActor
     public static func makeViewModel(
         cache: any CacheStore,
+        apiClient: (any APIClient)? = nil,
+        themeManager: AppThemeManager? = nil,
+        localizationService: (any LocalizationService)? = nil,
         logger: any Logger
     ) -> SettingsViewModel {
-        SettingsViewModel(repository: SettingsRepositoryImpl(cache: cache, logger: logger))
+        let repository = SettingsRepositoryImpl(
+            cache: cache,
+            apiClient: apiClient,
+            logger: logger
+        )
+        return SettingsViewModel(
+            repository: repository,
+            themeManager: themeManager,
+            localizationService: localizationService
+        )
     }
 }

@@ -6,6 +6,10 @@ public enum SettingsAction: Equatable {
     case toggleDarkMode
     /// Choose `language`. An empty string is ignored.
     case selectLanguage(String)
+    /// Show or dismiss the language picker modal bottom sheet.
+    case showLanguagePicker(Bool)
+    /// Toggle developer mode card section visibility.
+    case toggleDeveloperMode(Bool)
     /// Flip the notifications preference (optimistic, then persisted).
     case toggleNotifications
 }

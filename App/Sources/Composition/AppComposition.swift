@@ -23,6 +23,10 @@ struct AppComposition {
     let router: AppRouter
     /// Process-wide event channel (401 → `UserLoggedOut`, `ScenePhase` → lifecycle).
     let eventBus: AppEventBus
+    /// Process-wide theme manager.
+    let themeManager: AppThemeManager
+    /// Process-wide localization manager.
+    let localizationManager: AppLocalizationManager
     /// The host ViewModel driving the tab container.
     let shellViewModel: ShellViewModel
     /// Every `RouteProvider` registered on `router`, in registration order.
@@ -56,13 +60,25 @@ struct AppComposition {
         let logger = ConsoleLogger()
         let cache = UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
 
+        let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
+        self.themeManager = themeManager
+
+        let localizationManager = AppLocalizationManager(cache: cache, eventBus: eventBus)
+        self.localizationManager = localizationManager
+
         (sessionManager, apiClient) = Self.makeNetworkStack(
             eventBus: eventBus,
             logger: logger,
             secureCacheStore: secureCacheStore
         )
 
-        let settingsProvider = SettingsModule.makeRouteProvider(cache: cache, logger: logger)
+        let settingsProvider = SettingsModule.makeRouteProvider(
+            cache: cache,
+            apiClient: apiClient,
+            themeManager: themeManager,
+            localizationService: localizationManager,
+            logger: logger
+        )
         let scannerProvider = ScannerModule.makeRouteProvider()
 
         // app:route-providers:begin

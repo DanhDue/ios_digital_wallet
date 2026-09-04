@@ -6,4 +6,10 @@ public struct BaseResponseObject<T: Decodable & Sendable>: Decodable, Sendable {
     public let data: T?
     public let message: String?
     public let status: Int?
+
+    public init(data: T? = nil, message: String? = nil, status: Int? = nil) {
+        self.data = data
+        self.message = message
+        self.status = status
+    }
 }

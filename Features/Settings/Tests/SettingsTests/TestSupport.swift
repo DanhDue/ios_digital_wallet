@@ -2,6 +2,7 @@ import Combine
 import Core
 import Foundation
 import Framework
+import Platform
 import XCTest
 @testable import Settings
 
@@ -187,6 +188,16 @@ final class SpySettingsRepository: SettingsRepository {
     var loadGate: AsyncGate?
     var saveGate: AsyncGate?
 
+    var availableLanguagesResult: DataState<[AvailableLanguage]> = .success(AvailableLanguage.defaultLanguages)
+    var cachedLanguages: Set<String> = []
+    var localizationOverridesResult: DataState<TranslationOverride?> = .success(nil)
+    var localizationOverridesGate: AsyncGate?
+    var saveCachedTranslationsResult: DataState<Void> = .success(())
+    var updateUserPreferencesResult: DataState<Void> = .success(())
+
+    private(set) var savedTranslations: [String: [String: String]] = [:]
+    private(set) var updatedPreferences: [(language: String?, isDarkMode: Bool?)] = []
+
     func load() async -> DataState<SettingsEntity> {
         loadCallCount += 1
         if let loadGate {
@@ -206,6 +217,64 @@ final class SpySettingsRepository: SettingsRepository {
         savedEntities.append(entity)
         return saveResult
     }
+
+    func getAvailableLanguages() async -> DataState<[AvailableLanguage]> {
+        availableLanguagesResult
+    }
+
+    func isLanguageCached(_ code: String) async -> Bool {
+        cachedLanguages.contains(code)
+    }
+
+    func getLocalizationOverrides(
+        code _: String,
+        sinceVersion _: String?,
+        eTag _: String?
+    ) async -> DataState<TranslationOverride?> {
+        if let localizationOverridesGate {
+            await localizationOverridesGate.wait()
+        }
+        return localizationOverridesResult
+    }
+
+    func saveCachedTranslations(
+        code: String,
+        version _: String,
+        eTag _: String?,
+        translations: [String: String]
+    ) async -> DataState<Void> {
+        savedTranslations[code] = translations
+        return saveCachedTranslationsResult
+    }
+
+    func updateUserPreferences(language: String?, isDarkMode: Bool?) async -> DataState<Void> {
+        updatedPreferences.append((language: language, isDarkMode: isDarkMode))
+        return updateUserPreferencesResult
+    }
+
+    var isSettingsCachedResult = true
+
+    func isSettingsCached() async -> Bool {
+        isSettingsCachedResult
+    }
+}
+
+// MARK: - Mock Localization Service
+
+@MainActor
+final class MockLocalizationService: LocalizationService {
+    var currentLanguageCode: String = "en"
+    private(set) var setLocaleCalls: [String] = []
+    private(set) var appliedTranslations: [(translations: [String: String], languageCode: String)] = []
+
+    func setLocale(code: String) {
+        setLocaleCalls.append(code)
+        currentLanguageCode = code
+    }
+
+    func applyDynamicTranslations(_ translations: [String: String], languageCode: String) {
+        appliedTranslations.append((translations: translations, languageCode: languageCode))
+    }
 }
 
 // MARK: - System-under-test bundle
@@ -214,10 +283,27 @@ final class SpySettingsRepository: SettingsRepository {
 struct SettingsEnv {
     let sut: SettingsViewModel
     let repo: SpySettingsRepository
+    let themeManager: AppThemeManager
+    let localizationService: MockLocalizationService
 
-    init(repo: SpySettingsRepository = SpySettingsRepository()) {
+    init(
+        repo: SpySettingsRepository = SpySettingsRepository(),
+        themeManager: AppThemeManager? = nil,
+        localizationService: MockLocalizationService? = nil
+    ) {
         self.repo = repo
-        sut = SettingsViewModel(repository: repo)
+        let cache = InMemoryCacheStore(logger: SpyLogger())
+        let eventBus = AppEventBus()
+        let resolvedTheme = themeManager ?? AppThemeManager(cache: cache, eventBus: eventBus)
+        let resolvedLoc = localizationService ?? MockLocalizationService()
+        self.themeManager = resolvedTheme
+        self.localizationService = resolvedLoc
+
+        sut = SettingsViewModel(
+            repository: repo,
+            themeManager: resolvedTheme,
+            localizationService: resolvedLoc
+        )
     }
 }
 

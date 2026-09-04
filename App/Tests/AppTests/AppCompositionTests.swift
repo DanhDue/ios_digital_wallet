@@ -198,4 +198,22 @@ final class AppCompositionTests: XCTestCase {
 
         XCTAssertEqual(recorder.values, [.inactive])
     }
+
+    // MARK: Theme & Localization managers composition
+
+    func testAppCompositionExposesThemeManagerAndLocalizationManager() {
+        let bus = AppEventBus()
+        let sut = AppComposition(eventBus: bus)
+
+        XCTAssertNotNil(sut.themeManager)
+        XCTAssertNotNil(sut.localizationManager)
+        XCTAssertEqual(sut.themeManager.mode, .system)
+        XCTAssertEqual(sut.localizationManager.currentLanguageCode, "en")
+    }
+
+    func testRootViewInstantiatesWithComposition() {
+        let sut = AppComposition(eventBus: AppEventBus())
+        let rootView = RootView(composition: sut)
+        XCTAssertNotNil(rootView.body)
+    }
 }
