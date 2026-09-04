@@ -15,4 +15,4 @@
 # NOTE: SwiftFormat resolves --exclude relative to the directory holding this
 # file (`quality/`), not the working directory, so the paths are written
 # relative to it (`../<name>`).
---exclude ../iOSDigitalWalletTests,../iOSDigitalWalletUITests,../Derived,../.build,../**/Derived,../**/.build,../bricks
+--exclude ../Derived,../.build,../**/Derived,../**/.build,../bricks

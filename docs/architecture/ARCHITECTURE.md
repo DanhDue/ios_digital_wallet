@@ -7,9 +7,9 @@ for every project generated from it.
 
 > **Canonical cross-platform source.** The layer rules and the MVI contract are
 > defined once, for the whole product family, in the Flutter template's
-> `docs/architecture/ARCHITECTURE.md` (`bloc_digital_wallet`), and ported to
-> Android in `android_digital_wallet`. This iOS edition follows those documents
-> section-for-section and only remaps platform terms:
+> `docs/architecture/ARCHITECTURE.md`, and ported to Android in the matching
+> Android template. This iOS edition follows those documents section-for-section
+> and only remaps platform terms:
 >
 > | Flutter | Android | iOS |
 > |---|---|---|
@@ -663,8 +663,8 @@ The pinned toolchain (`tuist`, `swiftlint`, `swiftformat`) is installed via
 - [`../../.devtool/epic/ios_super_app_template/ios_super_app_template.en.md`](../../.devtool/epic/ios_super_app_template/ios_super_app_template.en.md) — the HLD: §4.1 high-level architecture (the diagram in [§III.3](#3-the-4-tier-dependency-graph)), §4.3 the navigation sequence, §4.4 cross-feature channels.
 
 ### Cross-platform siblings
-- `bloc_digital_wallet` — `docs/architecture/ARCHITECTURE.md` — the canonical layer & MVI rules for the whole product family.
-- `android_digital_wallet` — `docs/architecture/ARCHITECTURE.md` — the Android port this iOS edition mirrors section-for-section.
+- The Flutter template — `docs/architecture/ARCHITECTURE.md` — the canonical layer & MVI rules for the whole product family.
+- The Android template — `docs/architecture/ARCHITECTURE.md` — the Android port this iOS edition mirrors section-for-section.
 
 ### External
 - [Clean Architecture — Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
