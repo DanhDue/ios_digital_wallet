@@ -1,13 +1,13 @@
 ---
 id: "task_7_mason_has_network_scaffold"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_networking_module"
 dueDate: null
 created: "2026-09-04T11:36:40Z"
-modified: "2026-09-04T11:36:40Z"
-completedAt: null
+modified: "2026-09-04T16:28:09Z"
+completedAt: "2026-09-04T16:28:09Z"
 labels: ["tooling", "mason", "scaffolding"]
 order: "a7"
 ---

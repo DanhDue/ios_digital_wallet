@@ -1,0 +1,10 @@
+import Network
+
+/// `APIRequest` factories for the `{{name.pascalCase()}}` backend, built from
+/// `{{name.pascalCase()}}Uri`. Add one static func per endpoint as the feature
+/// grows past the single generated `fetch()`.
+enum {{name.pascalCase()}}Endpoints {
+    static func fetch() -> APIRequest {
+        APIRequest(method: .get, path: {{name.pascalCase()}}Uri.resource)
+    }
+}

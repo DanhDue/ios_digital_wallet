@@ -19,7 +19,7 @@ struct {{name.pascalCase()}}APIService {
     func fetch() async -> DataState<{{name.pascalCase()}}DTO> {
         do {
             let dto: {{name.pascalCase()}}DTO = try await apiClient.send(
-                APIRequest(method: .get, path: "{{name.paramCase()}}")
+                {{name.pascalCase()}}Endpoints.fetch()
             )
             return .success(dto)
         } catch {

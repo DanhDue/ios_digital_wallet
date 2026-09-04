@@ -1,0 +1,6 @@
+/// Decentralised path constants for the `{{name.pascalCase()}}` backend. This
+/// feature owns its own paths — there is no global `AppUri` in `Network`; add
+/// one constant per endpoint as the feature grows.
+enum {{name.pascalCase()}}Uri {
+    static let resource = "{{name.paramCase()}}"
+}
