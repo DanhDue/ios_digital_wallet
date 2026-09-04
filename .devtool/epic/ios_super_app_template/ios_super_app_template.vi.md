@@ -11,10 +11,11 @@
    4. [Các kênh giao tiếp cross-feature](#44-các-kênh-giao-tiếp-cross-feature)
 5. [Chiến lược triển khai & Giảm thiểu rủi ro](#5-chiến-lược-triển-khai--giảm-thiểu-rủi-ro)
 6. [Phân rã task Kanban](#6-phân-rã-task-kanban)
+7. [Kết quả kiểm thử nghiệm thu](#7-kết-quả-kiểm-thử-nghiệm-thu)
 
 ## 1. Meta Data
 - **Epic Name**: `ios_super_app_template`
-- **Trạng thái**: Rollout theo phase — task Phase 0 (1–3) là `todo`; task Phase 1–3 (4–15) giữ `backlog`, nâng lên `todo` từng phase một khi phase trước hoàn tất.
+- **Trạng thái**: **Done** (2026-09-04) — 15 task hoàn tất trên branch `epic/ios-super-app-template`; kiểm thử nghiệm thu end-to-end đạt (xem §7).
 - **Cập nhật**: 2026-09-03 (v2 — xem changelog trong Spec gốc). v2: mỗi Feature và Shell là 1 SPM package, dùng Tuist, thay governance regex bằng package `ArchTests` (swift-syntax), thống nhất deployment target iOS 16, thêm Chuẩn Testing & Acceptance BDD+TDD.
 - **Target Release**: Branch `epic/ios-super-app-template` (git worktree của repo này); merge vào `develop` quyết định theo từng phase.
 - **Spec gốc**: [2026-09-02-ios-super-app-template-design.md](2026-09-02-ios-super-app-template-design.md)
@@ -231,3 +232,24 @@ Task Phase 0 là `todo`; task Phase 1–3 là `backlog`, nâng lên `todo` từn
 - [Task 13: 4 Mason brick auto-wire manifest Tuist](../../features/task_13_ios_mason_bricks.md) — *Tier B*
 - [Task 14: `rename_project.sh` + generic hoá docs / asset / README](../../features/task_14_ios_rename_and_genericize.md) — *Tier B*
 - [Task 15: Kiểm thử nghiệm thu end-to-end](../../features/task_15_ios_acceptance_e2e.md) — *Tier C*
+
+## 7. Kết quả kiểm thử nghiệm thu
+
+**Chạy**: 2026-09-04 · **Xcode** 26.6 (17F113) · **iOS Simulator** 26.x (iPhone 16) · Tuist 4.206.0 · SwiftLint 0.65.1 · SwiftFormat 0.63.0 · Mason 0.1.3 · swift-syntax 602.0.0.
+
+End-to-end trên một `git worktree` mới của template (Task 15):
+
+| # | Kịch bản | Kết quả |
+|---|---|---|
+| A | `./scripts/rename_project.sh AcmeWallet com.acme.wallet` | ĐẠT — 13 file đổi, `git mv` file `@main`, bước verify `xcodebuild build -scheme AcmeWallet` của script **SUCCEEDED**; token `iOSDigitalWallet` biến mất khỏi manifest/App; tên package `Core` / `SettingsFeature` giữ nguyên |
+| B | `mason get` → `mason make ios_mvi_feature --name Payments --has_network true` | ĐẠT — đủ `Data/Domain/Presentation` + `RouteProvider` + `FeatureModule` + tests, không còn `{{ }}`, tự wire 1 dòng vào mỗi manifest Tuist, in checklist |
+| C | Làm theo checklist — đăng ký `PaymentsRouteProvider` trong `AppComposition` | ĐẠT — 1 sửa tay; feature có network còn cần thêm `NetworkComposition.makeAPIClient(...)` vào composition |
+| D | `xcodebuild test` (đã rename + PaymentsFeature) + `swift test` 9 package + `ArchTests` | ĐẠT sau khi vá — `TEST SUCCEEDED`; mọi suite 0 lỗi; `ArchTests` **31**, K1–K9 quét `PaymentsFeature` và pass. *Phát hiện & vá*: `testCompositionRegistersExactlyTwoRouteProviders` hard-code `count == 2`, vỡ khi thêm feature — đổi sang assert *sự hiện diện* provider, không đếm (commit `e760d75`). |
+| E | `swiftlint --strict` · `swiftformat --lint` · `check_module_boundaries.sh` | ĐẠT — exit 0; whitelist rỗng |
+| F | `swift test --package-path ArchTests` — K1–K9, baseline + whitelist rỗng | ĐẠT — 31 test, 0 lỗi |
+| G | Simulator smoke | ĐẠT — `AcmeWallet` build/install/launch; screenshot: 3 tab (Home / Scan / Settings), **Settings chọn mặc định**, form Settings thật |
+| H | Event bus round-trip (401 → 1 `UserLoggedOut`; `ScenePhase` → lifecycle) | ĐẠT — qua `App/Tests/AppTests` ở kịch bản D |
+| I | `mason make ios_remove_feature --name Payments` | ĐẠT — xoá package + 2 dòng manifest; sau khi hoàn tác sửa tay `AppComposition`, `xcodebuild build -scheme AcmeWallet` **SUCCEEDED**, `ArchTests` về 31 |
+| J | Dọn dẹp | ĐẠT — worktree tạm bị xoá; base epic worktree không đổi, vẫn build/test xanh |
+
+**Kết luận: nghiệm thu ĐẠT.** Một defect của template lộ ra và vá ngay (kịch bản D).

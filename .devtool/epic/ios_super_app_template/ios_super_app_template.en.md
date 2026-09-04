@@ -11,10 +11,11 @@
    4. [Cross-Feature Communication Channels](#44-cross-feature-communication-channels)
 5. [Rollout Strategy & Mitigation](#5-rollout-strategy--mitigation)
 6. [Kanban Tasks Breakdown](#6-kanban-tasks-breakdown)
+7. [Acceptance Test Results](#7-acceptance-test-results)
 
 ## 1. Meta Data
 - **Epic Name**: `ios_super_app_template`
-- **Status**: Phased rollout — Phase 0 tasks (1–3) are `todo`; Phases 1–3 tasks (4–15) stay `backlog` and are promoted to `todo` one phase at a time as the preceding phase completes.
+- **Status**: **Done** (2026-09-04) — all 15 tasks complete on branch `epic/ios-super-app-template`; end-to-end acceptance passed (see §7).
 - **Revised**: 2026-09-03 (v2 — see Source Spec changelog). v2 makes every Feature and Shell its own SPM package, adopts Tuist, replaces regex governance with a swift-syntax `ArchTests` package, unifies the deployment target at iOS 16, and adds a BDD+TDD Testing & Acceptance Standard.
 - **Target Release**: Branch `epic/ios-super-app-template` (git worktree of this repo); merge to `develop` per-phase decision.
 - **Source Spec**: [2026-09-02-ios-super-app-template-design.md](2026-09-02-ios-super-app-template-design.md)
@@ -231,3 +232,24 @@ Phase 0 tasks are `todo`; Phases 1–3 tasks are `backlog`, promoted to `todo` o
 - [Task 13: 4 Mason bricks with Tuist-manifest auto-wire](../../features/task_13_ios_mason_bricks.md) — *Tier B*
 - [Task 14: `rename_project.sh` + genericize docs / assets / README](../../features/task_14_ios_rename_and_genericize.md) — *Tier B*
 - [Task 15: Acceptance test end-to-end](../../features/task_15_ios_acceptance_e2e.md) — *Tier C*
+
+## 7. Acceptance Test Results
+
+**Run**: 2026-09-04 · **Xcode** 26.6 (17F113) · **iOS Simulator** 26.x (iPhone 16) · Tuist 4.206.0 · SwiftLint 0.65.1 · SwiftFormat 0.63.0 · Mason 0.1.3 · swift-syntax 602.0.0.
+
+End-to-end on a fresh `git worktree` of the template (Task 15 `### End-to-End Scenarios`):
+
+| # | Scenario | Result |
+|---|---|---|
+| A | `./scripts/rename_project.sh AcmeWallet com.acme.wallet` | PASS — 13 files rewritten, entry file `git mv`'d, script's own `xcodebuild build -scheme AcmeWallet` verify **SUCCEEDED**; `iOSDigitalWallet` token gone from manifests/App; `Core` / `SettingsFeature` package names intact |
+| B | `mason get` → `mason make ios_mvi_feature --name Payments --has_network true` | PASS — full `Data/Domain/Presentation` + `RouteProvider` + `FeatureModule` + tests, no `{{ }}` tokens, one auto-wired entry in each Tuist manifest, `post_gen` checklist printed |
+| C | Follow the checklist — register `PaymentsRouteProvider` in `AppComposition` | PASS — one manual edit; a networked feature also needs `NetworkComposition.makeAPIClient(...)` added to the composition (documented judgement call) |
+| D | `xcodebuild test` (renamed + PaymentsFeature) + `swift test` all 9 packages + `ArchTests` | PASS after fix — `TEST SUCCEEDED`; every suite 0 failures; `ArchTests` **31**, K1–K9 scanned `PaymentsFeature` and passed. *Found & fixed*: the shipped `testCompositionRegistersExactlyTwoRouteProviders` hard-coded `count == 2` and broke when a feature was added — now asserts provider *presence*, not count (commit `e760d75`). |
+| E | `swiftlint --strict` · `swiftformat --lint` · `check_module_boundaries.sh` | PASS — all exit 0; boundary whitelist empty |
+| F | `swift test --package-path ArchTests` — full K1–K9, empty baseline + whitelist | PASS — 31 tests, 0 failures |
+| G | Simulator smoke | PASS — renamed `AcmeWallet` builds, installs, launches; screenshot shows 3 tabs (Home / Scan / Settings), **Settings default-selected**, real Settings form (Dark Mode · Notifications · Language EN/VI/JA/FR) |
+| H | Event-bus round-trip (401 → one `UserLoggedOut`; `ScenePhase` → lifecycle events) | PASS — via `App/Tests/AppTests` in scenario D |
+| I | `mason make ios_remove_feature --name Payments` | PASS — package dir + both manifest lines removed; after reverting the manual `AppComposition` edit, `xcodebuild build -scheme AcmeWallet` **SUCCEEDED** and `ArchTests` back to 31 |
+| J | Cleanup | PASS — throwaway worktree removed; base epic worktree byte-for-byte unchanged, still builds/tests green |
+
+**Verdict: acceptance PASSED.** One template defect surfaced and fixed inline (scenario D). Per-tab navigation preservation is covered by `NavigationFlowTests.testDeepPushThenTabSwitchThenBackPreservesThePerTabStack` (green in D).

@@ -1,13 +1,13 @@
 ---
 id: "task_15_ios_acceptance_e2e"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_super_app_template"
 dueDate: null
 created: "2026-09-03T00:00:00Z"
 modified: "2026-09-03T00:00:00Z"
-completedAt: null
+completedAt: "2026-09-04T04:09:56Z"
 labels: ["testing", "acceptance", "template"]
 order: "a15"
 ---
