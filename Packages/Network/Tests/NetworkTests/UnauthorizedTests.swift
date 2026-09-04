@@ -3,27 +3,36 @@ import Foundation
 import XCTest
 @testable import Network
 
-/// A `401` notifies `AuthEventSink` exactly once **per response** — never per
-/// attempt.
+/// With an `AuthTokenInterceptor` installed and no refresh interceptor, a bare
+/// `401` notifies `AuthEventSink` exactly once **per response** with
+/// `.unauthorized` and surfaces `NetworkError.unauthorized` — the client itself
+/// no longer notifies the sink from `validate`.
 final class UnauthorizedTests: StubbedClientTestCase {
+    private func authClient() -> URLSessionAPIClient {
+        makeClient(interceptors: [
+            AuthTokenInterceptor(session: SessionManager(accessToken: nil), authEventSink: sink),
+        ])
+    }
+
     func testSingle401CallsOnUnauthorizedExactlyOnceAndSurfacesError() async {
         StubStore.shared.setHandler { _ in .response(status: 401, body: Data("unauth".utf8)) }
 
         await assertThrowsAsync {
-            _ = try await self.makeClient().send(APIRequest(method: .get, path: "/me")) as Widget
+            _ = try await self.authClient().send(APIRequest(method: .get, path: "/me")) as Widget
         } onError: { error in
             guard case NetworkError.unauthorized = error else {
                 return XCTFail("expected .unauthorized, got \(error)")
             }
         }
 
-        XCTAssertEqual(sink.callCount, 1)
+        XCTAssertEqual(sink.reasons, [.unauthorized])
+        XCTAssertEqual(StubStore.shared.startCount, 1, "bare 401 → no resend")
     }
 
     func testRetryOnceWrapperOnPersistent401CallsOnUnauthorizedOncePerResponse() async {
         // Every attempt gets its own distinct 401 response -> 2 responses -> 2 calls.
         StubStore.shared.setHandler { _ in .response(status: 401) }
-        let client = RetryOnceClient(wrapped: makeClient())
+        let client = RetryOnceClient(wrapped: authClient())
 
         await assertThrowsAsync {
             _ = try await client.send(APIRequest(method: .get, path: "/me")) as Widget
@@ -34,6 +43,7 @@ final class UnauthorizedTests: StubbedClientTestCase {
         }
 
         XCTAssertEqual(sink.callCount, 2, "one call per distinct 401 response, not per attempt")
+        XCTAssertEqual(sink.reasons, [.unauthorized, .unauthorized])
         XCTAssertEqual(StubStore.shared.startCount, 2, "wrapper retried exactly once")
     }
 
@@ -44,7 +54,7 @@ final class UnauthorizedTests: StubbedClientTestCase {
                 ? .response(status: 401)
                 : .response(status: 200, body: Data("{\"id\":9,\"name\":\"ok\"}".utf8))
         }
-        let client = RetryOnceClient(wrapped: makeClient())
+        let client = RetryOnceClient(wrapped: authClient())
 
         let widget: Widget = try await client.send(APIRequest(method: .get, path: "/me"))
 
@@ -55,7 +65,7 @@ final class UnauthorizedTests: StubbedClientTestCase {
     func testNo401MeansNoOnUnauthorizedCall() async throws {
         StubStore.shared.setHandler { _ in .response(status: 200, body: Data("{\"id\":1,\"name\":\"a\"}".utf8)) }
 
-        _ = try await makeClient().send(APIRequest(method: .get, path: "/me")) as Widget
+        _ = try await authClient().send(APIRequest(method: .get, path: "/me")) as Widget
 
         XCTAssertEqual(sink.callCount, 0)
     }

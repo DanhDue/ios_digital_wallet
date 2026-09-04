@@ -78,4 +78,27 @@ final class APIRequestBuildTests: XCTestCase {
             XCTAssertEqual(env.baseURL, requireURL("https://api.example.com"))
         }
     }
+
+    // MARK: - authRequirement marker header
+
+    func testAuthRequirementNoneSetsTheMarkerHeader() throws {
+        let request = try APIRequest(method: .post, path: "/login", authRequirement: .none)
+            .urlRequest(for: base)
+
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Auth-Requirement"), "none")
+    }
+
+    func testAuthRequirementRequiredLeavesTheMarkerHeaderAbsent() throws {
+        let request = try APIRequest(method: .get, path: "/me", authRequirement: .required)
+            .urlRequest(for: base)
+
+        XCTAssertNil(request.value(forHTTPHeaderField: "X-Auth-Requirement"))
+    }
+
+    func testDefaultAuthRequirementIsRequiredSoNoMarkerHeader() throws {
+        let request = try APIRequest(method: .get, path: "/me").urlRequest(for: base)
+
+        XCTAssertEqual(APIRequest(method: .get, path: "/me").authRequirement, .required)
+        XCTAssertNil(request.value(forHTTPHeaderField: "X-Auth-Requirement"))
+    }
 }

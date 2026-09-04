@@ -83,17 +83,39 @@ final class SpyLogger: Logger, @unchecked Sendable {
 
 // MARK: - Spy AuthEventSink
 
-/// Counts `onUnauthorized()` calls.
+/// Records every `onUnauthorized(reason:)` call. `onUnauthorized()` is now an
+/// extension overload, so the requirement to implement is the `reason` form.
 final class SpyAuthEventSink: AuthEventSink, @unchecked Sendable {
     private let lock = NSLock()
-    private var count = 0
+    private var storage: [LogoutReason] = []
 
-    var callCount: Int {
-        lock.withLock { count }
+    /// Reasons passed to `onUnauthorized(reason:)`, in call order.
+    var reasons: [LogoutReason] {
+        lock.withLock { storage }
     }
 
-    func onUnauthorized() {
-        lock.withLock { count += 1 }
+    var callCount: Int {
+        lock.withLock { storage.count }
+    }
+
+    func onUnauthorized(reason: LogoutReason) {
+        lock.withLock { storage.append(reason) }
+    }
+}
+
+// MARK: - Test gate
+
+/// A latch for coordinating async test interceptors: closed until `openGate()`.
+final class TestGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var open = false
+
+    var isOpen: Bool {
+        lock.withLock { open }
+    }
+
+    func openGate() {
+        lock.withLock { open = true }
     }
 }
 
@@ -114,17 +136,25 @@ final class CallRecorder: @unchecked Sendable {
 }
 
 /// A `RequestInterceptor` that appends `"<name>.adapt"` / `"<name>.didReceive"`
-/// to a shared `CallRecorder`, and optionally stamps a header so `adapt`
-/// ordering is observable on the wire too.
+/// / `"<name>.retry"` to a shared `CallRecorder`, optionally stamps a header so
+/// `adapt` ordering is observable on the wire too, and — when given an
+/// `onRetry` closure — scripts its `retry` answer (default `.doNotRetry`).
 final class RecordingInterceptor: RequestInterceptor, @unchecked Sendable {
     let name: String
     private let recorder: CallRecorder
     private let stampHeader: Bool
+    private let onRetry: (@Sendable (URLRequest) async -> RetryDecision)?
 
-    init(name: String, recorder: CallRecorder, stampHeader: Bool = false) {
+    init(
+        name: String,
+        recorder: CallRecorder,
+        stampHeader: Bool = false,
+        onRetry: (@Sendable (URLRequest) async -> RetryDecision)? = nil
+    ) {
         self.name = name
         self.recorder = recorder
         self.stampHeader = stampHeader
+        self.onRetry = onRetry
     }
 
     func adapt(_ request: URLRequest) async -> URLRequest {
@@ -138,6 +168,12 @@ final class RecordingInterceptor: RequestInterceptor, @unchecked Sendable {
 
     func didReceive(_: HTTPURLResponse) {
         recorder.record("\(name).didReceive")
+    }
+
+    func retry(_ request: URLRequest, dueTo _: RetryReason) async -> RetryDecision {
+        recorder.record("\(name).retry")
+        guard let onRetry else { return .doNotRetry }
+        return await onRetry(request)
     }
 }
 

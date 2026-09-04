@@ -11,4 +11,15 @@ public protocol RequestInterceptor: Sendable {
     /// Observe the response headers. Called in registration order. Never invoked
     /// when the request is cancelled or fails at the transport layer.
     func didReceive(_ response: HTTPURLResponse)
+    /// Decide whether to resend `request` after `reason`. Called in registration
+    /// order once per failed attempt; the first interceptor to return
+    /// `.retry(_)` wins and the client resends that request exactly once.
+    /// Defaulted to `.doNotRetry` — only auth interceptors override it.
+    func retry(_ request: URLRequest, dueTo reason: RetryReason) async -> RetryDecision
+}
+
+public extension RequestInterceptor {
+    func retry(_: URLRequest, dueTo _: RetryReason) async -> RetryDecision {
+        .doNotRetry
+    }
 }

@@ -46,4 +46,52 @@ final class InterceptorOrderTests: StubbedClientTestCase {
             ["A.adapt", "B.adapt", "C.adapt", "A.didReceive", "B.didReceive", "C.didReceive"]
         )
     }
+
+    func testRetryIsAskedInRegistrationOrderAndStopsAtTheFirstRetryLeavingAdaptDidReceiveOrderIntact() async throws {
+        let recorder = CallRecorder()
+        let attempts = LockedCounter()
+        StubStore.shared.setHandler { _ in
+            attempts.increment() == 1
+                ? .response(status: 401)
+                : .response(status: 200, body: Data("{\"id\":1,\"name\":\"a\"}".utf8))
+        }
+        let interceptors = [
+            RecordingInterceptor(name: "A", recorder: recorder), // default .doNotRetry
+            RecordingInterceptor(name: "B", recorder: recorder, onRetry: { .retry($0) }),
+            RecordingInterceptor(name: "C", recorder: recorder, onRetry: { .retry($0) }),
+        ]
+
+        _ = try await makeClient(interceptors: interceptors)
+            .send(APIRequest(method: .get, path: "/x")) as Widget
+
+        XCTAssertEqual(
+            recorder.calls,
+            [
+                "A.adapt", "B.adapt", "C.adapt",
+                "A.didReceive", "B.didReceive", "C.didReceive", // 401
+                "A.retry", "B.retry", // A declines, B retries -> C never asked; no re-adapt on resend
+                "A.didReceive", "B.didReceive", "C.didReceive", // retried 200
+            ]
+        )
+    }
+
+    func testAFirstInterceptorThatRetriesShortCircuitsTheRest() async throws {
+        let recorder = CallRecorder()
+        let attempts = LockedCounter()
+        StubStore.shared.setHandler { _ in
+            attempts.increment() == 1
+                ? .response(status: 401)
+                : .response(status: 200, body: Data("{\"id\":1,\"name\":\"a\"}".utf8))
+        }
+        let interceptors = [
+            RecordingInterceptor(name: "A", recorder: recorder, onRetry: { .retry($0) }),
+            RecordingInterceptor(name: "B", recorder: recorder, onRetry: { .retry($0) }),
+        ]
+
+        _ = try await makeClient(interceptors: interceptors)
+            .send(APIRequest(method: .get, path: "/x")) as Widget
+
+        XCTAssertEqual(recorder.calls.filter { $0 == "A.retry" }.count, 1)
+        XCTAssertFalse(recorder.calls.contains("B.retry"), "first .retry short-circuits the chain")
+    }
 }

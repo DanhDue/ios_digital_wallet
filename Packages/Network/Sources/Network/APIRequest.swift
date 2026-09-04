@@ -1,5 +1,14 @@
 import Foundation
 
+/// Whether a request needs the caller's bearer token. `.none` opts public
+/// endpoints (login / register / forgot-password) out of auth injection; the
+/// opt-out is carried to the interceptors via the `AuthHeader.requirement`
+/// marker, which is stripped before the request leaves the process.
+public enum AuthRequirement: Sendable, Equatable {
+    case required
+    case none
+}
+
 /// HTTP verbs the client supports.
 public enum HTTPMethod: String, Sendable {
     case get = "GET"
@@ -39,19 +48,24 @@ public struct APIRequest: Sendable {
     public let headers: [String: String]
     /// Optional request body, JSON-encoded.
     public let body: AnyEncodable?
+    /// Whether the auth interceptor should attach a bearer token. Defaulted
+    /// `.required`; set `.none` for public endpoints.
+    public let authRequirement: AuthRequirement
 
     public init(
         method: HTTPMethod,
         path: String,
         query: [String: String] = [:],
         headers: [String: String] = [:],
-        body: AnyEncodable? = nil
+        body: AnyEncodable? = nil,
+        authRequirement: AuthRequirement = .required
     ) {
         self.method = method
         self.path = path
         self.query = query
         self.headers = headers
         self.body = body
+        self.authRequirement = authRequirement
     }
 
     /// Resolve against `environment` into a ready-to-send `URLRequest`:
@@ -85,6 +99,9 @@ public struct APIRequest: Sendable {
         }
         for (name, value) in headers {
             request.setValue(value, forHTTPHeaderField: name)
+        }
+        if authRequirement == .none {
+            request.setValue(AuthHeader.requirementNone, forHTTPHeaderField: AuthHeader.requirement)
         }
         if let body {
             request.httpBody = try JSONEncoder().encode(body)
