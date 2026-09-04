@@ -1,13 +1,13 @@
 ---
 id: "task_6_app_network_composition_wiring"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_networking_module"
 dueDate: null
 created: "2026-09-04T11:36:40Z"
-modified: "2026-09-04T11:36:40Z"
-completedAt: null
+modified: "2026-09-04T16:18:16Z"
+completedAt: "2026-09-04T16:18:16Z"
 labels: ["architecture", "app", "composition", "di"]
 order: "a6"
 ---

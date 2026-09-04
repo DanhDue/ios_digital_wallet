@@ -63,6 +63,107 @@ final class AppCompositionTests: XCTestCase {
         XCTAssertEqual(recorder.count, 1, "exactly one UserLoggedOut per 401 response")
     }
 
+    // MARK: 401 → UserLoggedOut, specific `LogoutReason`
+
+    func test401WithNoRefreshTokenPublishesUserLoggedOutWithMissingRefreshTokenReason() async {
+        // Case 3 (spec §4 decision table): a 401 with `session.refreshToken == nil`.
+        let bus = AppEventBus()
+        let recorder = Recorder(bus.on(UserLoggedOut.self))
+
+        let client = NetworkComposition.makeAPIClient(
+            eventBus: bus,
+            session: .stubbed401(),
+            logger: SilentLogger(),
+            sessionManager: SessionManager(),
+            tokenRefresher: NoTokenRefresher()
+        )
+
+        do {
+            let _: EmptyResponse = try await client.send(APIRequest(method: .get, path: "ping"))
+            XCTFail("expected the 401 to throw")
+        } catch {
+            // NetworkError.unauthorized — expected.
+        }
+
+        XCTAssertEqual(recorder.count, 1, "exactly one UserLoggedOut per 401 response")
+        XCTAssertEqual(recorder.values.first?.reason, .missingRefreshToken)
+    }
+
+    func test401WithARefreshTokenAndNoTokenRefresherPublishesUserLoggedOutWithRefreshFailedReason() async {
+        // Case 2 (spec §4 decision table): a refresh token is present, but the
+        // wired `NoTokenRefresher` always returns `.failure(.invalidGrant)` —
+        // proof the composed client uses `RefreshingAuthInterceptor`, not
+        // `AuthTokenInterceptor` (which could never produce `.refreshFailed`).
+        let bus = AppEventBus()
+        let recorder = Recorder(bus.on(UserLoggedOut.self))
+        let sessionManager = SessionManager()
+        sessionManager.update(accessToken: "old", refreshToken: "old-refresh")
+
+        let client = NetworkComposition.makeAPIClient(
+            eventBus: bus,
+            session: .stubbed401(),
+            logger: SilentLogger(),
+            sessionManager: sessionManager,
+            tokenRefresher: NoTokenRefresher()
+        )
+
+        do {
+            let _: EmptyResponse = try await client.send(APIRequest(method: .get, path: "ping"))
+            XCTFail("expected the 401 to throw")
+        } catch {
+            // NetworkError.unauthorized — expected.
+        }
+
+        XCTAssertEqual(recorder.count, 1, "exactly one UserLoggedOut per 401 response")
+        XCTAssertEqual(recorder.values.first?.reason, .refreshFailed)
+    }
+
+    // MARK: makeBareAPIClient — structurally incapable of notifying a sink
+
+    func testMakeBareAPIClientOn401ThrowsUnauthorizedAndPublishesNoUserLoggedOut() async {
+        // `makeBareAPIClient` has no `eventBus` / `authEventSink` parameter at
+        // all, so nothing it does can reach any bus. Attach a recorder to an
+        // unrelated bus to prove no leak occurs during the call.
+        let unrelatedBus = AppEventBus()
+        let recorder = Recorder(unrelatedBus.on(UserLoggedOut.self))
+
+        let client = NetworkComposition.makeBareAPIClient(
+            session: .stubbed401(),
+            logger: SilentLogger()
+        )
+
+        do {
+            let _: EmptyResponse = try await client.send(APIRequest(method: .get, path: "auth/refresh"))
+            XCTFail("expected the 401 to throw")
+        } catch NetworkError.unauthorized {
+            // expected
+        } catch {
+            XCTFail("expected NetworkError.unauthorized, got \(error)")
+        }
+
+        XCTAssertEqual(recorder.count, 0, "makeBareAPIClient has no sink reference; nothing can publish")
+    }
+
+    // MARK: AppComposition — SessionManager backed by the injected SecureCacheStore
+
+    func testAppCompositionSessionManagerIsBackedByTheInjectedSecureCacheStore() {
+        let fakeStore = InMemorySecureCacheStore()
+        let sut = AppComposition(eventBus: AppEventBus(), secureCacheStore: fakeStore)
+
+        sut.sessionManager.update(accessToken: "a", refreshToken: "r")
+
+        XCTAssertEqual(fakeStore.get(String.self, key: "core.session.access"), "a")
+        XCTAssertEqual(fakeStore.get(String.self, key: "core.session.refresh"), "r")
+    }
+
+    func testAppCompositionWithDefaultSecureCacheStoreConstructsWithoutCrashing() {
+        // Smoke test only — the real system Keychain is legitimate in a
+        // simulator, but its content is not asserted here.
+        let sut = AppComposition(eventBus: AppEventBus())
+
+        XCTAssertNil(sut.sessionManager.accessToken, "a freshly composed session starts empty")
+    }
+
     // MARK: Lifecycle mapping
 
     func testScenePhaseBackgroundPublishesBackgroundThenActivePublishesForeground() {

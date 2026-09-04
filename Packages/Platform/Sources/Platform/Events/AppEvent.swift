@@ -1,3 +1,5 @@
+import Core
+
 /// A momentary, broadcast notification with no reply.
 ///
 /// Delivered through ``AppEventBus`` with **replay 0** — a subscriber that was
@@ -38,5 +40,12 @@ public struct AppLifecycleChanged: AppEvent {
 
 /// The session ended (e.g. a 401 surfaced through `Core.AuthEventSink`).
 public struct UserLoggedOut: AppEvent {
-    public init() {}
+    /// Why the session ended. Defaults to `.unauthorized` so every pre-existing
+    /// parameterless call-site (`UserLoggedOut()`) keeps compiling and keeps its
+    /// prior meaning.
+    public let reason: Core.LogoutReason
+
+    public init(reason: Core.LogoutReason = .unauthorized) {
+        self.reason = reason
+    }
 }

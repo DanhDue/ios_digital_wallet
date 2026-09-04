@@ -76,6 +76,42 @@ final class SilentLogger: Core.Logger, @unchecked Sendable {
     func error(_: String, file _: String, function _: String, line _: Int) {}
 }
 
+// MARK: - In-memory SecureCacheStore fake
+
+/// A `SecureCacheStore` fake for tests: `Core.KeychainCacheStore(backend:)` is
+/// `internal` to `Core`, so `App` cannot construct one directly. Dictionary-
+/// backed, `@unchecked Sendable` with an `NSLock`, mirroring the style of
+/// `Packages/Core/Tests/CoreTests/TestSupport.swift`'s `InMemoryKeychainBackend`.
+final class InMemorySecureCacheStore: SecureCacheStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String: Data] = [:]
+
+    func get<T: Codable>(_: T.Type, key: String) -> T? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = storage[key] else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    func set(_ value: some Codable, key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        storage[key] = try? JSONEncoder().encode(value)
+    }
+
+    func remove(key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.removeValue(forKey: key)
+    }
+
+    func clearAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        storage.removeAll()
+    }
+}
+
 // MARK: - 401 URLProtocol stub
 
 /// A `URLProtocol` that answers every request with `HTTP 401` and an empty body.
