@@ -1,13 +1,13 @@
 ---
 id: "task_8_docs_networking_refresh_token"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_networking_module"
 dueDate: null
 created: "2026-09-04T11:36:40Z"
-modified: "2026-09-04T11:36:40Z"
-completedAt: null
+modified: "2026-09-04T16:44:53Z"
+completedAt: "2026-09-04T16:44:53Z"
 labels: ["documentation", "architecture"]
 order: "a8"
 ---

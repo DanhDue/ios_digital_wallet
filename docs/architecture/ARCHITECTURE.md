@@ -314,7 +314,7 @@ package on a tier has an edge to a sibling on the same tier.
 | `Shell` | `Packages/Shell` | Tab layout + per-tab `NavigationStack` (one path each). **Feature-blind.** `HomeStubView` lives here. | `Platform`, `Framework`, `AppUIKit` |
 | `Core` | `Packages/Core` | Dependency floor: `DataState`, `AppError`, `Logger`, `SafeExecution`, `ReplayQueue`, `CacheStore` / `SecureCacheStore`, `SessionManager`, `AuthEventSink`. stdlib + Foundation + Security only. | *none* |
 | `Framework` | `Packages/Framework` | `MvvmViewModel` / `MviViewModel` / `ViewState` + the `launch(key:)` async-effect. | `Core` |
-| `Network` | `Packages/Network` | `APIClient` / `URLSessionAPIClient`, interceptors, `Environment` / `AppEnvironment`, `NetworkError`, `MockAPIClient`. A 401 is surfaced via `Core.AuthEventSink`. | `Core` |
+| `Network` | `Packages/Network` | `APIClient` / `URLSessionAPIClient`, interceptors, `Environment` / `AppEnvironment`, `NetworkError`, `MockAPIClient`. Refresh subsystem: `RefreshingAuthInterceptor` + `RefreshCoordinator` (single-flight) drive `Core`'s `TokenRefresher` seam and `SessionManager` (Keychain-backed via `SecureCacheStore`); a dead session is surfaced via `Core.AuthEventSink`. See `NETWORKING.md` / `REFRESH_TOKEN.md`. | `Core` |
 | `AppUIKit` | `Packages/AppUIKit` | SwiftUI design system: `AppColor` / `AppFont` / `AppSpacing` / `AppTheme` tokens, `AppButton` / `AppTextField` / `AppLoadingView` / `AppErrorView` / `AppEmptyStateView`. Purely presentational. | `Core` — **not** `Framework` |
 | `Platform` | `Packages/Platform` | Cross-feature seam: `AppRoute` / `AppRoutes`, `RouteProvider`, per-tab `AppRouter`, `AppEvent` / `AppEventBus`. | `Core` |
 | `Features/*` | `Features/*` | One product feature each (`Data` / `Domain` / `Presentation` + `RouteProvider`). Ships `Settings` (real) + `Scanner` (stub). **Blind to every other feature.** | `Platform`, `Framework`, `AppUIKit` (+ `Network` when it does IO) |
@@ -655,6 +655,8 @@ The pinned toolchain (`tuist`, `swiftlint`, `swiftformat`) is installed via
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) — the thin root pointer to this document.
 - [`../../PROJECT_RULES.md`](../../PROJECT_RULES.md) — coding standards.
 - [`../../AGENTS.md`](../../AGENTS.md) — project context for tooling.
+- [`NETWORKING.md`](NETWORKING.md) — `Network` package architecture, the decentralised `<Name>Uri` / `<Name>Endpoints` pattern, `BaseResponseObject<T>`.
+- [`REFRESH_TOKEN.md`](REFRESH_TOKEN.md) — the refresh-token subsystem: single-flight coordination, the force-logout ladder, `TokenRefresher` DIP wiring.
 - `ArchTests/Tests/ArchTests/` — the K1–K9 rule bodies (`LayerRulesTests`, `DeclRulesTests`, `HostRulesTests`).
 - `quality/.swiftlint.yml`, `quality/.swiftformat` — style configuration.
 
