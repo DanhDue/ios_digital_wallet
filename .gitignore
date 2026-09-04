@@ -20,3 +20,4 @@ docs/superpowers/
 # Mason
 .mason/
 mason-lock.json
+.superpowers/
