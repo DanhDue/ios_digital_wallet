@@ -88,11 +88,13 @@ struct SettingsRepositoryImpl: SettingsRepository {
         guard let remote else {
             return .success(nil)
         }
+        let effectiveSinceVersion = sinceVersion ?? local.readVersion(for: code)
+        let effectiveETag = eTag ?? local.readETag(for: code)
         do {
             let dto = try await remote.getLocalizationOverrides(
                 languageCode: code,
-                sinceVersion: sinceVersion,
-                eTag: eTag
+                sinceVersion: effectiveSinceVersion,
+                eTag: effectiveETag
             )
             if let dto {
                 return .success(SettingsMapper.toOverrideEntity(dto))
@@ -110,7 +112,11 @@ struct SettingsRepositoryImpl: SettingsRepository {
         eTag: String?,
         translations: [String: String]
     ) async -> DataState<Void> {
-        local.writeTranslations(translations, for: code)
+        var merged = local.readTranslations(for: code) ?? [:]
+        for (key, value) in translations {
+            merged[key] = value
+        }
+        local.writeTranslations(merged, for: code)
         local.writeVersion(version, for: code)
         if let eTag {
             local.writeETag(eTag, for: code)

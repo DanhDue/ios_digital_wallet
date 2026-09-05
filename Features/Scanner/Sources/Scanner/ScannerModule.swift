@@ -1,3 +1,5 @@
+import Platform
+
 /// The Scanner feature's composition seam — the **only** place `Data` →
 /// `Domain` → `Presentation` are wired together.
 ///

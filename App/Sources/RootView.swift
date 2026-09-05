@@ -23,6 +23,9 @@ struct RootView: View {
 
     var body: some View {
         composition.rootView
+            .id(localizationManager.currentLanguageCode)
+            .environment(\.locale, Locale(identifier: localizationManager.currentLanguageCode))
+            .environment(\.localizationManager, localizationManager)
             .environmentObject(router)
             .environmentObject(themeManager)
             .environmentObject(localizationManager)

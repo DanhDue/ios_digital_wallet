@@ -24,6 +24,7 @@ public enum Module {
     /// build rather than being skipped when inputs look unchanged.
     public static let swiftLintScript: TargetScript = .pre(
         script: #"""
+        export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/share/mise/shims:$PATH"
         if which swiftlint >/dev/null; then
           swiftlint lint --config "$SRCROOT/quality/.swiftlint.yml" --quiet
         else
@@ -54,7 +55,10 @@ public enum Module {
             deploymentTargets: .iOS(iOSDeploymentTarget),
             infoPlist: .file(path: "App/Resources/Info.plist"),
             sources: ["App/Sources/**"],
-            resources: ["App/Resources/Assets.xcassets"],
+            resources: [
+                "App/Resources/Assets.xcassets",
+                "App/Resources/Localizable.xcstrings",
+            ],
             scripts: [swiftLintScript],
             dependencies: dependencies
         )

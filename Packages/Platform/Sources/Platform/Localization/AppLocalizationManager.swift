@@ -10,64 +10,41 @@ import SwiftUI
 /// 3. Fallback default string.
 @MainActor
 public final class AppLocalizationManager: ObservableObject, LocalizationService {
+    public static let shared = AppLocalizationManager()
     public static let languageStorageKey = "app_language_code"
     public static let translationsPrefix = "translations_"
 
     @Published public private(set) var currentLanguageCode: String
     @Published public private(set) var dynamicOverrides: [String: String]
 
-    public static let bundledVietnamese: [String: String] = [
-        "settings.title": "Cài đặt",
-        "settings.account.title": "Tài khoản",
-        "settings.account.profile": "Thông tin cá nhân",
-        "settings.account.changePassword": "Đổi mật khẩu",
-        "settings.account.twoFactorAuth": "Xác thực 2 yếu tố",
-        "settings.account.twoFactorAuthOn": "Bật",
-        "settings.preferences.title": "Tùy chọn",
-        "settings.preferences.currency": "Tiền tệ",
-        "settings.preferences.currencyUsd": "USD ($)",
-        "settings.preferences.language": "Ngôn ngữ",
-        "settings.preferences.darkMode": "Chế độ tối",
-        "settings.preferences.notifications": "Thông báo đẩy",
-        "settings.developer.title": "Nhà phát triển",
-        "settings.developer.debugMode": "Chế độ gỡ lỗi",
-        "settings.appInfo.title": "Thông tin ứng dụng",
-        "settings.appInfo.contactSupport": "Liên hệ hỗ trợ",
-        "settings.appInfo.aboutApp": "Về ứng dụng",
-        "settings.logout": "Đăng xuất",
-    ]
-
-    public static let bundledEnglish: [String: String] = [
-        "settings.title": "Settings",
-        "settings.account.title": "Account",
-        "settings.account.profile": "Edit Profile",
-        "settings.account.changePassword": "Change Password",
-        "settings.account.twoFactorAuth": "Two-Factor Auth (2FA)",
-        "settings.account.twoFactorAuthOn": "On",
-        "settings.preferences.title": "Preferences",
-        "settings.preferences.currency": "Currency / Units",
-        "settings.preferences.currencyUsd": "USD ($)",
-        "settings.preferences.language": "Language",
-        "settings.preferences.darkMode": "Dark Mode",
-        "settings.preferences.notifications": "Push Notifications",
-        "settings.developer.title": "Developer",
-        "settings.developer.debugMode": "Debug Mode",
-        "settings.appInfo.title": "App Info",
-        "settings.appInfo.contactSupport": "Contact Support",
-        "settings.appInfo.aboutApp": "About App",
-        "settings.logout": "Logout",
-    ]
-
     private let cache: any CacheStore
     private let eventBus: AppEventBus
+    private let bundle: Bundle
+    private let catalogStrings: [String: [String: String]]
 
-    public init(
+    public convenience init(
         cache: any CacheStore,
         eventBus: AppEventBus,
         defaultLanguageCode: String = "en"
     ) {
+        self.init(
+            cache: cache,
+            eventBus: eventBus,
+            defaultLanguageCode: defaultLanguageCode,
+            bundle: .main
+        )
+    }
+
+    public init(
+        cache: any CacheStore = UserDefaultsCacheStore(keyPrefix: "platform.localization."),
+        eventBus: AppEventBus = .shared,
+        defaultLanguageCode: String = "en",
+        bundle: Bundle = .main
+    ) {
         self.cache = cache
         self.eventBus = eventBus
+        self.bundle = bundle
+        catalogStrings = Self.loadCatalog(bundle: bundle)
 
         let storedCode = cache.get(String.self, key: Self.languageStorageKey)
         let resolvedCode: String = if let storedCode, !storedCode.isEmpty {
@@ -104,30 +81,105 @@ public final class AppLocalizationManager: ObservableObject, LocalizationService
     }
 
     /// Resolves a localized string:
-    /// 1. Checks dynamic overrides for the key.
-    /// 2. Falls back to bundled fallbacks.
-    /// 3. Falls back to Bundle.main localization.
+    /// 1. Checks dynamic overrides for the key (OTA Server / Cache).
+    /// 2. Checks local String Catalog (`Localizable.xcstrings`) for the active language.
+    /// 3. Falls back to bundle localization.
     /// 4. Falls back to `defaultString ?? key`.
     public func translate(_ key: String, default defaultString: String? = nil) -> String {
         if let dynamicValue = dynamicOverrides[key] {
             return dynamicValue
         }
-        if currentLanguageCode.starts(with: "vi"), let viFallback = Self.bundledVietnamese[key] {
-            return viFallback
+
+        let codePrefix = currentLanguageCode.split(separator: "_").first.map(String.init) ?? currentLanguageCode
+        for candidate in [currentLanguageCode, codePrefix] {
+            if let localized = catalogStrings[candidate]?[key] {
+                return localized
+            }
         }
-        if currentLanguageCode.starts(with: "en"), let enFallback = Self.bundledEnglish[key] {
-            return enFallback
+
+        for candidate in [currentLanguageCode, codePrefix] {
+            let langPath = bundle.path(forResource: candidate, ofType: "lproj")
+            if let langPath, let langBundle = Bundle(path: langPath) {
+                let val = langBundle.localizedString(forKey: key, value: nil, table: nil)
+                if val != key {
+                    return val
+                }
+            }
         }
-        if currentLanguageCode.starts(with: "ja"), key == "settings.preferences.notifications" {
-            return "通知設定"
-        }
-        if currentLanguageCode.starts(with: "ko"), key == "settings.preferences.notifications" {
-            return "푸시 알림"
-        }
-        let bundleValue = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+
+        let bundleValue = bundle.localizedString(forKey: key, value: nil, table: nil)
         if bundleValue != key {
             return bundleValue
         }
         return defaultString ?? key
+    }
+
+    private static func loadCatalog(bundle: Bundle) -> [String: [String: String]] {
+        var candidates: [URL?] = [
+            bundle.url(forResource: "Localizable", withExtension: "xcstrings"),
+            Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings"),
+            Bundle(for: AppLocalizationManager.self).url(forResource: "Localizable", withExtension: "xcstrings"),
+            URL(fileURLWithPath: "App/Resources/Localizable.xcstrings"),
+            URL(fileURLWithPath: "Resources/Localizable.xcstrings"),
+        ]
+
+        let sourceUrl = URL(fileURLWithPath: #filePath)
+        let platformDir = sourceUrl
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let repoRoot = platformDir
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+
+        candidates.append(platformDir.appendingPathComponent("Resources/Localizable.xcstrings"))
+        candidates.append(repoRoot.appendingPathComponent("App/Resources/Localizable.xcstrings"))
+
+        for case let url? in candidates {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            if let catalog = try? JSONDecoder().decode(StringCatalogDTO.self, from: data) {
+                let flattened = catalog.flattened()
+                if !flattened.isEmpty {
+                    return flattened
+                }
+            }
+        }
+        return [:]
+    }
+}
+
+private struct StringCatalogDTO: Decodable {
+    let strings: [String: StringCatalogEntry]
+
+    func flattened() -> [String: [String: String]] {
+        var result: [String: [String: String]] = [:]
+        for (key, entry) in strings {
+            guard let locs = entry.localizations else { continue }
+            for (lang, loc) in locs {
+                if let val = loc.stringUnit?.value {
+                    result[lang, default: [:]][key] = val
+                }
+            }
+        }
+        return result
+    }
+}
+
+private struct StringCatalogEntry: Decodable {
+    let localizations: [String: StringCatalogLocalization]?
+}
+
+private struct StringCatalogLocalization: Decodable {
+    let stringUnit: StringCatalogUnit?
+}
+
+private struct StringCatalogUnit: Decodable {
+    let value: String
+}
+
+public extension EnvironmentValues {
+    @Entry var localizationManager: AppLocalizationManager = MainActor.assumeIsolated {
+        AppLocalizationManager.shared
     }
 }

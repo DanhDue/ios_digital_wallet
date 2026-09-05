@@ -12,6 +12,7 @@ import SwiftUI
 public struct ShellView: View {
     @ObservedObject private var viewModel: ShellViewModel
     @ObservedObject private var router: AppRouter
+    @Environment(\.localizationManager) private var localizationManager
 
     public init(viewModel: ShellViewModel, router: AppRouter) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -21,15 +22,30 @@ public struct ShellView: View {
     public var body: some View {
         TabView(selection: tabSelection) {
             tabStack(index: 0) { HomeStubView() }
-                .tabItem { Label("Home", systemImage: "house") }
+                .tabItem {
+                    Label(
+                        localizationManager.translate("shell.tab.home", default: "Home"),
+                        systemImage: "house"
+                    )
+                }
                 .tag(0)
 
             tabStack(index: 1) { router.destination(for: AppRoutes.ScannerRoot()) }
-                .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
+                .tabItem {
+                    Label(
+                        localizationManager.translate("shell.tab.scanner", default: "Scan"),
+                        systemImage: "qrcode.viewfinder"
+                    )
+                }
                 .tag(1)
 
             tabStack(index: 2) { router.destination(for: AppRoutes.SettingsRoot()) }
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem {
+                    Label(
+                        localizationManager.translate("shell.tab.settings", default: "Settings"),
+                        systemImage: "gearshape"
+                    )
+                }
                 .tag(2)
         }
     }

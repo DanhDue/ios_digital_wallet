@@ -18,7 +18,9 @@ import SwiftUI
 public final class ScannerRouteProvider: RouteProvider {
     private let makeViewModel: @MainActor () -> ScannerViewModel
 
-    public init(makeViewModel: @escaping @MainActor () -> ScannerViewModel) {
+    public init(
+        makeViewModel: @escaping @MainActor () -> ScannerViewModel
+    ) {
         self.makeViewModel = makeViewModel
     }
 

@@ -111,4 +111,35 @@ final class AppLocalizationManagerTests: XCTestCase {
 
         XCTAssertEqual(result, "Default Text")
     }
+
+    @MainActor
+    func testTranslateResolvesEnglishAndVietnameseFromStringCatalog() {
+        let cache = InMemoryCacheStore()
+        let eventBus = AppEventBus()
+        let sut = AppLocalizationManager(cache: cache, eventBus: eventBus)
+
+        // Default language is English
+        XCTAssertEqual(sut.translate("settings.title"), "Settings")
+        XCTAssertEqual(sut.translate("shell.tab.home"), "Home")
+
+        // Switch to Vietnamese
+        sut.setLocale(code: "vi")
+        XCTAssertEqual(sut.translate("settings.title"), "Cài đặt")
+        XCTAssertEqual(sut.translate("shell.tab.home"), "Trang chủ")
+    }
+
+    @MainActor
+    func testTranslateUnbundledLanguageFallsBackToDefaultUntilDynamicOverrideApplied() {
+        let cache = InMemoryCacheStore()
+        let eventBus = AppEventBus()
+        let sut = AppLocalizationManager(cache: cache, eventBus: eventBus)
+
+        // Switch to Japanese (remote-only language, not in Localizable.xcstrings)
+        sut.setLocale(code: "ja")
+        XCTAssertEqual(sut.translate("settings.title", default: "Default Settings"), "Default Settings")
+
+        // Once backend returns dynamic translation override, it takes precedence
+        sut.applyDynamicTranslations(["settings.title": "設定"], languageCode: "ja")
+        XCTAssertEqual(sut.translate("settings.title", default: "Default Settings"), "設定")
+    }
 }

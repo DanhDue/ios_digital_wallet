@@ -1,4 +1,5 @@
 import AppUIKit
+import Platform
 import SwiftUI
 
 /// The Scanner screen (Source Spec §11). A "coming soon" placeholder built on
@@ -7,6 +8,7 @@ import SwiftUI
 /// is demonstrated end to end.
 public struct ScannerView: View {
     @ObservedObject private var viewModel: ScannerViewModel
+    @Environment(\.localizationManager) private var localizationManager
 
     public init(viewModel: ScannerViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -14,11 +16,14 @@ public struct ScannerView: View {
 
     public var body: some View {
         AppEmptyStateView(
-            title: "Scanner coming soon",
-            message: "This tab is a stub in the template — wire a real scanner into ScannerFeature.",
+            title: localizationManager.translate("scanner.comingSoon.title", default: "Scanner coming soon"),
+            message: localizationManager.translate(
+                "scanner.comingSoon.message",
+                default: "This tab is a stub in the template — wire a real scanner into ScannerFeature."
+            ),
             systemImage: "qrcode.viewfinder"
         )
-        .navigationTitle("Scanner")
+        .navigationTitle(localizationManager.translate("scanner.title", default: "Scanner"))
         .accessibilityIdentifier("scanner.comingSoon")
         .onAppear { viewModel.dispatch(.onAppear) }
     }

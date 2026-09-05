@@ -1,4 +1,5 @@
 import AppUIKit
+import Platform
 import SwiftUI
 
 /// The tab-0 root. Deliberately logic-free — an SF Symbol and a label. Real
@@ -11,7 +12,7 @@ public struct HomeStubView: View {
         VStack(spacing: AppSpacing.sm) {
             Image(systemName: "house")
                 .font(.largeTitle)
-            Text("Home")
+            LocalizedText("home.title", default: "Home")
                 .font(.headline)
         }
         .padding(AppSpacing.md)
