@@ -106,6 +106,7 @@ identifier_name:
     - to
     - x
     - y
+    - t
 
 # Keep in step with SwiftFormat's `--trailingcommas always`.
 trailing_comma:

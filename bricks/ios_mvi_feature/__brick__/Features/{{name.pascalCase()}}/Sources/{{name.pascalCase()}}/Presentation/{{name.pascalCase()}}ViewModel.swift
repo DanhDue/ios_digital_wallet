@@ -17,7 +17,11 @@ import Framework
 /// — so a superseded effect neither performs I/O nor emits.
 ///
 /// See: Features/Settings/Sources/Settings/Presentation/SettingsViewModel.swift
-public final class {{name.pascalCase()}}ViewModel: MviViewModel<{{name.pascalCase()}}State, {{name.pascalCase()}}Action, {{name.pascalCase()}}Event> {
+public final class {{name.pascalCase()}}ViewModel: MviViewModel<
+    {{name.pascalCase()}}State,
+    {{name.pascalCase()}}Action,
+    {{name.pascalCase()}}Event
+> {
     private static let loadEffect = "load"
     private static let saveEffect = "save"
 
@@ -30,10 +34,10 @@ public final class {{name.pascalCase()}}ViewModel: MviViewModel<{{name.pascalCas
     ) {
         super.init(initialState: {{name.pascalCase()}}State(entity: .default))
         if let get{{name.pascalCase()}} {
-            self._get{{name.pascalCase()}}.wrappedValue = get{{name.pascalCase()}}
+            _get{{name.pascalCase()}}.wrappedValue = get{{name.pascalCase()}}
         }
         if let save{{name.pascalCase()}} {
-            self._save{{name.pascalCase()}}.wrappedValue = save{{name.pascalCase()}}
+            _save{{name.pascalCase()}}.wrappedValue = save{{name.pascalCase()}}
         }
     }
 

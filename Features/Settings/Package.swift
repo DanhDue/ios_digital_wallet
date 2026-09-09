@@ -52,6 +52,9 @@ let package = Package(
                 .product(name: "Framework", package: "Framework"),
                 .product(name: "Network", package: "Network"),
                 .product(name: "Platform", package: "Platform"),
+            ],
+            resources: [
+                .process("Resources"),
             ]
         ),
         .testTarget(

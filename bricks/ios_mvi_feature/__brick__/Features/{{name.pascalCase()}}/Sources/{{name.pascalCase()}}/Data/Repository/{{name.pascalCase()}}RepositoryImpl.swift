@@ -12,17 +12,21 @@ import Network{{/has_network}}
 /// See: Features/Settings/Sources/Settings/Data/Repository/SettingsRepositoryImpl.swift
 struct {{name.pascalCase()}}RepositoryImpl: {{name.pascalCase()}}Repository {
     private let local: {{name.pascalCase()}}LocalDataSource{{#has_network}}
-    private let remote: {{name.pascalCase()}}APIService{{/has_network}}
+    private let remote: {{name.pascalCase()}}APIService?{{/has_network}}
     private let logger: any Logger
 {{#has_network}}
-    init(cache: any CacheStore, apiClient: any APIClient, logger: any Logger) {
+    init(cache: any CacheStore, apiClient: (any APIClient)? = nil, logger: any Logger) {
         local = {{name.pascalCase()}}LocalDataSource(cache: cache)
-        remote = {{name.pascalCase()}}APIService(apiClient: apiClient)
+        if let apiClient {
+            remote = {{name.pascalCase()}}APIService(apiClient: apiClient)
+        } else {
+            remote = nil
+        }
         self.logger = logger
     }
 
     func load() async -> DataState<{{name.pascalCase()}}Entity> {
-        if case let .success(dto) = await remote.fetch() {
+        if let remote, case let .success(dto) = await remote.fetch() {
             local.write(dto)
             return .success({{name.pascalCase()}}Mapper.toEntity(dto))
         }

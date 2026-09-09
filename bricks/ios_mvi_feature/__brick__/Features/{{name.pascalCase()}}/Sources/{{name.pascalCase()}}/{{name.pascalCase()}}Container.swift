@@ -4,9 +4,9 @@ import Network{{/has_network}}
 import Platform
 
 private struct SilentLogger: Logger {
-    func debug(_ message: String, file: String, function: String, line: Int) {}
-    func info(_ message: String, file: String, function: String, line: Int) {}
-    func error(_ message: String, file: String, function: String, line: Int) {}
+    func debug(_: String, file _: String, function _: String, line _: Int) {}
+    func info(_: String, file _: String, function _: String, line _: Int) {}
+    func error(_: String, file _: String, function _: String, line _: Int) {}
 }
 
 public extension Container {

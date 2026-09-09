@@ -12,7 +12,7 @@ import SwiftUI
 public struct ShellView: View {
     @ObservedObject private var viewModel: ShellViewModel
     @ObservedObject private var router: AppRouter
-    @Environment(\.localizationManager) private var localizationManager
+    @Environment(\.t) private var t: Translations
 
     public init(viewModel: ShellViewModel, router: AppRouter) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -24,7 +24,7 @@ public struct ShellView: View {
             tabStack(index: 0) { HomeStubView() }
                 .tabItem {
                     Label(
-                        localizationManager.translate("shell.tab.home", default: "Home"),
+                        t.shell.tab.home,
                         systemImage: "house"
                     )
                 }
@@ -33,7 +33,7 @@ public struct ShellView: View {
             tabStack(index: 1) { router.destination(for: AppRoutes.ScannerRoot()) }
                 .tabItem {
                     Label(
-                        localizationManager.translate("shell.tab.scanner", default: "Scan"),
+                        t.shell.tab.scanner,
                         systemImage: "qrcode.viewfinder"
                     )
                 }
@@ -42,7 +42,7 @@ public struct ShellView: View {
             tabStack(index: 2) { router.destination(for: AppRoutes.SettingsRoot()) }
                 .tabItem {
                     Label(
-                        localizationManager.translate("shell.tab.settings", default: "Settings"),
+                        t.shell.tab.settings,
                         systemImage: "gearshape"
                     )
                 }

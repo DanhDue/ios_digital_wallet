@@ -1,74 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "home.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Home"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trang chủ"
-          }
-        }
-      }
-    },
-    "scanner.comingSoon.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This tab is a stub in the template — wire a real scanner into ScannerFeature."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tab này là stub mẫu trong template — hãy tích hợp scanner thực tế vào ScannerFeature."
-          }
-        }
-      }
-    },
-    "scanner.comingSoon.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scanner coming soon"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tính năng quét mã sắp ra mắt"
-          }
-        }
-      }
-    },
-    "scanner.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scanner"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quét mã"
-          }
-        }
-      }
-    },
     "settings.account.changePassword": {
       "extractionState": "manual",
       "localizations": {
@@ -410,57 +342,6 @@
       }
     },
     "settings.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Settings"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cài đặt"
-          }
-        }
-      }
-    },
-    "shell.tab.home": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Home"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trang chủ"
-          }
-        }
-      }
-    },
-    "shell.tab.scanner": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scan"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quét mã"
-          }
-        }
-      }
-    },
-    "shell.tab.settings": {
       "extractionState": "manual",
       "localizations": {
         "en": {

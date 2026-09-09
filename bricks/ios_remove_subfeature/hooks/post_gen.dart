@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason/mason.dart';
@@ -47,14 +48,45 @@ Future<void> run(HookContext context) async {
     changed = true;
   }
 
+  final featureCamel = _camelCase(featureName);
+  final subCamel = _camelCase(subName);
+  final xcstringsFile = File(
+    '$root/$pkgPath/Sources/$featureName/Resources/Localizable.xcstrings',
+  );
+  if (xcstringsFile.existsSync()) {
+    try {
+      final jsonMap = jsonDecode(xcstringsFile.readAsStringSync()) as Map<String, dynamic>;
+      final strings = (jsonMap['strings'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final prefix = '$featureCamel.$subCamel';
+      final keysToRemove = strings.keys
+          .where((k) => k == prefix || k.startsWith('$prefix.'))
+          .toList();
+      for (final k in keysToRemove) {
+        strings.remove(k);
+      }
+      if (keysToRemove.isNotEmpty) {
+        jsonMap['strings'] = strings;
+        const encoder = JsonEncoder.withIndent('  ');
+        xcstringsFile.writeAsStringSync('${encoder.convert(jsonMap)}\n');
+        logger.info('removed ${keysToRemove.length} key(s) matching `$prefix.*` from $featureName Localizable.xcstrings');
+        changed = true;
+      }
+    } catch (e) {
+      logger.err('could not clean Localizable.xcstrings: $e');
+    }
+  }
+
   if (!changed) {
     logger.err(
       'Nothing to remove: $featureName has no Presentation/$subName/ '
-      'folder or ${subName}ViewModelTests.swift.',
+      'folder, ${subName}ViewModelTests.swift, or matching localization keys.',
     );
     exitCode = 1;
     return;
   }
+
+  // Re-sync localizations to clean up Translations.generated.swift
+  await _run(context, 'python3', ['scripts/merge_localizations.py'], root);
 
   final ok = await _run(
     context,
@@ -109,4 +141,10 @@ String _pascalCase(String input) {
   return words
       .map((word) => word[0].toUpperCase() + word.substring(1))
       .join();
+}
+
+String _camelCase(String input) {
+  final pascal = _pascalCase(input);
+  if (pascal.isEmpty) return '';
+  return pascal[0].toLowerCase() + pascal.substring(1);
 }

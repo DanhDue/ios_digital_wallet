@@ -4,10 +4,14 @@ import Factory
 import Foundation
 import Network
 import Platform
-import Scanner
-import Settings
 import Shell
 import SwiftUI
+
+// app:feature-imports:begin
+import Scanner
+import Settings
+
+// app:feature-imports:end
 
 /// The one place feature modules are named (Source Spec §4.3, Changelog #6).
 ///
@@ -50,6 +54,7 @@ struct AppComposition {
     init(
         eventBus: AppEventBus = .shared,
         config: ShellConfig = ShellConfig(),
+        cacheStore: (any CacheStore)? = nil,
         secureCacheStore: SecureCacheStore = KeychainCacheStore(service: "com.iosdigitalwallet.session")
     ) {
         self.eventBus = eventBus
@@ -59,13 +64,15 @@ struct AppComposition {
 
         // --- Feature composition (Factory registration) ------------------------
         let logger = ConsoleLogger()
-        let cache = UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
+        let cache = cacheStore ?? UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
 
         let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
         self.themeManager = themeManager
+        AppThemeManager.shared = themeManager
 
         let localizationManager = AppLocalizationManager(cache: cache, eventBus: eventBus)
         self.localizationManager = localizationManager
+        AppLocalizationManager.shared = localizationManager
 
         (sessionManager, apiClient) = Self.makeNetworkStack(
             eventBus: eventBus,
@@ -76,21 +83,24 @@ struct AppComposition {
         // Register production dependencies on Factory Container
         Container.shared.registerSettingsRepository(
             cache: cache,
-            apiClient: self.apiClient,
+            apiClient: apiClient,
             logger: logger
         )
-        Container.shared.settingsThemeManager.register { themeManager }
         Container.shared.settingsLocalizationService.register { localizationManager }
 
-        let settingsProvider = SettingsRouteProvider { SettingsViewModel() }
-        let scannerProvider = ScannerRouteProvider { ScannerViewModel() }
+        var providers: [any RouteProvider] = []
 
         // app:route-providers:begin
-        router.register(settingsProvider)
+        let scannerProvider = ScannerRouteProvider { ScannerViewModel() }
         router.register(scannerProvider)
+        providers.append(scannerProvider)
+
+        let settingsProvider = SettingsRouteProvider { SettingsViewModel() }
+        router.register(settingsProvider)
+        providers.append(settingsProvider)
         // app:route-providers:end
 
-        routeProviders = [settingsProvider, scannerProvider]
+        routeProviders = providers
 
         shellViewModel = ShellViewModel(config: config, router: router, eventBus: eventBus)
     }

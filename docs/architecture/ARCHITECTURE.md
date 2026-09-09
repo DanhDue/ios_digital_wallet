@@ -16,7 +16,7 @@ for every project generated from it.
 > | Widget | `@Composable` | SwiftUI `View` |
 > | BLoC | `MviViewModel` | `MviViewModel` (`ObservableObject`) |
 > | `Either<Failure, T>` | `DataState<T>` | `DataState<T>` / `AppError` |
-> | `context.t` | `stringResource(...)` | `String(localized:)` |
+> | `context.t` (Slang) | `stringResource(...)` | `t.<module>.<key>` / `@Environment(\.t)` (`Translations`) |
 > | `context.appThemes` | `MaterialTheme` | `AppTheme` / `AppColor` (`AppUIKit`) |
 > | `get_it` / `injectable` | Hilt `@Inject` / `@IntoSet` | manual constructor injection in `App` |
 > | `mason make pac_mvi_feature` | `mason make mvi_feature` | `mason make ios_mvi_feature` |
@@ -43,6 +43,7 @@ for every project generated from it.
   - [3. The 4-tier dependency graph](#3-the-4-tier-dependency-graph)
   - [4. Cross-feature communication](#4-cross-feature-communication)
   - [5. Usage with Mason](#5-usage-with-mason)
+  - [6. Multi-Module Localization & Slang-Style Code Generation](#6-multi-module-localization--slang-style-code-generation)
 - [IV. iOS stack](#iv-ios-stack)
 - [V. Code examples](#v-code-examples)
   - [1. Contract + `MviViewModel` subclass](#1-contract--mviviewmodel-subclass)
@@ -279,7 +280,7 @@ A feature is its **own local SPM package** at `Features/{Name}/`.
 
 ```text
 Features/{Name}/
-├── Package.swift              name "{Name}"; deps: Platform, Framework, (Network), AppUIKit
+├── Package.swift              name "{Name}"; deps: Platform, Framework, (Network), AppUIKit; resources: [.process("Resources")]
 ├── Sources/{Name}/
 │   ├── Data/                  🔵 internal — RepositoryImpl, DataSource, DTO, Mapper
 │   │   ├── Remote/            {Name}APIService.swift, {Name}DTO.swift
@@ -290,10 +291,11 @@ Features/{Name}/
 │   │   ├── Entity/            {Name}Entity.swift            (value type)
 │   │   ├── Repository/        {Name}Repository.swift        (protocol)
 │   │   └── UseCase/           {Verb}{Noun}UseCase.swift
-│   └── Presentation/          🟢 public — SwiftUI View + MviViewModel
-│       ├── {Screen}/          {Screen}Action.swift · {Screen}State.swift · {Screen}Event.swift
-│       │                      {Screen}ViewModel.swift · {Screen}View.swift
-│       └── {Name}RouteProvider.swift   (implements Platform.RouteProvider)
+│   ├── Presentation/          🟢 public — SwiftUI View + MviViewModel
+│   │   ├── {Screen}/          {Screen}Action.swift · {Screen}State.swift · {Screen}Event.swift
+│   │   │                      {Screen}ViewModel.swift · {Screen}View.swift
+│   │   └── {Name}RouteProvider.swift   (implements Platform.RouteProvider)
+│   └── Resources/             🟣 Localizable.xcstrings (decentralized module strings catalog)
 └── Tests/{Name}Tests/         BDD scenario → TDD test (Testing Standard Tier A)
 ```
 
@@ -423,15 +425,47 @@ Feature scaffolding arrives in **Phase 3** as four bricks.
 
 | Command | Effect |
 |---|---|
-| `mason make ios_mvi_feature --name X [--has_network]` | Create `Features/X/` (Package.swift + `Data`/`Domain`/`Presentation` + `XRouteProvider` + tests); append `.package(path:)` to `Tuist/Package.swift` and `"X"` to the app deps in `Project.swift` — both inside `// tuist:*:begin/end` marker regions; run `tuist generate`. |
+| `mason make ios_mvi_feature --name X [--has_network]` | Create `Features/X/` (Package.swift + `Data`/`Domain`/`Presentation` + `XRouteProvider` + tests); wire into `Tuist/Package.swift`, `Project.swift`, and `AppComposition.swift` (import + `XRouteProvider` registration); sync localizations; run `tuist generate`, feature unit tests, and `ArchTests`. |
 | `mason make ios_mvi_subfeature --feature X --name Y` | Add `Presentation/Y/{YAction,YState,YEvent,YViewModel,YView}.swift` + test to an existing feature. |
-| `mason make ios_remove_feature --name X` | Unwind the three wire points and delete the package. |
-| `mason make ios_remove_subfeature --feature X --name Y` | Delete `Presentation/Y/`. |
+| `mason make ios_remove_feature --name X` | Unwind wire points across Tuist manifests and `AppComposition.swift`, clean localizations, verify `ArchTests`, and delete the package. |
+| `mason make ios_remove_subfeature --feature X --name Y` | Delete `Presentation/Y/` and clean its localized keys. |
 
-The brick never touches another feature. After it runs, the one manual step is
-registering `XRouteProvider` in `App`'s composition root (inside its
-`// app:route-providers:begin/end` region) and adding an `AppRoutes.XRoot` if the
-feature is entered cross-feature.
+The brick never touches another feature and handles all project wiring and test verification automatically. The only design choice left to developer judgement is architectural: promoting `XRoot` into `Platform/AppRoutes.swift` as `AppRoutes.XRoot` **only if** another feature must cross-navigate to it (ArchTests K9).
+
+### 6. Multi-Module Localization & Slang-Style Code Generation
+
+To preserve module boundaries without centralizing every UI string into `App/Resources/Localizable.xcstrings`, the template uses a decentralized localization and Slang-style code generation architecture (see the detailed guide in **[`docs/LOCALIZATION.md`](../LOCALIZATION.md)**):
+
+1. **Decentralized Module Catalogs**:
+   - Every feature and infrastructural package declares its own localized strings in `Sources/{Name}/Resources/Localizable.xcstrings`.
+   - Each module's `Package.swift` declares `resources: [.process("Resources")]`.
+   - The Mason `ios_mvi_feature` brick includes a starter `Localizable.xcstrings` so every new feature conforms automatically.
+
+2. **Automated Merger & CodeGen (`scripts/merge_localizations.py`)**:
+   - Runs automatically as a pre-build TargetScript in Tuist (`Module.appTarget`) and within Mason hooks.
+   - **Master Catalog Merge**: Aggregates all module `.xcstrings` into `App/Resources/Localizable.xcstrings` (master application bundle) and `Packages/Platform/Resources/Localizable.xcstrings` with Apple schema `"version": "1.0"`.
+   - **Type-Safe Slang-Style Accessors**: Generates `Packages/Platform/Sources/Platform/Localization/Translations.generated.swift`, providing dot-notation accessors (`t.settings.account.profile`, `t.scanner.title`, `t.shell.tab.home`).
+   - **Dynamic Evaluation**: Every property resolves dynamically via `manager.translate(key, default: fallback)`, allowing dynamic OTA overrides to immediately reflect in UI without recompilation.
+   - **SwiftUI Integration**: Views consume translations via `@Environment(\.t) private var t: Translations` or the global `t` / `Translations.current`.
+
+3. **Backend Export & Synchronization**:
+   - The script unflattens dot-separated keys back into nested dictionaries matching the remote backend API schema (`GET /api/v1/translations/{code}`):
+     - `App/Resources/backend_translations/en.json` & `en_US.json`
+     - `App/Resources/backend_translations/vi.json` & `vi_VN.json`
+   - Keeps client and backend localization databases 100% in sync with zero manual transformation.
+
+4. **Supported Languages & OTA Strategy**:
+   - **Bundled**: English (`en` / `en_US`) and Vietnamese (`vi` / `vi_VN`) are compiled into the binary.
+   - **Remote OTA**: Additional languages (`ja`, `ko`, etc.) are returned from backend bootstrap (`POST /api/v1/settings/sync/bootstrap`), fetched on demand via `GET /api/v1/translations/{code}` (with locale aliases `ja` <-> `ja_JP`, `ko` <-> `ko_KR`), cached in `CacheStore`, and applied dynamically at runtime.
+
+5. **Automated Validation Engine & Multi-Tiered Governance**:
+   - `scripts/merge_localizations.py` incorporates strict validation (`validate_catalogs`) enforcing:
+     - **`camelCase` only**: Every segment must match `^[a-z][a-zA-Z0-9]*$`. Rejects `snake_case`, `kebab-case`, and `PascalCase`.
+     - **Hierarchical Scoping**: Feature-level (`<feature>.<key>`) or Subfeature-level (`<feature>.<subfeature>.<key>`).
+     - **Namespace Matching**: First segment must match the owning module.
+     - **No Structural Collisions**: A leaf key cannot collide with child branch paths (e.g. `settings.account` vs `settings.account.profile`).
+   - Fails fast (`exit 1`) during Xcode pre-build phase, Mason generation hooks, and CI (`ci.yml`).
+   - Governed for AI Agents via `.agents/rules/LOCALIZATION_RULES.md` and `AGENTS.md` (Rule 8). See [`docs/LOCALIZATION.md`](../LOCALIZATION.md) for full reference.
 
 ---
 
@@ -441,6 +475,7 @@ feature is entered cross-feature.
 |---|---|---|
 | **Minimum deployment target** | iOS 16, uniform across the whole repo | `NavigationStack` / `NavigationPath` need iOS 16; a single floor removes the iOS 13/16 split the v1 design carried. |
 | **UI** | SwiftUI | Declarative, `#Preview`-friendly; every `AppUIKit` component renders with no ViewModel. |
+| **Localization** | Slang-style decentralized `.xcstrings` + `Translations.generated.swift` | Type safety, `#Preview` compatibility, and dynamic OTA overrides without a central merge bottleneck. |
 | **State** | `MviViewModel` on `ObservableObject` + Combine (`@Published`, `PassthroughSubject`) | Keeps the iOS-16 floor **and** a 1:1 mapping to Kotlin `StateFlow` / `Channel` / `SharedFlow`, so the Android and iOS templates stay legible side by side. |
 | **Not `@Observable`** | deliberately excluded | `@Observable` / the Observation framework would raise the floor toward iOS 17 and break the 1:1 Kotlin-Flow mapping. Reconsider only if the floor rises to iOS 17+. |
 | **Navigation** | per-tab `NavigationStack`, one `NavigationPath` per tab in `Platform.AppRouter` | Mirrors Android's `NestedNavigator`; re-tapping the active tab pops to root. |

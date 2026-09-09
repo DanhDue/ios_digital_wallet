@@ -37,7 +37,8 @@ let package = Package(
                 .product(name: "AppUIKit", package: "AppUIKit"),
                 .product(name: "Framework", package: "Framework"),
                 .product(name: "Platform", package: "Platform"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ShellTests",

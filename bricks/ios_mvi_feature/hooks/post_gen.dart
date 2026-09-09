@@ -24,7 +24,6 @@ Future<void> run(HookContext context) async {
   var rawName = context.vars['name'] as String;
   rawName = rawName.replaceAll(RegExp(r'Feature$', caseSensitive: false), '');
   final name = pascalCase(rawName);
-  final hasNetwork = context.vars['has_network'] == true;
   final pkgPath = 'Features/$name';
 
   _insertSorted(
@@ -33,6 +32,7 @@ Future<void> run(HookContext context) async {
     begin: '// tuist:packages:begin',
     end: '// tuist:packages:end',
     entry: '.package(path: "../$pkgPath"),',
+    linePrefix: '.',
   );
   _insertSorted(
     context,
@@ -40,43 +40,68 @@ Future<void> run(HookContext context) async {
     begin: '// tuist:app-deps:begin',
     end: '// tuist:app-deps:end',
     entry: '.external(name: "$name"),',
+    linePrefix: '.',
   );
+  _insertSorted(
+    context,
+    file: File('$root/App/Sources/Composition/AppComposition.swift'),
+    begin: '// app:feature-imports:begin',
+    end: '// app:feature-imports:end',
+    entry: 'import $name',
+    linePrefix: 'import ',
+  );
+  _insertRouteProvider(
+    context,
+    file: File('$root/App/Sources/Composition/AppComposition.swift'),
+    begin: '// app:route-providers:begin',
+    end: '// app:route-providers:end',
+    name: name,
+  );
+
+  await _run(context, 'swiftformat', ['App/Sources/Composition/AppComposition.swift'], root);
+  await _run(context, 'python3', ['scripts/merge_localizations.py'], root);
 
   final tuistOk = await _run(context, 'tuist', ['install'], root) &&
       await _run(context, 'tuist', ['generate', '--no-open'], root);
   final buildOk =
       await _run(context, 'swift', ['build', '--package-path', pkgPath], root);
+  final featureTestsOk = buildOk &&
+      await _run(context, 'swift', ['test', '--package-path', pkgPath], root);
+  final archTestsOk =
+      await _run(context, 'swift', ['test', '--package-path', 'ArchTests'], root);
 
-  if (!tuistOk || !buildOk) {
+  if (!tuistOk || !buildOk || !featureTestsOk || !archTestsOk) {
     logger
       ..err('')
       ..err('================================================================')
-      ..err('  $name was generated and wired into the Tuist')
-      ..err('  manifests, but VERIFICATION FAILED:')
-      ..err('      tuist        : ${tuistOk ? "ok" : "FAILED / not on PATH"}')
-      ..err('      swift build  : ${buildOk ? "ok" : "FAILED"}')
+      ..err('  $name was generated and wired, but VERIFICATION FAILED:')
+      ..err('      tuist         : ${tuistOk ? "ok" : "FAILED / not on PATH"}')
+      ..err('      swift build   : ${buildOk ? "ok" : "FAILED"}')
+      ..err('      feature tests : ${featureTestsOk ? "ok" : "FAILED"}')
+      ..err('      ArchTests     : ${archTestsOk ? "ok" : "FAILED"}')
       ..err('  Read the errors above. To undo everything:')
       ..err('      mason make ios_remove_feature --name $name')
       ..err('================================================================');
     exitCode = 1;
+    return;
   }
 
   logger
     ..info('')
-    ..info('Next steps (manual — these need human judgement):')
-    ..info('  1. Register ${name}RouteProvider in')
-    ..info('     App/Sources/Composition/AppComposition.swift, inside the')
-    ..info('     // app:route-providers:begin / :end region, e.g.:')
-    ..info('         let ${_lcFirst(name)}Provider = '
-        '${name}RouteProvider { ${name}ViewModel() }')
-    ..info('         router.register(${_lcFirst(name)}Provider)')
-    ..info('     ...and append it to the `routeProviders` array.')
-    ..info('  2. Only if another feature must navigate here: move `${name}Root`')
-    ..info('     into Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift')
-    ..info('     as `AppRoutes.${name}Root` (ArchTests K9).')
-    ..info('  3. Run the tests:')
-    ..info('         swift test --package-path $pkgPath')
-    ..info('         swift test --package-path ArchTests');
+    ..info('================================================================')
+    ..info('  🎉 $name feature generated, wired, and verified successfully!')
+    ..info('      ✓ Tuist manifests wired (Package.swift, Project.swift)')
+    ..info('      ✓ AppComposition.swift auto-registered ${name}RouteProvider')
+    ..info('      ✓ Localizations synced (t.${_lcFirst(name)}.*)')
+    ..info('      ✓ Feature unit tests passed')
+    ..info('      ✓ Architecture tests passed (ArchTests K1-K9)')
+    ..info('================================================================')
+    ..info('')
+    ..info('Architecture note (Cross-feature navigation):')
+    ..info('  By default, `${name}Root` is private to Features/$name (ArchTests K9).')
+    ..info('  Only if another feature must navigate here: move `${name}Root`')
+    ..info('  into Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift')
+    ..info('  as `AppRoutes.${name}Root`.');
 }
 
 /// Inserts [entry] into the `[begin]`..`[end]` marker region of [file], keeping
@@ -89,6 +114,7 @@ void _insertSorted(
   required String begin,
   required String end,
   required String entry,
+  String? linePrefix,
 }) {
   if (!file.existsSync()) {
     context.logger.err('post_gen: ${file.path} not found — auto-wire skipped.');
@@ -121,9 +147,7 @@ void _insertSorted(
   var insertAt = endIdx;
   for (var i = beginIdx + 1; i < endIdx; i++) {
     final trimmed = lines[i].trim();
-    // Only sort against real entry lines — leave any human-added comment or
-    // blank line exactly where it is (Scenario 10 false-positive guard).
-    if (!trimmed.startsWith('.')) continue;
+    if (linePrefix != null && !trimmed.startsWith(linePrefix)) continue;
     if (trimmed.compareTo(target) > 0) {
       insertAt = i;
       break;
@@ -135,17 +159,75 @@ void _insertSorted(
   context.logger.info('post_gen: wired `$target` into ${file.path}.');
 }
 
+/// Inserts RouteProvider registration snippet into `AppComposition.swift`.
+void _insertRouteProvider(
+  HookContext context, {
+  required File file,
+  required String begin,
+  required String end,
+  required String name,
+}) {
+  if (!file.existsSync()) return;
+
+  final lines = file.readAsStringSync().split('\n');
+  final beginIdx = lines.indexWhere((line) => line.contains(begin));
+  final endIdx = lines.indexWhere((line) => line.contains(end));
+  if (beginIdx < 0 || endIdx < 0 || endIdx <= beginIdx) return;
+
+  final providerType = '${name}RouteProvider';
+  for (var i = beginIdx + 1; i < endIdx; i++) {
+    if (lines[i].contains(providerType)) {
+      context.logger
+          .info('post_gen: ${file.path} already registers `$providerType` — skipped.');
+      return;
+    }
+  }
+
+  final varName = '${_lcFirst(name)}Provider';
+  final snippet = [
+    '        let $varName = $providerType { ${name}ViewModel() }',
+    '        router.register($varName)',
+    '        providers.append($varName)',
+  ];
+
+  final hasExisting =
+      lines.sublist(beginIdx + 1, endIdx).any((l) => l.trim().isNotEmpty);
+  if (hasExisting && lines[endIdx - 1].trim().isNotEmpty) {
+    lines.insert(endIdx, '');
+    lines.insertAll(endIdx + 1, snippet);
+  } else {
+    lines.insertAll(endIdx, snippet);
+  }
+
+  file.writeAsStringSync(lines.join('\n'));
+  context.logger.info('post_gen: registered `$providerType` in ${file.path}.');
+}
+
 Future<bool> _run(
   HookContext context,
   String exe,
   List<String> args,
   String cwd,
 ) async {
-  context.logger.info('\$ $exe ${args.join(' ')}');
+  var actualExe = exe;
+  var actualArgs = args;
+
+  if (exe == 'tuist' || exe == 'swiftformat') {
+    final whichCheck = await Process.run('which', [exe], runInShell: true);
+    if (whichCheck.exitCode != 0) {
+      final miseCheck = await Process.run('which', ['mise'], runInShell: true);
+      if (miseCheck.exitCode == 0) {
+        actualExe = 'mise';
+        actualArgs = ['exec', '--', exe, ...args];
+      }
+    }
+  }
+
+  context.logger.info('\$ $actualExe ${actualArgs.join(' ')}');
   try {
     final result = await Process.run(
-      exe,
-      args,
+      actualExe,
+      actualArgs,
       workingDirectory: cwd,
       runInShell: true,
     );
@@ -158,7 +240,7 @@ Future<bool> _run(
     }
     return true;
   } catch (error) {
-    context.logger.err('post_gen: could not run `$exe` ($error).');
+    context.logger.err('post_gen: could not run `$actualExe` ($error).');
     return false;
   }
 }

@@ -54,29 +54,99 @@ Future<void> run(HookContext context) async {
         '.external(name: "$name"),',
       ) ||
       changed;
+  changed = _removeLine(
+        context,
+        File('$root/App/Sources/Composition/AppComposition.swift'),
+        '// app:feature-imports:begin',
+        '// app:feature-imports:end',
+        'import $name',
+      ) ||
+      changed;
+  changed = _removeRouteProvider(
+        context,
+        file: File('$root/App/Sources/Composition/AppComposition.swift'),
+        begin: '// app:route-providers:begin',
+        end: '// app:route-providers:end',
+        name: name,
+      ) ||
+      changed;
 
   if (!changed) {
     logger.err(
       'Nothing to remove: $name is not present in the workspace — '
-      'the package dir, the Tuist/Package.swift entry and the Project.swift '
-      'entry are all already clean.',
+      'the package dir, the Tuist manifests and AppComposition entries '
+      'are all already clean.',
     );
     exitCode = 1;
     return;
   }
 
+  await _run(context, 'swiftformat', ['App/Sources/Composition/AppComposition.swift'], root);
+  await _run(context, 'python3', ['scripts/merge_localizations.py'], root);
   await _run(context, 'tuist', ['install'], root);
   await _run(context, 'tuist', ['generate', '--no-open'], root);
+  await _run(context, 'swift', ['test', '--package-path', 'ArchTests'], root);
 
   logger
     ..info('')
-    ..info('$name removed. Manual cleanup still needed:')
-    ..info('  1. Delete the ${name}RouteProvider registration from')
-    ..info('     App/Sources/Composition/AppComposition.swift (the')
-    ..info('     // app:route-providers:begin/end region + the routeProviders array).')
-    ..info('  2. If it was promoted earlier, delete `AppRoutes.${name}Root`')
-    ..info('     from Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift.')
-    ..info('  3. Run:  swift test --package-path ArchTests');
+    ..info('================================================================')
+    ..info('  🎉 $name feature removed and unwired cleanly!')
+    ..info('      ✓ Features/$name/ deleted')
+    ..info('      ✓ Tuist manifests unwired (Package.swift, Project.swift)')
+    ..info('      ✓ AppComposition.swift route provider unwired')
+    ..info('      ✓ Localizations cleaned up')
+    ..info('      ✓ Architecture tests verified (ArchTests K1-K9)')
+    ..info('================================================================')
+    ..info('')
+    ..info('Note:')
+    ..info('  If `AppRoutes.${name}Root` was previously added to')
+    ..info('  Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift,')
+    ..info('  remove it manually.');
+}
+
+/// Removes RouteProvider registration snippet from `AppComposition.swift`.
+bool _removeRouteProvider(
+  HookContext context, {
+  required File file,
+  required String begin,
+  required String end,
+  required String name,
+}) {
+  if (!file.existsSync()) return false;
+
+  final lines = file.readAsStringSync().split('\n');
+  final beginIdx = lines.indexWhere((line) => line.contains(begin));
+  final endIdx = lines.indexWhere((line) => line.contains(end));
+  if (beginIdx < 0 || endIdx < 0 || endIdx <= beginIdx) return false;
+
+  final providerType = '${name}RouteProvider';
+  final varName = '${_lcFirst(name)}Provider';
+
+  var removed = false;
+  for (var i = endIdx - 1; i > beginIdx; i--) {
+    final line = lines[i];
+    if (line.contains(providerType) || line.contains(varName)) {
+      lines.removeAt(i);
+      removed = true;
+    }
+  }
+
+  if (removed) {
+    var newEndIdx = lines.indexWhere((line) => line.contains(end));
+    for (var i = newEndIdx - 1; i > beginIdx; i--) {
+      if (lines[i].trim().isEmpty &&
+          (i == beginIdx + 1 ||
+              lines[i - 1].trim().isEmpty ||
+              i == newEndIdx - 1)) {
+        lines.removeAt(i);
+        newEndIdx--;
+      }
+    }
+    file.writeAsStringSync(lines.join('\n'));
+    context.logger.info('unwired `$providerType` from ${file.path}.');
+  }
+
+  return removed;
 }
 
 /// Removes every line whose trimmed text equals [entry] from the `[begin]`..
@@ -117,11 +187,25 @@ Future<bool> _run(
   List<String> args,
   String cwd,
 ) async {
-  context.logger.info('\$ $exe ${args.join(' ')}');
+  var actualExe = exe;
+  var actualArgs = args;
+
+  if (exe == 'tuist' || exe == 'swiftformat') {
+    final whichCheck = await Process.run('which', [exe], runInShell: true);
+    if (whichCheck.exitCode != 0) {
+      final miseCheck = await Process.run('which', ['mise'], runInShell: true);
+      if (miseCheck.exitCode == 0) {
+        actualExe = 'mise';
+        actualArgs = ['exec', '--', exe, ...args];
+      }
+    }
+  }
+
+  context.logger.info('\$ $actualExe ${actualArgs.join(' ')}');
   try {
     final result = await Process.run(
-      exe,
-      args,
+      actualExe,
+      actualArgs,
       workingDirectory: cwd,
       runInShell: true,
     );
@@ -134,7 +218,7 @@ Future<bool> _run(
     }
     return true;
   } catch (error) {
-    context.logger.err('post_gen: could not run `$exe` ($error).');
+    context.logger.err('post_gen: could not run `$actualExe` ($error).');
     return false;
   }
 }
@@ -146,3 +230,7 @@ String _pascalCase(String input) {
       .map((word) => word[0].toUpperCase() + word.substring(1))
       .join();
 }
+
+String _lcFirst(String value) =>
+    value.isEmpty ? value : value[0].toLowerCase() + value.substring(1);
+

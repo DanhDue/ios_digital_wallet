@@ -1,5 +1,6 @@
 import AppUIKit
 import Core
+import Platform
 import SwiftUI
 
 /// The Settings form (Source Spec §4.4 / §11). Deliberately thin: it renders
@@ -8,6 +9,8 @@ import SwiftUI
 /// `SettingsViewModel`.
 public struct SettingsView: View {
     @ObservedObject private var viewModel: SettingsViewModel
+    @Environment(\.t) private var t: Translations
+    @Environment(\.themeManager) private var themeManager: AppThemeManager
 
     public init(viewModel: SettingsViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -15,18 +18,18 @@ public struct SettingsView: View {
 
     public var body: some View {
         content
-            .navigationTitle(viewModel.tr("settings.title", default: "Cài đặt"))
+            .navigationTitle(t.settings.title)
             .onAppear { viewModel.dispatch(.onAppear) }
             .settingsLoadingDialog(
                 isPresented: viewModel.uiState.isLoadingLanguage,
-                message: viewModel.tr("settings.language.updating", default: "Đang cập nhật ngôn ngữ...")
+                message: t.settings.language.updating
             )
             .sheet(isPresented: Binding(
                 get: { viewModel.uiState.isLanguagePickerPresented },
                 set: { viewModel.dispatch(.showLanguagePicker($0)) }
             )) {
                 LanguagePickerBottomSheet(
-                    title: viewModel.tr("settings.preferences.language", default: "Ngôn ngữ"),
+                    title: t.settings.preferences.language,
                     languages: viewModel.uiState.settings.availableLanguages,
                     currentLanguageCode: viewModel.uiState.settings.language,
                     onSelect: { code in
@@ -60,12 +63,12 @@ public struct SettingsView: View {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     // SECTION 1: TÀI KHOẢN (ACCOUNT)
-                    SettingsSectionCard(title: viewModel.tr("settings.account.title", default: "Tài khoản")) {
+                    SettingsSectionCard(title: t.settings.account.title) {
                         SettingsItemRow(
                             icon: "person.fill",
                             iconColor: .white,
                             iconBackground: .blue,
-                            title: viewModel.tr("settings.account.profile", default: "Thông tin cá nhân"),
+                            title: t.settings.account.profile,
                             accessory: .chevron,
                             action: {}
                         )
@@ -74,7 +77,7 @@ public struct SettingsView: View {
                             icon: "lock.fill",
                             iconColor: .white,
                             iconBackground: .blue,
-                            title: viewModel.tr("settings.account.changePassword", default: "Đổi mật khẩu"),
+                            title: t.settings.account.changePassword,
                             accessory: .chevron,
                             action: {}
                         )
@@ -83,26 +86,20 @@ public struct SettingsView: View {
                             icon: "shield.lefthalf.filled",
                             iconColor: .white,
                             iconBackground: .green,
-                            title: viewModel.tr("settings.account.twoFactorAuth", default: "Xác thực 2 yếu tố"),
-                            accessory: .navigation(tag: viewModel.tr(
-                                "settings.account.twoFactorAuthOn",
-                                default: "Bật"
-                            )),
+                            title: t.settings.account.twoFactorAuth,
+                            accessory: .navigation(tag: t.settings.account.twoFactorAuthOn),
                             action: {}
                         )
                     }
 
                     // SECTION 2: TÙY CHỌN (PREFERENCES)
-                    SettingsSectionCard(title: viewModel.tr("settings.preferences.title", default: "Tùy chọn")) {
+                    SettingsSectionCard(title: t.settings.preferences.title) {
                         SettingsItemRow(
                             icon: "dollarsign.circle.fill",
                             iconColor: .white,
                             iconBackground: .purple,
-                            title: viewModel.tr("settings.preferences.currency", default: "Tiền tệ"),
-                            accessory: .navigation(value: viewModel.tr(
-                                "settings.preferences.currencyUsd",
-                                default: "USD ($)"
-                            )),
+                            title: t.settings.preferences.currency,
+                            accessory: .navigation(value: t.settings.preferences.currencyUsd),
                             action: {}
                         )
                         Divider().padding(.leading, 48)
@@ -110,7 +107,7 @@ public struct SettingsView: View {
                             icon: "globe",
                             iconColor: .white,
                             iconBackground: .cyan,
-                            title: viewModel.tr("settings.preferences.language", default: "Ngôn ngữ"),
+                            title: t.settings.preferences.language,
                             accessory: .navigation(value: currentLangName),
                             action: {
                                 viewModel.dispatch(.showLanguagePicker(true))
@@ -121,10 +118,13 @@ public struct SettingsView: View {
                             icon: "moon.fill",
                             iconColor: .white,
                             iconBackground: .orange,
-                            title: viewModel.tr("settings.preferences.darkMode", default: "Chế độ tối"),
+                            title: t.settings.preferences.darkMode,
                             accessory: .toggle(Binding(
                                 get: { settings.isDarkMode },
-                                set: { _ in viewModel.dispatch(.toggleDarkMode) }
+                                set: { isDark in
+                                    themeManager.setMode(isDark ? .dark : .light)
+                                    viewModel.dispatch(.toggleDarkMode)
+                                }
                             ))
                         )
                         Divider().padding(.leading, 48)
@@ -132,7 +132,7 @@ public struct SettingsView: View {
                             icon: "bell.fill",
                             iconColor: .white,
                             iconBackground: .blue,
-                            title: viewModel.tr("settings.preferences.notifications", default: "Thông báo đẩy"),
+                            title: t.settings.preferences.notifications,
                             accessory: .toggle(Binding(
                                 get: { settings.notificationsEnabled },
                                 set: { _ in viewModel.dispatch(.toggleNotifications) }
@@ -141,12 +141,12 @@ public struct SettingsView: View {
                     }
 
                     // SECTION 3: NHÀ PHÁT TRIỂN (DEVELOPER)
-                    SettingsSectionCard(title: viewModel.tr("settings.developer.title", default: "Nhà phát triển")) {
+                    SettingsSectionCard(title: t.settings.developer.title) {
                         SettingsItemRow(
                             icon: "hammer.fill",
                             iconColor: .white,
                             iconBackground: .teal,
-                            title: viewModel.tr("settings.developer.debugMode", default: "Chế độ gỡ lỗi"),
+                            title: t.settings.developer.debugMode,
                             accessory: .toggle(Binding(
                                 get: { viewModel.uiState.isDeveloperModeEnabled },
                                 set: { viewModel.dispatch(.toggleDeveloperMode($0)) }
@@ -155,12 +155,12 @@ public struct SettingsView: View {
                     }
 
                     // SECTION 4: THÔNG TIN ỨNG DỤNG (APP INFORMATION)
-                    SettingsSectionCard(title: viewModel.tr("settings.appInfo.title", default: "Thông tin ứng dụng")) {
+                    SettingsSectionCard(title: t.settings.appInfo.title) {
                         SettingsItemRow(
                             icon: "questionmark.circle.fill",
                             iconColor: .white,
                             iconBackground: .green,
-                            title: viewModel.tr("settings.appInfo.contactSupport", default: "Liên hệ hỗ trợ"),
+                            title: t.settings.appInfo.contactSupport,
                             accessory: .chevron,
                             action: {}
                         )
@@ -169,7 +169,7 @@ public struct SettingsView: View {
                             icon: "info.circle.fill",
                             iconColor: .white,
                             iconBackground: .gray,
-                            title: viewModel.tr("settings.appInfo.aboutApp", default: "Về ứng dụng"),
+                            title: t.settings.appInfo.aboutApp,
                             accessory: .value(viewModel.uiState.appVersion)
                         )
                     }
@@ -181,10 +181,7 @@ public struct SettingsView: View {
                     if viewModel.uiState.isSaving || viewModel.uiState.isLoadingLanguage {
                         HStack(spacing: AppSpacing.sm) {
                             ProgressView()
-                            Text(viewModel.uiState.isLoadingLanguage ? viewModel.tr(
-                                "settings.loadingLanguage",
-                                default: "Đang tải ngôn ngữ…"
-                            ) : viewModel.tr("settings.saving", default: "Đang lưu…"))
+                            Text(viewModel.uiState.isLoadingLanguage ? t.settings.loadingLanguage : t.settings.saving)
                                 .font(.footnote)
                                 .foregroundStyle(Color.appTextSecondary)
                         }
@@ -204,7 +201,7 @@ public struct SettingsView: View {
             HStack(spacing: AppSpacing.sm) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.system(size: 16, weight: .semibold))
-                Text(viewModel.tr("settings.logout", default: "Đăng xuất"))
+                Text(t.settings.logout)
                     .font(.body)
                     .fontWeight(.semibold)
             }

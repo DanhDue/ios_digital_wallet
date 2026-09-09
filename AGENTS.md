@@ -85,3 +85,14 @@ it.
    shared code; features are illustrative only.
 7. **Keep `ArchTests/` lint-clean and format-clean** — its `Sources/` and
    `Tests/` are in the lint scope.
+8. **Localization**: Features own their local `Sources/<Feature>/Resources/Localizable.xcstrings`
+   with `resources: [.process("Resources")]` in `Package.swift`. Never add strings directly
+   to `App/Resources/Localizable.xcstrings`. Run `python3 scripts/merge_localizations.py`
+   (or build the app) to regenerate Slang-style `Translations.generated.swift` accessors
+   (`t.<module>.<key>`) and synchronize backend-compatible JSONs in `App/Resources/backend_translations/`.
+   **Strict DOs & DON'Ts**:
+   - Keys must be strictly **`camelCase`** (`^[a-z][a-zA-Z0-9]*$`) for every segment. No `snake_case`, `kebab-case`, or `PascalCase`.
+   - Keys must use hierarchical namespacing matching the owning module: `<feature>.<key>` (Feature-level) or `<feature>.<subfeature>.<key>` (Subfeature-level).
+   - No structural collisions: a leaf string key must not share a prefix with child properties (e.g. use `settings.account.title`, never `settings.account` if `settings.account.profile` exists).
+   - Only `en` and `vi` are bundled statically in binary catalogs; `ja`, `ko`, etc. are strictly remote OTA.
+   - See `.agents/rules/LOCALIZATION_RULES.md` and `docs/LOCALIZATION.md` for full guidance.

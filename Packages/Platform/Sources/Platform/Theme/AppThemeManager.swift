@@ -9,6 +9,11 @@ import SwiftUI
 public final class AppThemeManager: ObservableObject {
     public static let storageKey = "app_theme_mode"
 
+    public static var shared: AppThemeManager = .init(
+        cache: UserDefaultsCacheStore(),
+        eventBus: AppEventBus()
+    )
+
     @Published public private(set) var mode: AppThemeMode
 
     private let cache: any CacheStore
@@ -44,5 +49,14 @@ public final class AppThemeManager: ObservableObject {
         mode = newMode
         cache.set(newMode.rawValue, key: Self.storageKey)
         eventBus.publish(ThemeModeChanged(mode: newMode))
+    }
+}
+
+// MARK: - SwiftUI Environment Support
+
+public extension EnvironmentValues {
+    /// Injected `AppThemeManager` for SwiftUI views to react to and manipulate appearance mode.
+    @Entry var themeManager: AppThemeManager = MainActor.assumeIsolated {
+        AppThemeManager.shared
     }
 }

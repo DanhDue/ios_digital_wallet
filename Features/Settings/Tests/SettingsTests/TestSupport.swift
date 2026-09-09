@@ -301,7 +301,6 @@ struct SettingsEnv {
 
         sut = SettingsViewModel(
             repository: repo,
-            themeManager: resolvedTheme,
             localizationService: resolvedLoc
         )
     }
@@ -312,7 +311,6 @@ struct SettingsEnv {
 extension SettingsViewModel {
     convenience init(
         repository: any SettingsRepository,
-        themeManager: AppThemeManager? = nil,
         localizationService: (any LocalizationService)? = nil,
         changeLanguage: ChangeLanguageUseCase? = nil
     ) {
@@ -331,9 +329,7 @@ extension SettingsViewModel {
             saveSettings: SaveSettingsUseCase(repository: repository),
             getAvailableLanguages: GetAvailableLanguagesUseCase(repository: repository),
             checkLanguageCached: CheckLanguageCachedUseCase(repository: repository),
-            changeLanguage: resolvedChangeLanguage,
-            themeManager: themeManager,
-            localizationService: localizationService
+            changeLanguage: resolvedChangeLanguage
         )
     }
 }

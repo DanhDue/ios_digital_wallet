@@ -37,6 +37,10 @@ short form.
   action supersedes it (Source Spec §5.5).
 - **Dumb views**: SwiftUI views take `State` in and emit `Action` out — no
   business logic.
+- **Localization**: SwiftUI views consume typed Slang-style accessors via
+  `@Environment(\.t) private var t: Translations` or `t.[feature].[key]`. No raw magic string literals in views.
+  Keys must be strictly **`camelCase`** (`^[a-z][a-zA-Z0-9]*$`) and hierarchically namespaced
+  (`[feature].[key]` or `[feature].[subfeature].[key]`). Validated at build time via `merge_localizations.py`.
 
 ## Domain layer
 
@@ -80,6 +84,9 @@ short form.
 | Repository | `[Noun]Repository` (protocol) / `[Noun]RepositoryImpl` | `Domain` / `Data` |
 | Screen | `[Feature]View : View` | `Presentation` |
 | Route provider | `[Feature]RouteProvider : RouteProvider` | `Presentation` |
+| Localization catalog | `Localizable.xcstrings` | `[Feature]/Sources/[Feature]/Resources/` |
+| Feature-level text | `[feature].[key]` -> `t.[feature].[key]` | `Localizable.xcstrings` -> `Translations` |
+| Subfeature text | `[feature].[subfeature].[key]` -> `t.[feature].[subfeature].[key]` | `Localizable.xcstrings` -> `Translations` |
 
 ## Working rules
 

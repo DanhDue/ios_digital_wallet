@@ -22,6 +22,16 @@ public enum Module {
     /// warning instead of failing, so a fresh checkout without the toolchain can
     /// still build. `basedOnDependencyAnalysis: false` keeps it running on every
     /// build rather than being skipped when inputs look unchanged.
+    public static let mergeLocalizationsScript: TargetScript = .pre(
+        script: #"""
+        if which python3 >/dev/null; then
+          python3 "$SRCROOT/scripts/merge_localizations.py"
+        fi
+        """#,
+        name: "Merge Localizations",
+        basedOnDependencyAnalysis: false
+    )
+
     public static let swiftLintScript: TargetScript = .pre(
         script: #"""
         export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/share/mise/shims:$PATH"
@@ -59,7 +69,7 @@ public enum Module {
                 "App/Resources/Assets.xcassets",
                 "App/Resources/Localizable.xcstrings",
             ],
-            scripts: [swiftLintScript],
+            scripts: [mergeLocalizationsScript, swiftLintScript],
             dependencies: dependencies
         )
     }

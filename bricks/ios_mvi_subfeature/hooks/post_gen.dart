@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason/mason.dart';
@@ -25,6 +26,47 @@ Future<void> run(HookContext context) async {
     return;
   }
 
+  final featureCamel = _camelCase(featureName);
+  final subCamel = _camelCase(subName);
+  final xcstringsFile = File(
+    '$root/$pkgPath/Sources/$featureName/Resources/Localizable.xcstrings',
+  );
+  if (xcstringsFile.existsSync()) {
+    try {
+      final jsonMap = jsonDecode(xcstringsFile.readAsStringSync()) as Map<String, dynamic>;
+      final strings = (jsonMap['strings'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final key = '$featureCamel.$subCamel.title';
+      if (!strings.containsKey(key)) {
+        strings[key] = {
+          'extractionState': 'manual',
+          'localizations': {
+            'en': {
+              'stringUnit': {
+                'state': 'translated',
+                'value': subName,
+              },
+            },
+            'vi': {
+              'stringUnit': {
+                'state': 'translated',
+                'value': subName,
+              },
+            },
+          },
+        };
+        jsonMap['strings'] = strings;
+        const encoder = JsonEncoder.withIndent('  ');
+        xcstringsFile.writeAsStringSync('${encoder.convert(jsonMap)}\n');
+        logger.info('added `$key` to $featureName Localizable.xcstrings');
+      }
+    } catch (e) {
+      logger.err('could not update Localizable.xcstrings: $e');
+    }
+  }
+
+  // Synchronize localizations and generate typed Slang-style accessors
+  await _run(context, 'python3', ['scripts/merge_localizations.py'], root);
+
   final ok = await _run(
     context,
     'swift',
@@ -51,6 +93,12 @@ Future<void> run(HookContext context) async {
     ..info('  - Present ${subName}View from ${featureName}View (or push a '
         'feature-private AppRoute).')
     ..info('  - Run:  swift test --package-path $pkgPath');
+}
+
+String _camelCase(String input) {
+  final pascal = _pascalCase(input);
+  if (pascal.isEmpty) return '';
+  return pascal[0].toLowerCase() + pascal.substring(1);
 }
 
 Future<bool> _run(

@@ -1,0 +1,59 @@
+{
+  "language_code": "vi_VN",
+  "language_name": "Tiếng Việt",
+  "version": "1.0.0",
+  "is_default": false,
+  "is_active": true,
+  "translations": {
+    "home": {
+      "title": "Trang chủ"
+    },
+    "scanner": {
+      "comingSoon": {
+        "message": "Tab này là stub mẫu trong template — hãy tích hợp scanner thực tế vào ScannerFeature.",
+        "title": "Tính năng quét mã sắp ra mắt"
+      },
+      "title": "Quét mã"
+    },
+    "settings": {
+      "account": {
+        "changePassword": "Đổi mật khẩu",
+        "profile": "Thông tin cá nhân",
+        "title": "Tài khoản",
+        "twoFactorAuth": "Xác thực 2 yếu tố",
+        "twoFactorAuthOn": "Bật"
+      },
+      "appInfo": {
+        "aboutApp": "Về ứng dụng",
+        "contactSupport": "Liên hệ hỗ trợ",
+        "title": "Thông tin ứng dụng"
+      },
+      "developer": {
+        "debugMode": "Chế độ gỡ lỗi",
+        "title": "Nhà phát triển"
+      },
+      "language": {
+        "updating": "Đang cập nhật ngôn ngữ..."
+      },
+      "loadingLanguage": "Đang tải ngôn ngữ…",
+      "logout": "Đăng xuất",
+      "preferences": {
+        "currency": "Tiền tệ",
+        "currencyUsd": "USD ($)",
+        "darkMode": "Chế độ tối",
+        "language": "Ngôn ngữ",
+        "notifications": "Thông báo đẩy",
+        "title": "Tùy chọn"
+      },
+      "saving": "Đang lưu…",
+      "title": "Cài đặt"
+    },
+    "shell": {
+      "tab": {
+        "home": "Trang chủ",
+        "scanner": "Quét mã",
+        "settings": "Cài đặt"
+      }
+    }
+  }
+}

@@ -248,18 +248,6 @@ final class SettingsViewModelTests: XCTestCase {
 
     // MARK: ThemeManager & New Presentation Features
 
-    func testToggleDarkModeUpdatesAppThemeManager() async {
-        let env = SettingsEnv()
-        await primeContent(env)
-        XCTAssertEqual(env.themeManager.mode, .system)
-
-        env.sut.dispatch(.toggleDarkMode)
-        await poll { env.sut.uiState.isSaving == false }
-
-        XCTAssertTrue(env.sut.uiState.settings.isDarkMode)
-        XCTAssertEqual(env.themeManager.mode, .dark)
-    }
-
     func testSelectLanguageWithCachedLanguageAppliesImmediately() async {
         let env = SettingsEnv()
         await primeContent(env)

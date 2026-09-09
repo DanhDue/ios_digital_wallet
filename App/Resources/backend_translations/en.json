@@ -1,0 +1,59 @@
+{
+  "language_code": "en_US",
+  "language_name": "English (US)",
+  "version": "1.0.0",
+  "is_default": true,
+  "is_active": true,
+  "translations": {
+    "home": {
+      "title": "Home"
+    },
+    "scanner": {
+      "comingSoon": {
+        "message": "This tab is a stub in the template — wire a real scanner into ScannerFeature.",
+        "title": "Scanner coming soon"
+      },
+      "title": "Scanner"
+    },
+    "settings": {
+      "account": {
+        "changePassword": "Change Password",
+        "profile": "Edit Profile",
+        "title": "Account",
+        "twoFactorAuth": "Two-Factor Auth (2FA)",
+        "twoFactorAuthOn": "On"
+      },
+      "appInfo": {
+        "aboutApp": "About App",
+        "contactSupport": "Contact Support",
+        "title": "App Info"
+      },
+      "developer": {
+        "debugMode": "Debug Mode",
+        "title": "Developer"
+      },
+      "language": {
+        "updating": "Updating language..."
+      },
+      "loadingLanguage": "Loading language…",
+      "logout": "Logout",
+      "preferences": {
+        "currency": "Currency / Units",
+        "currencyUsd": "USD ($)",
+        "darkMode": "Dark Mode",
+        "language": "Language",
+        "notifications": "Push Notifications",
+        "title": "Preferences"
+      },
+      "saving": "Saving…",
+      "title": "Settings"
+    },
+    "shell": {
+      "tab": {
+        "home": "Home",
+        "scanner": "Scan",
+        "settings": "Settings"
+      }
+    }
+  }
+}

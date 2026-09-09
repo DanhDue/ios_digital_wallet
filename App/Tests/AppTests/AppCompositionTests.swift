@@ -203,7 +203,10 @@ final class AppCompositionTests: XCTestCase {
 
     func testAppCompositionExposesThemeManagerAndLocalizationManager() {
         let bus = AppEventBus()
-        let sut = AppComposition(eventBus: bus)
+        let testDefaults = UserDefaults(suiteName: "AppCompositionTests") ?? .standard
+        testDefaults.removePersistentDomain(forName: "AppCompositionTests")
+        let cache = UserDefaultsCacheStore(defaults: testDefaults, keyPrefix: "test.")
+        let sut = AppComposition(eventBus: bus, cacheStore: cache)
 
         XCTAssertNotNil(sut.themeManager)
         XCTAssertNotNil(sut.localizationManager)
