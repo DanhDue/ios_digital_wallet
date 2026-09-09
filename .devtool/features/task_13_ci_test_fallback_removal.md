@@ -99,9 +99,12 @@ repo's Tier B standard; the substitution is stated rather than dropped.
 
 ## Dependencies & Blockers
 
-- Blocked by nothing technically; **should land alongside or immediately after**
-  [Task 9](task_9_tier_c_acceptance_suite.md) so the acceptance suite is
-  enforced from the moment it exists.
+- Blocked by nothing. This task has no code dependency on any other.
+- **Recommended placement: early.** It was first written to land beside
+  [Task 9](task_9_tier_c_acceptance_suite.md) so that suite would be enforced on
+  arrival, but running it first is strictly better: every remaining task in the
+  epic then gets honest CI instead of only the last few. Its own DoD (prove the
+  job goes red on a deliberately broken test) does not depend on Task 9.
 - Blocks nothing.
 
 ## References & Rollback

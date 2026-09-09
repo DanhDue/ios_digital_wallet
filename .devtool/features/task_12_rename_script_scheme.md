@@ -98,9 +98,9 @@ rather than silently dropped.
 
 - Blocked by [Task 8](task_8_host_deeplink_wiring.md) — the scheme literal must
   exist in `Module.swift` before the script can rewrite it.
-- Related: [Task 14](task_14_deeplink_docs.md) writes `DEEPLINK.md`, one of the
-  files this script rewrites; land Task 14 first or add the file path
-  defensively.
+- **Recommended**: run after [Task 14](task_14_deeplink_docs.md), which writes
+  `DEEPLINK.md` — one of the files this script rewrites. Otherwise add the path
+  defensively so the substitution does not fail on a missing file.
 
 ## References & Rollback
 

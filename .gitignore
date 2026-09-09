@@ -21,3 +21,6 @@ docs/superpowers/
 .mason/
 mason-lock.json
 .superpowers/
+
+# Git worktrees (epic-implementation)
+.worktrees/

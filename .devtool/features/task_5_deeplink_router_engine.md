@@ -148,9 +148,9 @@ for route in stack { router.navigate(to: route, inTab: tab) }
 
 ## Dependencies & Blockers
 
-- Blocked by [Task 2](task_2_deeplink_url_normalisation.md),
-  [Task 3](task_3_deeplink_pattern_matching.md) and
-  [Task 4](task_4_deeplink_route_provider_seam.md).
+- Blocked by [Task 2](task_2_deeplink_url_normalisation.md) — `open(_:)` normalises the URL before matching.
+- Blocked by [Task 3](task_3_deeplink_pattern_matching.md) — resolution is pattern matching.
+- Blocked by [Task 4](task_4_deeplink_route_provider_seam.md) — `register(_:)` reads `provider.deepLinks`.
 - Blocks [Task 8](task_8_host_deeplink_wiring.md) and
   [Task 9](task_9_tier_c_acceptance_suite.md).
 
