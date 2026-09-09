@@ -61,7 +61,6 @@ Future<void> run(HookContext context) async {
     exitCode = 1;
   }
 
-  final vmArgs = hasNetwork ? 'apiClient: apiClient, ' : '';
   logger
     ..info('')
     ..info('Next steps (manual — these need human judgement):')
@@ -69,8 +68,7 @@ Future<void> run(HookContext context) async {
     ..info('     App/Sources/Composition/AppComposition.swift, inside the')
     ..info('     // app:route-providers:begin / :end region, e.g.:')
     ..info('         let ${_lcFirst(name)}Provider = '
-        '${name}Module.makeRouteProvider(')
-    ..info('             cache: cache, ${vmArgs}logger: logger)')
+        '${name}RouteProvider { ${name}ViewModel() }')
     ..info('         router.register(${_lcFirst(name)}Provider)')
     ..info('     ...and append it to the `routeProviders` array.')
     ..info('  2. Only if another feature must navigate here: move `${name}Root`')

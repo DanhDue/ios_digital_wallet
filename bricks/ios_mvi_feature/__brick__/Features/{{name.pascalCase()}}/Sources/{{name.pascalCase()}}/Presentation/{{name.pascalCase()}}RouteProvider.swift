@@ -17,9 +17,9 @@ public struct {{name.pascalCase()}}Root: AppRoute {
 ///
 /// The `App` composition root registers one instance; the router calls
 /// `canHandle` to match `{{name.pascalCase()}}Root` and `destination(for:)` for
-/// the screen. The ViewModel is built by an injected `@MainActor` closure so
-/// this provider owns no dependencies of its own — see
-/// `{{name.pascalCase()}}Module.makeRouteProvider`.
+/// the screen. The ViewModel is built by an injected `@MainActor` closure; in
+/// production this is `{ {{name.pascalCase()}}ViewModel() }` which auto-resolves dependencies
+/// via `Factory.Container`.
 ///
 /// `destination(for:)` hands back a tiny `Deferred{{name.pascalCase()}}View`
 /// whose SwiftUI `body` (`@MainActor` by construction) is where the `@MainActor`

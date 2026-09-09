@@ -1,5 +1,6 @@
 import AppUIKit
 import Core
+import Factory
 import Foundation
 import Network
 import Platform
@@ -11,7 +12,7 @@ import SwiftUI
 /// The one place feature modules are named (Source Spec §4.3, Changelog #6).
 ///
 /// It builds the `AppRouter`, an `AppEventBus`, each feature's dependency graph
-/// (manual constructor injection — a DI framework is a Non-Goal) and its
+/// (registered on `Factory.Container` for declarative resolution) and its
 /// `RouteProvider`, registers **both** providers on the router, and builds the
 /// feature-blind `Shell` on top. Nothing else in the app imports a feature.
 ///
@@ -56,7 +57,7 @@ struct AppComposition {
         let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
         self.router = router
 
-        // --- Feature composition (constructor injection) -----------------------
+        // --- Feature composition (Factory registration) ------------------------
         let logger = ConsoleLogger()
         let cache = UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
 
@@ -72,14 +73,17 @@ struct AppComposition {
             secureCacheStore: secureCacheStore
         )
 
-        let settingsProvider = SettingsModule.makeRouteProvider(
+        // Register production dependencies on Factory Container
+        Container.shared.registerSettingsRepository(
             cache: cache,
-            apiClient: apiClient,
-            themeManager: themeManager,
-            localizationService: localizationManager,
+            apiClient: self.apiClient,
             logger: logger
         )
-        let scannerProvider = ScannerModule.makeRouteProvider()
+        Container.shared.settingsThemeManager.register { themeManager }
+        Container.shared.settingsLocalizationService.register { localizationManager }
+
+        let settingsProvider = SettingsRouteProvider { SettingsViewModel() }
+        let scannerProvider = ScannerRouteProvider { ScannerViewModel() }
 
         // app:route-providers:begin
         router.register(settingsProvider)

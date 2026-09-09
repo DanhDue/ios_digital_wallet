@@ -67,6 +67,14 @@ final class SpyScannerRepository: ScannerRepository {
     }
 }
 
+// MARK: - Test Extension for ScannerViewModel
+
+extension ScannerViewModel {
+    convenience init(repository: any ScannerRepository) {
+        self.init(getScannerData: GetScannerDataUseCase(repository: repository))
+    }
+}
+
 // MARK: - Async helper
 
 /// Polls `predicate` (cheap sleeps, no busy-spin) until it holds or `timeout`

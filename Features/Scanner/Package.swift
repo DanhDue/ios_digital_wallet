@@ -15,8 +15,8 @@ import PackageDescription
 ///   * `Presentation/**` — `ScannerAction` / `ScannerState` / `ScannerEvent`,
 ///                         `ScannerViewModel` (`MviViewModel`), `ScannerView`,
 ///                         `ScannerRouteProvider`.
-///   * `ScannerModule.swift` (top level) — the only composition seam that
-///                         wires `Data` → `Domain` → `Presentation`.
+///   * `ScannerContainer.swift` (top level) — Factory `Container` extensions
+///                         that register `Data` → `Domain` dependencies.
 ///
 /// **Dependencies** — `Platform`, `Framework`, `AppUIKit` only. There is **no
 /// `Network` dependency**: the Scanner stub performs no I/O (Source Spec

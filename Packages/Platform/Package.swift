@@ -25,12 +25,14 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Core"),
+        .package(url: "https://github.com/hmlongco/Factory.git", exact: "2.4.3"),
     ],
     targets: [
         .target(
             name: "Platform",
             dependencies: [
                 .product(name: "Core", package: "Core"),
+                .product(name: "Factory", package: "Factory"),
             ]
         ),
         .testTarget(

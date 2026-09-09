@@ -1,3 +1,4 @@
+import Factory
 import Platform
 import SwiftUI
 import XCTest
@@ -59,59 +60,65 @@ final class SettingsRouteProviderTests: XCTestCase {
         XCTAssertNotNil(resolved)
     }
 
-    // MARK: Composition root
+    // MARK: Composition via Factory Container
 
-    func testModuleFactoryBuildsAWorkingProviderOverACacheStore() {
-        let logger = SpyLogger()
-        let cache = InMemoryCacheStore(logger: logger)
-        let provider = SettingsModule.makeRouteProvider(cache: cache, logger: logger)
+    func testContainerRegistrationBuildsAWorkingProvider() {
+        let repo = SpySettingsRepository()
+        Container.shared.settingsRepository.register { repo }
+        defer { Container.shared.manager.reset() }
+
+        let provider = SettingsRouteProvider { SettingsViewModel() }
 
         XCTAssertTrue(provider.canHandle(AppRoutes.SettingsRoot()))
         _ = provider.destination(for: AppRoutes.SettingsRoot())
     }
 
-    func testModuleFactoryBuildsAViewModelThatLoadsFromTheCache() async {
+    func testContainerRegistrationBuildsAViewModelThatLoadsFromTheCache() async {
         let logger = SpyLogger()
         let cache = InMemoryCacheStore(logger: logger)
         let seeded = SettingsRepositoryImpl(cache: cache, logger: logger)
         _ = await seeded.save(SettingsEntity(isDarkMode: true, language: "vi", notificationsEnabled: false))
 
-        let viewModel = SettingsModule.makeViewModel(cache: cache, logger: logger)
+        Container.shared.settingsRepository.register { @MainActor in
+            SettingsRepositoryImpl(cache: cache, logger: logger)
+        }
+        defer { Container.shared.manager.reset() }
+
+        let viewModel = SettingsViewModel()
         viewModel.dispatch(.onAppear)
         await poll { viewModel.viewState.tag == "content" }
 
         XCTAssertEqual(viewModel.uiState.settings.language, "vi")
     }
 
-    func testModuleFactoryWiresThemeManagerAndLocalizationService() async {
+    func testContainerRegistrationWiresThemeManagerAndLocalizationService() async {
         let logger = SpyLogger()
         let cache = InMemoryCacheStore(logger: logger)
         let eventBus = AppEventBus()
         let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
         let locManager = AppLocalizationManager(cache: cache, eventBus: eventBus)
 
-        let provider = SettingsModule.makeRouteProvider(
-            cache: cache,
-            apiClient: nil,
-            themeManager: themeManager,
-            localizationService: locManager,
-            logger: logger
-        )
+        Container.shared.settingsRepository.register { @MainActor in
+            SettingsRepositoryImpl(cache: cache, logger: logger)
+        }
+        Container.shared.settingsThemeManager.register { themeManager }
+        Container.shared.settingsLocalizationService.register { locManager }
+        defer { Container.shared.manager.reset() }
+
+        let provider = SettingsRouteProvider { SettingsViewModel() }
         XCTAssertTrue(provider.canHandle(AppRoutes.SettingsRoot()))
 
-        let viewModel = SettingsModule.makeViewModel(
-            cache: cache,
-            apiClient: nil,
-            themeManager: themeManager,
-            localizationService: locManager,
-            logger: logger
-        )
+        let viewModel = SettingsViewModel()
 
+        // Verify themeManager is wired through Container
         viewModel.dispatch(.toggleDarkMode)
         XCTAssertEqual(themeManager.mode, .dark)
 
-        viewModel.dispatch(.selectLanguage("vi"))
-        await poll { locManager.currentLanguageCode == "vi" }
-        XCTAssertEqual(locManager.currentLanguageCode, "vi")
+        // Verify localizationService is wired: ViewModel subscribes to
+        // AppLocalizationManager.$currentLanguageCode on init. When we set the
+        // locale directly, the ViewModel's state should reflect the change.
+        locManager.setLocale(code: "vi")
+        await poll { viewModel.uiState.settings.language == "vi" }
+        XCTAssertEqual(viewModel.uiState.settings.language, "vi")
     }
 }

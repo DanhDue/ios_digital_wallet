@@ -14,6 +14,7 @@ let project = Project(
                 // tuist:app-deps:begin
                 .external(name: "AppUIKit"),
                 .external(name: "Core"),
+                .external(name: "Factory"),
                 .external(name: "Framework"),
                 .external(name: "Network"),
                 .external(name: "Platform"),

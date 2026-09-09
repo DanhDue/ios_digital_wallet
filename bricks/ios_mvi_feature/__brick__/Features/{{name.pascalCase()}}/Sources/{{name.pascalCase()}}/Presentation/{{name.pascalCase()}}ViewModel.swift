@@ -1,4 +1,5 @@
 import Core
+import Factory
 import Framework
 
 /// The `{{name.pascalCase()}}` screen's `MviViewModel` (Source Spec §5.4 / §5.5).
@@ -20,25 +21,20 @@ public final class {{name.pascalCase()}}ViewModel: MviViewModel<{{name.pascalCas
     private static let loadEffect = "load"
     private static let saveEffect = "save"
 
-    private let get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase
-    private let save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase
+    @Injected(\.get{{name.pascalCase()}}UseCase) private var get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase
+    @Injected(\.save{{name.pascalCase()}}UseCase) private var save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase
 
     public init(
-        get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase,
-        save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase
+        get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase? = nil,
+        save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase? = nil
     ) {
-        self.get{{name.pascalCase()}} = get{{name.pascalCase()}}
-        self.save{{name.pascalCase()}} = save{{name.pascalCase()}}
         super.init(initialState: {{name.pascalCase()}}State(entity: .default))
-    }
-
-    /// Convenience wiring for a caller that already holds a
-    /// `{{name.pascalCase()}}Repository`.
-    public convenience init(repository: {{name.pascalCase()}}Repository) {
-        self.init(
-            get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase(repository: repository),
-            save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase(repository: repository)
-        )
+        if let get{{name.pascalCase()}} {
+            self._get{{name.pascalCase()}}.wrappedValue = get{{name.pascalCase()}}
+        }
+        if let save{{name.pascalCase()}} {
+            self._save{{name.pascalCase()}}.wrappedValue = save{{name.pascalCase()}}
+        }
     }
 
     override public func onAction(_ action: {{name.pascalCase()}}Action) {

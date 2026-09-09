@@ -17,41 +17,56 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
     private static let saveEffect = "save"
     private static let languageEffect = "changeLanguage"
 
-    private let getSettings: GetSettingsUseCase
-    private let saveSettings: SaveSettingsUseCase
-    private let getAvailableLanguages: GetAvailableLanguagesUseCase?
-    private let changeLanguage: ChangeLanguageUseCase?
-    private let checkLanguageCached: CheckLanguageCachedUseCase?
-    private let checkSettingsCached: CheckSettingsCachedUseCase?
-    private let themeManager: AppThemeManager?
-    private let localizationService: (any LocalizationService)?
+    @Injected(\.settingsGetSettingsUseCase) private var getSettings: GetSettingsUseCase
+    @Injected(\.settingsSaveSettingsUseCase) private var saveSettings: SaveSettingsUseCase
+    @Injected(\.settingsGetAvailableLanguagesUseCase) private var getAvailableLanguages: GetAvailableLanguagesUseCase
+    @Injected(\.settingsCheckLanguageCachedUseCase) private var checkLanguageCached: CheckLanguageCachedUseCase
+    @Injected(\.settingsChangeLanguage) private var changeLanguage: ChangeLanguageUseCase
+    @Injected(\.settingsThemeManager) private var themeManager: AppThemeManager?
+    @Injected(\.settingsLocalizationService) private var localizationService: (any LocalizationService)?
 
+    /// Designated initializer.
+    /// In production: call `SettingsViewModel()` to auto-resolve all dependencies via Factory.
+    /// In testing / previews: pass mock UseCases or services directly to override.
     public init(
-        getSettings: GetSettingsUseCase,
-        saveSettings: SaveSettingsUseCase,
+        getSettings: GetSettingsUseCase? = nil,
+        saveSettings: SaveSettingsUseCase? = nil,
         getAvailableLanguages: GetAvailableLanguagesUseCase? = nil,
-        changeLanguage: ChangeLanguageUseCase? = nil,
         checkLanguageCached: CheckLanguageCachedUseCase? = nil,
-        checkSettingsCached: CheckSettingsCachedUseCase? = nil,
+        changeLanguage: ChangeLanguageUseCase? = nil,
         themeManager: AppThemeManager? = nil,
         localizationService: (any LocalizationService)? = nil
     ) {
-        self.getSettings = getSettings
-        self.saveSettings = saveSettings
-        self.getAvailableLanguages = getAvailableLanguages
-        self.changeLanguage = changeLanguage
-        self.checkLanguageCached = checkLanguageCached
-        self.checkSettingsCached = checkSettingsCached
-        self.themeManager = themeManager
-        self.localizationService = localizationService
-        var initial = SettingsState(settings: .default)
-        if let appLoc = localizationService as? AppLocalizationManager {
-            initial.translations = appLoc.dynamicOverrides
-            initial.settings.language = appLoc.currentLanguageCode
-        }
-        super.init(initialState: initial)
+        super.init(initialState: SettingsState(settings: .default))
 
-        if let appLoc = localizationService as? AppLocalizationManager {
+        if let getSettings {
+            self._getSettings.wrappedValue = getSettings
+        }
+        if let saveSettings {
+            self._saveSettings.wrappedValue = saveSettings
+        }
+        if let getAvailableLanguages {
+            self._getAvailableLanguages.wrappedValue = getAvailableLanguages
+        }
+        if let checkLanguageCached {
+            self._checkLanguageCached.wrappedValue = checkLanguageCached
+        }
+        if let changeLanguage {
+            self._changeLanguage.wrappedValue = changeLanguage
+        }
+        if let themeManager {
+            self._themeManager.wrappedValue = themeManager
+        }
+        if let localizationService {
+            self._localizationService.wrappedValue = localizationService
+        }
+
+        if let appLoc = self.localizationService as? AppLocalizationManager {
+            reduce {
+                $0.translations = appLoc.dynamicOverrides
+                $0.settings.language = appLoc.currentLanguageCode
+            }
+
             appLoc.$dynamicOverrides
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] overrides in
@@ -66,36 +81,6 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
                 }
                 .store(in: &cancellables)
         }
-    }
-
-    /// Convenience wiring for a caller that already holds a `SettingsRepository`.
-    public convenience init(
-        repository: SettingsRepository,
-        themeManager: AppThemeManager? = nil,
-        localizationService: (any LocalizationService)? = nil
-    ) {
-        let checkCached = CheckLanguageCachedUseCase(repository: repository)
-        let getDynamic = GetDynamicLocalizationUseCase(
-            repository: repository,
-            localizationService: localizationService ?? NoOpLocalizationService()
-        )
-        let updatePref = UpdateUserPreferencesUseCase(repository: repository)
-        let changeLang = ChangeLanguageUseCase(
-            checkLanguageCachedUseCase: checkCached,
-            getDynamicLocalizationUseCase: getDynamic,
-            updateUserPreferencesUseCase: updatePref,
-            localizationService: localizationService ?? NoOpLocalizationService()
-        )
-        self.init(
-            getSettings: GetSettingsUseCase(repository: repository),
-            saveSettings: SaveSettingsUseCase(repository: repository),
-            getAvailableLanguages: GetAvailableLanguagesUseCase(repository: repository),
-            changeLanguage: changeLang,
-            checkLanguageCached: checkCached,
-            checkSettingsCached: CheckSettingsCachedUseCase(repository: repository),
-            themeManager: themeManager,
-            localizationService: localizationService
-        )
     }
 
     /// Resolves localized string by checking in-memory dynamic translations, localization manager,
@@ -137,7 +122,7 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
         launch(Self.loadEffect) { [weak self] in
             guard let self, !Task.isCancelled else { return }
 
-            let result = await getSettings.execute()
+            let result = await getSettings()
             guard !Task.isCancelled else { return }
             switch result {
             case let .success(entity):
@@ -151,11 +136,9 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
                 showContent()
 
                 // 1. Bootstrap gọi ngầm ko cần show loading dialog, không load tất cả translations.
-                if let getAvailableLanguages {
-                    let langsResult = await getAvailableLanguages.execute()
-                    if !Task.isCancelled, case let .success(langs) = langsResult, !langs.isEmpty {
-                        reduce { $0.settings.availableLanguages = langs }
-                    }
+                let langsResult = await getAvailableLanguages()
+                if !Task.isCancelled, case let .success(langs) = langsResult, !langs.isEmpty {
+                    reduce { $0.settings.availableLanguages = langs }
                 }
             case let .error(appError):
                 handleError(appError)
@@ -171,17 +154,12 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             $0.isSaving = true
         }
 
-        guard let changeLanguage else {
-            mutate { $0.language = code }
-            return
-        }
-
         launch(Self.languageEffect) { [weak self] in
             guard let self, !Task.isCancelled else { return }
 
             var isCached = AvailableLanguage.isDefaultOrBundled(code)
-            if !isCached, let checkLanguageCached {
-                isCached = await checkLanguageCached(code)
+            if !isCached {
+                isCached = await self.checkLanguageCached(code)
             }
 
             if isCached {
@@ -201,7 +179,7 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             }
 
             // Gọi ngầm delta update (nếu cached) hoặc call API tải translations (nếu chưa cached)
-            for await status in changeLanguage(code) {
+            for await status in self.changeLanguage(code) {
                 guard !Task.isCancelled else { return }
                 handleLanguageSyncStatus(status, code: code, isCached: isCached)
             }
@@ -263,7 +241,7 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
     private func persist(revertingTo snapshot: SettingsEntity) {
         launch(Self.saveEffect) { [weak self] in
             guard let self, !Task.isCancelled else { return }
-            let result = await saveSettings.execute(uiState.settings)
+            let result = await saveSettings(uiState.settings)
             guard !Task.isCancelled else { return }
             reduce { $0.isSaving = false }
             if case let .error(appError) = result {

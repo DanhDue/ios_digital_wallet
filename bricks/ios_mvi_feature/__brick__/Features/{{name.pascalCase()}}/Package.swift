@@ -14,8 +14,8 @@ import PackageDescription
 ///   * `Presentation/**` — `{{name.pascalCase()}}Action` / `State` / `Event`,
 ///                         `{{name.pascalCase()}}ViewModel`, `View`,
 ///                         `RouteProvider`.
-///   * `{{name.pascalCase()}}FeatureModule.swift` (top level) — the one seam that
-///                         wires `Data` → `Domain` → `Presentation`.
+///   * `{{name.pascalCase()}}Container.swift` (top level) — Factory `Container` extensions
+///                         that register `Data` → `Domain` dependencies.
 let package = Package(
     name: "{{name.pascalCase()}}",
     // `.iOS(.v16)` is the product floor. `.macOS(.v13)` is added ONLY so

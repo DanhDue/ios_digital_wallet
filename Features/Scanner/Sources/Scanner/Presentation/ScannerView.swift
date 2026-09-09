@@ -30,5 +30,5 @@ public struct ScannerView: View {
 }
 
 #Preview {
-    ScannerView(viewModel: ScannerModule.makeViewModel())
+    ScannerView(viewModel: ScannerViewModel())
 }

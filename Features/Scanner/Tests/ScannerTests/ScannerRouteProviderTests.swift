@@ -58,8 +58,8 @@ final class ScannerRouteProviderTests: XCTestCase {
         XCTAssertNotNil(resolved)
     }
 
-    func testModuleFactoryBuildsAProviderThatHandlesScannerRootOnly() {
-        let provider = ScannerModule.makeRouteProvider()
+    func testContainerRegistrationBuildsAProviderThatHandlesScannerRootOnly() {
+        let provider = ScannerRouteProvider { ScannerViewModel() }
 
         XCTAssertTrue(provider.canHandle(AppRoutes.ScannerRoot()))
         XCTAssertFalse(provider.canHandle(AppRoutes.SettingsRoot()))

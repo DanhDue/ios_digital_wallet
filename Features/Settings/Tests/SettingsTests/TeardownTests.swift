@@ -1,5 +1,6 @@
 import Combine
 import Core
+import Factory
 import XCTest
 @testable import Settings
 
@@ -73,6 +74,48 @@ final class TeardownTests: XCTestCase {
         }
 
         XCTAssertNil(weakSUT, "no retain cycle keeps the ViewModel alive")
+    }
+
+    func testDependenciesAreDeallocatedWhenViewModelDeallocates() async {
+        weak var weakSUT: SettingsViewModel?
+        weak var weakRepo: SpySettingsRepository?
+
+        await autoreleaseScope {
+            let repo = SpySettingsRepository()
+            weakRepo = repo
+            let sut = SettingsViewModel(repository: repo)
+            weakSUT = sut
+            sut.dispatch(.onAppear)
+            await poll { sut.viewState.tag == "content" }
+            sut.onClear()
+        }
+
+        XCTAssertNil(weakSUT, "ViewModel must be deallocated")
+        XCTAssertNil(weakRepo, "Dependencies must be deallocated when ViewModel deallocates")
+    }
+
+    func testInjectedTransientDependenciesAreDeallocatedWhenViewModelDeallocates() async {
+        final class Box: @unchecked Sendable {
+            weak var repo: SpySettingsRepository?
+        }
+        let box = Box()
+        weak var weakSUT: SettingsViewModel?
+
+        Container.shared.settingsRepository.register { @MainActor in
+            let repo = SpySettingsRepository()
+            box.repo = repo
+            return repo
+        }
+
+        await autoreleaseScope {
+            let sut = SettingsViewModel()
+            weakSUT = sut
+            sut.onClear()
+        }
+
+        XCTAssertNil(weakSUT, "ViewModel must be deallocated")
+        XCTAssertNil(box.repo, "Transient @Injected dependencies must be deallocated when ViewModel deallocates")
+        Container.shared.settingsRepository.reset()
     }
 
     private func autoreleaseScope(_ body: () async -> Void) async {

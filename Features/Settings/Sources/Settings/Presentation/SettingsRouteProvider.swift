@@ -5,9 +5,9 @@ import SwiftUI
 ///
 /// The `App` composition root registers one instance; the router calls
 /// `canHandle` to match `AppRoutes.SettingsRoot` and `destination(for:)` for the
-/// screen. The ViewModel is built by an injected `@MainActor` closure so this
-/// provider owns no dependencies of its own — see
-/// `SettingsModule.makeRouteProvider`.
+/// screen. The ViewModel is built by an injected `@MainActor` closure; in
+/// production this is `{ SettingsViewModel() }` which auto-resolves dependencies
+/// via `Factory.Container`.
 ///
 /// The `RouteProvider` requirements are `nonisolated`; `destination(for:)`
 /// therefore hands back a tiny `DeferredSettingsView` whose SwiftUI `body`

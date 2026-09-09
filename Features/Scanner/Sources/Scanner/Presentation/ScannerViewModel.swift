@@ -1,4 +1,5 @@
 import Core
+import Factory
 import Framework
 
 /// The Scanner screen's `MviViewModel` (Source Spec §5.4 / §5.5).
@@ -10,16 +11,13 @@ import Framework
 public final class ScannerViewModel: MviViewModel<ScannerState, ScannerAction, ScannerEvent> {
     private static let loadEffect = "load"
 
-    private let getScannerData: GetScannerDataUseCase
+    @Injected(\.getScannerDataUseCase) private var getScannerData: GetScannerDataUseCase
 
-    public init(getScannerData: GetScannerDataUseCase) {
-        self.getScannerData = getScannerData
+    public init(getScannerData: GetScannerDataUseCase? = nil) {
         super.init(initialState: ScannerState())
-    }
-
-    /// Convenience wiring for a caller that already holds a `ScannerRepository`.
-    public convenience init(repository: ScannerRepository) {
-        self.init(getScannerData: GetScannerDataUseCase(repository: repository))
+        if let getScannerData {
+            self._getScannerData.wrappedValue = getScannerData
+        }
     }
 
     override public func onAction(_ action: ScannerAction) {

@@ -16,8 +16,8 @@ import PackageDescription
 ///   * `Presentation/**` — `SettingsAction` / `SettingsState` / `SettingsEvent`,
 ///                         `SettingsViewModel` (`MviViewModel`), `SettingsView`,
 ///                         `SettingsRouteProvider`. Never references `Data` types.
-///   * `SettingsModule.swift` (top level) — the only composition point
-///                         that wires `Data` → `Domain` → `Presentation`; it is
+///   * `SettingsContainer.swift` (top level) — Factory `Container` extensions
+///                         that register `Data` → `Domain` dependencies; it is
 ///                         outside every layer folder on purpose so K2/K3/K4 do
 ///                         not scan it.
 ///

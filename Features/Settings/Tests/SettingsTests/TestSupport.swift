@@ -307,6 +307,37 @@ struct SettingsEnv {
     }
 }
 
+// MARK: - Test Extension for SettingsViewModel
+
+extension SettingsViewModel {
+    convenience init(
+        repository: any SettingsRepository,
+        themeManager: AppThemeManager? = nil,
+        localizationService: (any LocalizationService)? = nil,
+        changeLanguage: ChangeLanguageUseCase? = nil
+    ) {
+        let loc = localizationService ?? NoOpLocalizationService()
+        let resolvedChangeLanguage = changeLanguage ?? ChangeLanguageUseCase(
+            checkLanguageCachedUseCase: CheckLanguageCachedUseCase(repository: repository),
+            getDynamicLocalizationUseCase: GetDynamicLocalizationUseCase(
+                repository: repository,
+                localizationService: loc
+            ),
+            updateUserPreferencesUseCase: UpdateUserPreferencesUseCase(repository: repository),
+            localizationService: loc
+        )
+        self.init(
+            getSettings: GetSettingsUseCase(repository: repository),
+            saveSettings: SaveSettingsUseCase(repository: repository),
+            getAvailableLanguages: GetAvailableLanguagesUseCase(repository: repository),
+            checkLanguageCached: CheckLanguageCachedUseCase(repository: repository),
+            changeLanguage: resolvedChangeLanguage,
+            themeManager: themeManager,
+            localizationService: localizationService
+        )
+    }
+}
+
 // MARK: - Async helpers
 
 /// Polls `predicate` (cheap sleeps, no busy-spin) until it holds or `timeout`

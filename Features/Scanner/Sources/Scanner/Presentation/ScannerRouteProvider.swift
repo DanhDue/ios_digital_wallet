@@ -5,9 +5,9 @@ import SwiftUI
 ///
 /// The `App` composition root registers one instance; the router calls
 /// `canHandle` to match `AppRoutes.ScannerRoot` and `destination(for:)` for the
-/// screen. The ViewModel is built by an injected `@MainActor` closure so the
-/// provider owns no dependencies of its own — see
-/// `ScannerModule.makeRouteProvider`.
+/// screen. The ViewModel is built by an injected `@MainActor` closure; in
+/// production this is `{ ScannerViewModel() }` which auto-resolves dependencies
+/// via `Factory.Container`.
 ///
 /// The `RouteProvider` requirements are `nonisolated`; `destination(for:)`
 /// therefore hands back a tiny `DeferredScannerView` whose SwiftUI `body`

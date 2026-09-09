@@ -5,9 +5,9 @@ import Core
 /// never leaks into the ViewModel.
 @MainActor
 public struct GetScannerDataUseCase {
-    private let repository: ScannerRepository
+    private let repository: any ScannerRepository
 
-    public init(repository: ScannerRepository) {
+    public init(repository: any ScannerRepository) {
         self.repository = repository
     }
 

@@ -45,6 +45,17 @@ final class Spy{{name.pascalCase()}}Repository: {{name.pascalCase()}}Repository 
     }
 }
 
+// MARK: - Test Extension for {{name.pascalCase()}}ViewModel
+
+extension {{name.pascalCase()}}ViewModel {
+    convenience init(repository: any {{name.pascalCase()}}Repository) {
+        self.init(
+            get{{name.pascalCase()}}: Get{{name.pascalCase()}}UseCase(repository: repository),
+            save{{name.pascalCase()}}: Save{{name.pascalCase()}}UseCase(repository: repository)
+        )
+    }
+}
+
 // MARK: - Async helper
 
 /// Polls `predicate` (cheap sleeps, no busy-spin) until it holds or `timeout`
