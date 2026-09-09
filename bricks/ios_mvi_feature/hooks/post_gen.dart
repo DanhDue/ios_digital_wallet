@@ -42,6 +42,8 @@ Future<void> run(HookContext context) async {
     entry: '.external(name: "$name"),',
   );
 
+  await _run(context, 'python3', ['scripts/merge_localizations.py'], root);
+
   final tuistOk = await _run(context, 'tuist', ['install'], root) &&
       await _run(context, 'tuist', ['generate', '--no-open'], root);
   final buildOk =

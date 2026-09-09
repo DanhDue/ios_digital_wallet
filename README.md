@@ -92,23 +92,23 @@ existing feature), `ios_remove_feature --name X` (exact inverse of
 ├── App/                     # Thin host: @main, DI wiring, RouteProvider registration, lifecycle
 │   ├── Sources/             # <App>App.swift, RootView.swift, Composition/ (ConsoleLogger, AppComposition, …)
 │   ├── Tests/               # AppTests — Tier C composition-root / navigation integration tests
-│   └── Resources/           # Assets.xcassets (placeholder AppIcon + AccentColor), Info.plist
+│   └── Resources/           # Assets.xcassets, Info.plist, Localizable.xcstrings, backend_translations/
 ├── Packages/                # One local SPM package per module — compiler-enforced boundaries
 │   ├── Core/                # stdlib-only dependency floor: primitives, protocols, extensions
 │   ├── Framework/           # MviViewModel / MvvmViewModel / ViewState          (→ Core)
 │   ├── Network/             # APIClient, interceptors, AppEnvironment (placeholder URLs) (→ Core)
 │   ├── AppUIKit/            # design system + components                        (→ Core)
-│   ├── Platform/            # AppRoute(s), RouteProvider, AppRouter, AppEventBus (→ Core)
+│   ├── Platform/            # AppRoute(s), RouteProvider, AppRouter, AppEventBus, Translations (→ Core)
 │   └── Shell/               # tab layout + per-tab NavigationStack; feature-blind; HomeStubView
 │                            #                                                   (→ Platform, Framework, AppUIKit)
-├── Features/                # Settings (real reference), Scanner (stub) — never import each other
+├── Features/                # Settings (real reference), Scanner (stub) — decentralized Localizable.xcstrings
 ├── ArchTests/               # Standalone swift-syntax architecture gate (K1–K9) — NEVER linked into the app
 │   ├── Sources/ArchTestSupport/  # RepoRoot, SyntaxScanner, Baseline, BoundaryWhitelist
 │   ├── Tests/ArchTests/          # the K1–K9 rule bodies + support unit tests (31 tests)
 │   └── baseline.txt              # accepted-violation ledger — empty (greenfield)
 ├── bricks/                  # Mason bricks: ios_mvi_feature / ios_mvi_subfeature / ios_remove_{feature,subfeature}
 ├── quality/                 # .swiftlint.yml, .swiftformat — one config for the whole repo; run from root
-├── scripts/                 # rename_project.sh, check_module_boundaries.sh, module_boundary_whitelist.txt
+├── scripts/                 # merge_localizations.py (Slang codegen + BE sync), rename_project.sh, boundaries
 ├── Tuist/                   # Package.swift (SPM graph Tuist reads) + ProjectDescriptionHelpers/Module.swift
 ├── Tuist.swift · Project.swift · Workspace.swift   # Tuist manifests = source of truth
 ├── docs/architecture/ARCHITECTURE.md   # the authoritative architecture guide

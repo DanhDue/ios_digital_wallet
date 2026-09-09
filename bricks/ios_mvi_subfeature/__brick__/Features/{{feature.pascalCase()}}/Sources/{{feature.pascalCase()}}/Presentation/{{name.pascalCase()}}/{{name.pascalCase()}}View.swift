@@ -1,4 +1,5 @@
 import AppUIKit
+import Platform
 import SwiftUI
 
 /// The `{{name.pascalCase()}}` sub-screen (Source Spec §4.4 / §11). Thin: it
@@ -8,6 +9,7 @@ import SwiftUI
 /// See: Features/Settings/Sources/Settings/Presentation/SettingsView.swift
 public struct {{name.pascalCase()}}View: View {
     @ObservedObject private var viewModel: {{name.pascalCase()}}ViewModel
+    @Environment(\.t) private var t: Translations
 
     public init(viewModel: {{name.pascalCase()}}ViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -15,7 +17,7 @@ public struct {{name.pascalCase()}}View: View {
 
     public var body: some View {
         content
-            .navigationTitle("{{name.pascalCase()}}")
+            .navigationTitle(t("{{feature.camelCase()}}.{{name.camelCase()}}.title", default: "{{name.pascalCase()}}"))
             .onAppear { viewModel.dispatch(.onAppear) }
     }
 

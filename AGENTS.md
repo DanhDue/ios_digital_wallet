@@ -85,3 +85,8 @@ it.
    shared code; features are illustrative only.
 7. **Keep `ArchTests/` lint-clean and format-clean** — its `Sources/` and
    `Tests/` are in the lint scope.
+8. **Localization**: Features own their local `Sources/<Feature>/Resources/Localizable.xcstrings`
+   with `resources: [.process("Resources")]` in `Package.swift`. Never add strings directly
+   to `App/Resources/Localizable.xcstrings`. Run `python3 scripts/merge_localizations.py`
+   (or build the app) to regenerate Slang-style `Translations.generated.swift` accessors
+   (`t.<module>.<key>`) and synchronize backend-compatible JSONs in `App/Resources/backend_translations/`.

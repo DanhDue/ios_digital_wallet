@@ -27,8 +27,6 @@ public struct AvailableLanguage: Equatable, Sendable, Identifiable {
     public static let defaultLanguages: [AvailableLanguage] = [
         AvailableLanguage(languageCode: "en", languageName: "English (US)", isDefault: true, isActive: true),
         AvailableLanguage(languageCode: "vi", languageName: "Tiếng Việt", isDefault: false, isActive: true),
-        AvailableLanguage(languageCode: "ja", languageName: "日本語", isDefault: false, isActive: true),
-        AvailableLanguage(languageCode: "ko", languageName: "한국어", isDefault: false, isActive: true),
     ]
 
     /// Language codes bundled locally with static translations in the app binary (English and Vietnamese).

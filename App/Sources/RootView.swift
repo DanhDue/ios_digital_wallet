@@ -22,10 +22,15 @@ struct RootView: View {
     }
 
     var body: some View {
-        composition.rootView
+        let translationsInstance = Translations(manager: localizationManager)
+        return composition.rootView
             .id(localizationManager.currentLanguageCode)
             .environment(\.locale, Locale(identifier: localizationManager.currentLanguageCode))
             .environment(\.localizationManager, localizationManager)
+            .environment(\.themeManager, themeManager)
+            .environment(\.t, translationsInstance)
+            .environment(\.translations, translationsInstance)
+            .environment(\.l10n, translationsInstance)
             .environmentObject(router)
             .environmentObject(themeManager)
             .environmentObject(localizationManager)

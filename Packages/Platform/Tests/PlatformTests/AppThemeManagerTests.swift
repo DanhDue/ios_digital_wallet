@@ -89,4 +89,15 @@ final class AppThemeManagerTests: XCTestCase {
 
         XCTAssertEqual(receivedEvents.count, 0)
     }
+
+    @MainActor
+    func testEnvironmentValuesThemeManager() {
+        var values = EnvironmentValues()
+        let manager = AppThemeManager.shared
+        XCTAssertNotNil(values.themeManager)
+
+        let customManager = AppThemeManager(cache: InMemoryCacheStore(), eventBus: AppEventBus())
+        values.themeManager = customManager
+        XCTAssertTrue(values.themeManager === customManager)
+    }
 }

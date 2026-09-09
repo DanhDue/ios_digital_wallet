@@ -91,17 +91,15 @@ final class SettingsRouteProviderTests: XCTestCase {
         XCTAssertEqual(viewModel.uiState.settings.language, "vi")
     }
 
-    func testContainerRegistrationWiresThemeManagerAndLocalizationService() async {
+    func testContainerRegistrationWiresLocalizationService() async {
         let logger = SpyLogger()
         let cache = InMemoryCacheStore(logger: logger)
         let eventBus = AppEventBus()
-        let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
         let locManager = AppLocalizationManager(cache: cache, eventBus: eventBus)
 
         Container.shared.settingsRepository.register { @MainActor in
             SettingsRepositoryImpl(cache: cache, logger: logger)
         }
-        Container.shared.settingsThemeManager.register { themeManager }
         Container.shared.settingsLocalizationService.register { locManager }
         defer { Container.shared.manager.reset() }
 
@@ -110,15 +108,12 @@ final class SettingsRouteProviderTests: XCTestCase {
 
         let viewModel = SettingsViewModel()
 
-        // Verify themeManager is wired through Container
-        viewModel.dispatch(.toggleDarkMode)
-        XCTAssertEqual(themeManager.mode, .dark)
-
-        // Verify localizationService is wired: ViewModel subscribes to
-        // AppLocalizationManager.$currentLanguageCode on init. When we set the
-        // locale directly, the ViewModel's state should reflect the change.
-        locManager.setLocale(code: "vi")
+        // Verify localizationService is wired: ViewModel uses ChangeLanguageUseCase
+        // which resolves settingsLocalizationService from Container. When selecting a
+        // language, the localization manager's locale should update.
+        viewModel.dispatch(.selectLanguage("vi"))
         await poll { viewModel.uiState.settings.language == "vi" }
         XCTAssertEqual(viewModel.uiState.settings.language, "vi")
+        XCTAssertEqual(locManager.currentLanguageCode, "vi")
     }
 }

@@ -1,5 +1,6 @@
 import AppUIKit
 import Core
+import Platform
 import SwiftUI
 
 /// The `{{name.pascalCase()}}` screen (Source Spec §4.4 / §11). Deliberately
@@ -10,6 +11,7 @@ import SwiftUI
 /// See: Features/Settings/Sources/Settings/Presentation/SettingsView.swift
 public struct {{name.pascalCase()}}View: View {
     @ObservedObject private var viewModel: {{name.pascalCase()}}ViewModel
+    @Environment(\.t) private var t: Translations
 
     public init(viewModel: {{name.pascalCase()}}ViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -17,7 +19,7 @@ public struct {{name.pascalCase()}}View: View {
 
     public var body: some View {
         content
-            .navigationTitle("{{name.pascalCase()}}")
+            .navigationTitle(t("{{name.camelCase()}}.title", default: "{{name.pascalCase()}}"))
             .onAppear { viewModel.dispatch(.onAppear) }
     }
 
@@ -38,7 +40,7 @@ public struct {{name.pascalCase()}}View: View {
     private var form: some View {
         let entity = viewModel.uiState.entity
         return List {
-            Section("{{name.pascalCase()}}") {
+            Section(t("{{name.camelCase()}}.title", default: "{{name.pascalCase()}}")) {
                 Text(entity.title)
                 Button("Increment (\(entity.count))") {
                     viewModel.dispatch(.increment)

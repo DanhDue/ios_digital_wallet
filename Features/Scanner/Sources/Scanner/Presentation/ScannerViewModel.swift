@@ -16,7 +16,7 @@ public final class ScannerViewModel: MviViewModel<ScannerState, ScannerAction, S
     public init(getScannerData: GetScannerDataUseCase? = nil) {
         super.init(initialState: ScannerState())
         if let getScannerData {
-            self._getScannerData.wrappedValue = getScannerData
+            _getScannerData.wrappedValue = getScannerData
         }
     }
 

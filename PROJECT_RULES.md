@@ -37,6 +37,8 @@ short form.
   action supersedes it (Source Spec §5.5).
 - **Dumb views**: SwiftUI views take `State` in and emit `Action` out — no
   business logic.
+- **Localization**: SwiftUI views consume typed Slang-style accessors via
+  `@Environment(\.t) private var t: Translations` or `t.[feature].[key]`. No raw magic string literals in views.
 
 ## Domain layer
 
@@ -80,6 +82,8 @@ short form.
 | Repository | `[Noun]Repository` (protocol) / `[Noun]RepositoryImpl` | `Domain` / `Data` |
 | Screen | `[Feature]View : View` | `Presentation` |
 | Route provider | `[Feature]RouteProvider : RouteProvider` | `Presentation` |
+| Localization catalog | `Localizable.xcstrings` | `[Feature]/Sources/[Feature]/Resources/` |
+| Typed translations | `t.[feature].[key]` (`Translations`) | `Platform` (auto-generated) |
 
 ## Working rules
 

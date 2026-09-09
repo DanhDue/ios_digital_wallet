@@ -10,7 +10,7 @@ import SwiftUI
 /// 3. Fallback default string.
 @MainActor
 public final class AppLocalizationManager: ObservableObject, LocalizationService {
-    public static let shared = AppLocalizationManager()
+    public static var shared = AppLocalizationManager()
     public static let languageStorageKey = "app_language_code"
     public static let translationsPrefix = "translations_"
 

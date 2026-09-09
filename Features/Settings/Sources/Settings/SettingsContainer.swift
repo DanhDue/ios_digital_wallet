@@ -4,9 +4,9 @@ import Network
 import Platform
 
 private struct SilentLogger: Logger {
-    func debug(_ message: String, file: String, function: String, line: Int) {}
-    func info(_ message: String, file: String, function: String, line: Int) {}
-    func error(_ message: String, file: String, function: String, line: Int) {}
+    func debug(_: String, file _: String, function _: String, line _: Int) {}
+    func info(_: String, file _: String, function _: String, line _: Int) {}
+    func error(_: String, file _: String, function _: String, line _: Int) {}
 }
 
 public extension Container {
@@ -20,10 +20,6 @@ public extension Container {
                 )
             }
         }
-    }
-
-    var settingsThemeManager: Factory<AppThemeManager?> {
-        self { nil }
     }
 
     var settingsLocalizationService: Factory<(any LocalizationService)?> {
@@ -119,4 +115,14 @@ public extension Container {
             }
         }
     }
+}
+
+@MainActor
+final class NoOpLocalizationService: LocalizationService {
+    var currentLanguageCode: String = "en"
+    func setLocale(code: String) {
+        currentLanguageCode = code
+    }
+
+    func applyDynamicTranslations(_: [String: String], languageCode _: String) {}
 }

@@ -1,4 +1,3 @@
-import Combine
 import Core
 import Foundation
 import Framework
@@ -22,8 +21,6 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
     @Injected(\.settingsGetAvailableLanguagesUseCase) private var getAvailableLanguages: GetAvailableLanguagesUseCase
     @Injected(\.settingsCheckLanguageCachedUseCase) private var checkLanguageCached: CheckLanguageCachedUseCase
     @Injected(\.settingsChangeLanguage) private var changeLanguage: ChangeLanguageUseCase
-    @Injected(\.settingsThemeManager) private var themeManager: AppThemeManager?
-    @Injected(\.settingsLocalizationService) private var localizationService: (any LocalizationService)?
 
     /// Designated initializer.
     /// In production: call `SettingsViewModel()` to auto-resolve all dependencies via Factory.
@@ -33,66 +30,25 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
         saveSettings: SaveSettingsUseCase? = nil,
         getAvailableLanguages: GetAvailableLanguagesUseCase? = nil,
         checkLanguageCached: CheckLanguageCachedUseCase? = nil,
-        changeLanguage: ChangeLanguageUseCase? = nil,
-        themeManager: AppThemeManager? = nil,
-        localizationService: (any LocalizationService)? = nil
+        changeLanguage: ChangeLanguageUseCase? = nil
     ) {
         super.init(initialState: SettingsState(settings: .default))
 
         if let getSettings {
-            self._getSettings.wrappedValue = getSettings
+            _getSettings.wrappedValue = getSettings
         }
         if let saveSettings {
-            self._saveSettings.wrappedValue = saveSettings
+            _saveSettings.wrappedValue = saveSettings
         }
         if let getAvailableLanguages {
-            self._getAvailableLanguages.wrappedValue = getAvailableLanguages
+            _getAvailableLanguages.wrappedValue = getAvailableLanguages
         }
         if let checkLanguageCached {
-            self._checkLanguageCached.wrappedValue = checkLanguageCached
+            _checkLanguageCached.wrappedValue = checkLanguageCached
         }
         if let changeLanguage {
-            self._changeLanguage.wrappedValue = changeLanguage
+            _changeLanguage.wrappedValue = changeLanguage
         }
-        if let themeManager {
-            self._themeManager.wrappedValue = themeManager
-        }
-        if let localizationService {
-            self._localizationService.wrappedValue = localizationService
-        }
-
-        if let appLoc = self.localizationService as? AppLocalizationManager {
-            reduce {
-                $0.translations = appLoc.dynamicOverrides
-                $0.settings.language = appLoc.currentLanguageCode
-            }
-
-            appLoc.$dynamicOverrides
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] overrides in
-                    self?.reduce { $0.translations = overrides }
-                }
-                .store(in: &cancellables)
-
-            appLoc.$currentLanguageCode
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] code in
-                    self?.reduce { $0.settings.language = code }
-                }
-                .store(in: &cancellables)
-        }
-    }
-
-    /// Resolves localized string by checking in-memory dynamic translations, localization manager,
-    /// then fallback default string.
-    public func tr(_ key: String, default defaultString: String) -> String {
-        if let val = uiState.translations[key], !val.isEmpty {
-            return val
-        }
-        if let val = localizationService?.translate(key, default: defaultString), !val.isEmpty, val != key {
-            return val
-        }
-        return defaultString
     }
 
     override public func onAction(_ action: SettingsAction) {
@@ -101,7 +57,6 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             load()
         case .toggleDarkMode:
             let newMode = !uiState.settings.isDarkMode
-            themeManager?.setMode(newMode ? .dark : .light)
             mutate { $0.isDarkMode = newMode }
         case let .selectLanguage(code):
             guard !code.isEmpty else { return }
@@ -159,16 +114,13 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
 
             var isCached = AvailableLanguage.isDefaultOrBundled(code)
             if !isCached {
-                isCached = await self.checkLanguageCached(code)
+                isCached = await checkLanguageCached(code)
             }
 
             if isCached {
                 // 2. Nếu có cached => Apply luôn, không show loading dialog.
                 mutate { $0.language = code }
                 reduce {
-                    if let appLoc = self.localizationService as? AppLocalizationManager {
-                        $0.translations = appLoc.dynamicOverrides
-                    }
                     $0.isLoadingLanguage = false
                 }
             } else {
@@ -179,7 +131,7 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             }
 
             // Gọi ngầm delta update (nếu cached) hoặc call API tải translations (nếu chưa cached)
-            for await status in self.changeLanguage(code) {
+            for await status in changeLanguage(code) {
                 guard !Task.isCancelled else { return }
                 handleLanguageSyncStatus(status, code: code, isCached: isCached)
             }
@@ -202,9 +154,6 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             reduce {
                 $0.settings.language = code
                 $0.isLoadingLanguage = false
-                if let appLoc = self.localizationService as? AppLocalizationManager {
-                    $0.translations = appLoc.dynamicOverrides
-                }
             }
         case .success:
             if !isCached {
@@ -213,9 +162,6 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             }
             // Apply ngầm translations ko loading dialog sau đó (cho cả cached delta update và uncached API)
             reduce {
-                if let appLoc = self.localizationService as? AppLocalizationManager {
-                    $0.translations = appLoc.dynamicOverrides
-                }
                 $0.isLoadingLanguage = false
             }
         case let .error(appError):
@@ -250,14 +196,4 @@ public final class SettingsViewModel: MviViewModel<SettingsState, SettingsAction
             }
         }
     }
-}
-
-@MainActor
-final class NoOpLocalizationService: LocalizationService {
-    var currentLanguageCode: String = "en"
-    func setLocale(code: String) {
-        currentLanguageCode = code
-    }
-
-    func applyDynamicTranslations(_: [String: String], languageCode _: String) {}
 }

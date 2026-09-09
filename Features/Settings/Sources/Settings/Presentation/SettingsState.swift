@@ -17,8 +17,6 @@ public struct SettingsState: Equatable {
     public var appVersion: String
     /// App build number displayed in the UI.
     public var buildNumber: String
-    /// In-memory dynamic translation overrides for instant UI updates.
-    public var translations: [String: String]
 
     public init(
         settings: SettingsEntity = .default,
@@ -28,8 +26,7 @@ public struct SettingsState: Equatable {
         isLanguagePickerPresented: Bool = false,
         isDeveloperModeEnabled: Bool = false,
         appVersion: String = "1.0.0",
-        buildNumber: String = "1",
-        translations: [String: String] = [:]
+        buildNumber: String = "1"
     ) {
         self.settings = settings
         self.isLoading = isLoading
@@ -39,6 +36,5 @@ public struct SettingsState: Equatable {
         self.isDeveloperModeEnabled = isDeveloperModeEnabled
         self.appVersion = appVersion
         self.buildNumber = buildNumber
-        self.translations = translations
     }
 }

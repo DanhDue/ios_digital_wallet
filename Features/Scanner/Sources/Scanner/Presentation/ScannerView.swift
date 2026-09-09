@@ -8,7 +8,7 @@ import SwiftUI
 /// is demonstrated end to end.
 public struct ScannerView: View {
     @ObservedObject private var viewModel: ScannerViewModel
-    @Environment(\.localizationManager) private var localizationManager
+    @Environment(\.t) private var t: Translations
 
     public init(viewModel: ScannerViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -16,14 +16,11 @@ public struct ScannerView: View {
 
     public var body: some View {
         AppEmptyStateView(
-            title: localizationManager.translate("scanner.comingSoon.title", default: "Scanner coming soon"),
-            message: localizationManager.translate(
-                "scanner.comingSoon.message",
-                default: "This tab is a stub in the template — wire a real scanner into ScannerFeature."
-            ),
+            title: t.scanner.comingSoon.title,
+            message: t.scanner.comingSoon.message,
             systemImage: "qrcode.viewfinder"
         )
-        .navigationTitle(localizationManager.translate("scanner.title", default: "Scanner"))
+        .navigationTitle(t.scanner.title)
         .accessibilityIdentifier("scanner.comingSoon")
         .onAppear { viewModel.dispatch(.onAppear) }
     }
