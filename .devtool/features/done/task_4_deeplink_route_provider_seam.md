@@ -15,7 +15,7 @@ order: "a4"
 # Task 4: DeepLinkRoute & RouteProvider.deepLinks Seam
 
 ## Epic Reference
-Epic: [ios_deeplink_router](../epic/ios_deeplink_router/ios_deeplink_router.en.md)
+Epic: [ios_deeplink_router](../../epic/ios_deeplink_router/ios_deeplink_router.en.md)
 
 ## Requirement Analysis
 
@@ -121,7 +121,7 @@ Two properties matter and must be pinned by tests:
 
 ## References & Rollback
 
-- BDD scenarios captured at implementation time: [task-4-deeplink-route-provider-seam.md](../epic/ios_deeplink_router/bdd/task-4-deeplink-route-provider-seam.md)
+- BDD scenarios captured at implementation time: [task-4-deeplink-route-provider-seam.md](../../epic/ios_deeplink_router/bdd/task-4-deeplink-route-provider-seam.md)
 - Source Spec §4.3 (`DeepLinkRoute`), §4.4 (`RouteProvider` extension).
 - Existing convention: `SettingsRouteProvider.makeViewModel: @MainActor () -> …`.
 - **Rollback**: the protocol requirement has a default implementation, so
