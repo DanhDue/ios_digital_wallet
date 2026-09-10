@@ -538,7 +538,7 @@ the return value, so the host — not `Platform` — decides whether to react.
 | Guard returns `.redirect` | `.pendingGuard` | pending stored if `retainPending`; redirect stack pushed |
 | Redirect target itself not `.allow` | `.denied` | log; pending cleared (re-entrancy guard) |
 | `tabResolver` returns `nil` | proceeds | uses `router.selectedTab` |
-| `placement.tab` out of range | proceeds | `AppRouter` already ignores out-of-range indices without trapping |
+| `placement.tab` out of range | falls back to `router.selectedTab` | `AppRouter` silently no-ops on a bad index, so proceeding with it would navigate nowhere while still returning `.opened` — a false success the host cannot diagnose. Falling back keeps `.opened` honest; the bad placement is logged |
 | `drainPending()` with nothing stored | no-op | none |
 
 There is **no fallback to Home** on an unmatched link. Losing the user's current
