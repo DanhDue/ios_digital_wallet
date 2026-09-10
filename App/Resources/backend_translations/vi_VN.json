@@ -13,6 +13,11 @@
         "message": "Tab này là stub mẫu trong template — hãy tích hợp scanner thực tế vào ScannerFeature.",
         "title": "Tính năng quét mã sắp ra mắt"
       },
+      "result": {
+        "codeLabel": "Mã đã quét",
+        "errorMessage": "Đã xảy ra lỗi.",
+        "title": "Kết quả quét"
+      },
       "title": "Quét mã"
     },
     "settings": {

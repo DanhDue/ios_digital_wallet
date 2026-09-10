@@ -1,13 +1,13 @@
 ---
 id: "task_6_scanner_result_subfeature"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T20:05:31+07:00"
+completedAt: "2026-09-10T20:05:31+07:00"
 labels: ["feature", "scanner", "mason", "mvi"]
 order: "a6"
 ---
@@ -114,6 +114,7 @@ business rules — the screen displays a string.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-6-scanner-result-subfeature.md](../epic/ios_deeplink_router/bdd/task-6-scanner-result-subfeature.md)
 - Source Spec §4.11 (template deep-link map), §1.3 blocker **D6**.
 - `README.md` — "Add a feature" section documents the brick invocation.
 - `bricks/ios_remove_subfeature` — the exact inverse generator.

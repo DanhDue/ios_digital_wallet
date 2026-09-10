@@ -13,6 +13,11 @@
         "message": "This tab is a stub in the template — wire a real scanner into ScannerFeature.",
         "title": "Scanner coming soon"
       },
+      "result": {
+        "codeLabel": "Scanned code",
+        "errorMessage": "Something went wrong.",
+        "title": "Scan Result"
+      },
       "title": "Scanner"
     },
     "settings": {

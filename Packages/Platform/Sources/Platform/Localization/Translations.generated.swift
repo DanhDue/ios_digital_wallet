@@ -51,6 +51,10 @@ public struct ScannerTranslations {
         ScannerComingSoonTranslations(manager: manager)
     }
 
+    public var result: ScannerResultTranslations {
+        ScannerResultTranslations(manager: manager)
+    }
+
     public var title: String {
         manager.translate("scanner.title", default: "Scanner")
     }
@@ -73,6 +77,27 @@ public struct ScannerComingSoonTranslations {
 
     public var title: String {
         manager.translate("scanner.comingSoon.title", default: "Scanner coming soon")
+    }
+}
+
+@MainActor
+public struct ScannerResultTranslations {
+    private let manager: any LocalizationService
+
+    public init(manager: any LocalizationService) {
+        self.manager = manager
+    }
+
+    public var codeLabel: String {
+        manager.translate("scanner.result.codeLabel", default: "Scanned code")
+    }
+
+    public var errorMessage: String {
+        manager.translate("scanner.result.errorMessage", default: "Something went wrong.")
+    }
+
+    public var title: String {
+        manager.translate("scanner.result.title", default: "Scan Result")
     }
 }
 

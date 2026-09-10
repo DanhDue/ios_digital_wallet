@@ -57,12 +57,11 @@ route unmodified.
 
 ## Relevant Files & Context Pointers
 
-- `Features/Scanner/Sources/Scanner/Presentation/ScannerRouteProvider.swift` — add `deepLinks`
+- `Features/Scanner/Sources/Scanner/Presentation/ScannerRouteProvider.swift` — add `deepLinks`. This same file also declares `ScannerResultRoute` (from [Task 6](task_6_scanner_result_subfeature.md)); the route is **not** in a file of its own
 - `Features/Settings/Sources/Settings/Presentation/SettingsRouteProvider.swift` — add `deepLinks`
 - `Features/Scanner/Tests/ScannerTests/ScannerDeepLinkTests.swift` — **new**
 - `Features/Settings/Tests/SettingsTests/SettingsDeepLinkTests.swift` — **new**
 - `Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift` — the shared route values referenced
-- `Features/Scanner/Sources/Scanner/Presentation/ScannerResultRoute.swift` — from [Task 6](task_6_scanner_result_subfeature.md)
 
 ## Design Rationale
 
