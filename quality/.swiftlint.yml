@@ -14,6 +14,8 @@
 # Only real product / test code is linted.
 included:
   - ../App/Sources
+  - ../App/Tests
+  - ../App/UITests
   - ../Packages
   - ../Features
   - ../ArchTests/Sources

@@ -107,4 +107,46 @@ public enum Module {
             dependencies: [.target(name: appName)]
         )
     }
+
+    /// The host-app UI-test target (`App/UITests/**`, Task 9): drives the app
+    /// through the OS — `XCUIApplication.open(_:)` / SpringBoard — rather
+    /// than in-process, the one hop `App/Tests/**` structurally cannot cover
+    /// (`.onOpenURL` calling `deepLinkRouter.open(url:)` is the same callee a
+    /// direct unit-test call already exercises). Added to `Project.swift`
+    /// alongside `appTarget` / `appTestTarget`, and to the scheme's
+    /// `testAction` so `xcodebuild test` runs it too.
+    ///
+    /// Carries the same `DEEPLINK_SCHEME` build setting `appTarget` sets, and
+    /// republishes it into this target's own `Info.plist` under
+    /// `DeepLinkScheme` — `Bundle(for:)` inside the UI test process resolves
+    /// to *this* bundle, never the app-under-test's, so the registered scheme
+    /// has to reach the test some way that isn't a second hard-coded literal;
+    /// this is that way. `Module.deepLinkScheme` stays the single source of
+    /// truth `scripts/rename_project.sh` (Task 12) rewrites.
+    ///
+    /// - Parameters:
+    ///   - appName: the host app target name; the UI test target is
+    ///     `<appName>UITests`.
+    ///   - bundleId: bundle identifier for the UI test bundle.
+    public static func appUITestTarget(
+        appName: String,
+        bundleId: String
+    ) -> Target {
+        .target(
+            name: "\(appName)UITests",
+            destinations: destinations,
+            product: .uiTests,
+            bundleId: bundleId,
+            deploymentTargets: .iOS(iOSDeploymentTarget),
+            infoPlist: .extendingDefault(with: [
+                "DeepLinkScheme": "$(DEEPLINK_SCHEME)",
+            ]),
+            sources: ["App/UITests/**"],
+            scripts: [swiftLintScript],
+            dependencies: [.target(name: appName)],
+            settings: .settings(base: [
+                "DEEPLINK_SCHEME": .string(deepLinkScheme),
+            ])
+        )
+    }
 }

@@ -1,13 +1,13 @@
 ---
 id: "task_9_tier_c_acceptance_suite"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-11T01:52:02+07:00"
+completedAt: "2026-09-11T01:52:02+07:00"
 labels: ["testing", "tier-c", "app", "deeplink"]
 order: "a9"
 ---
@@ -39,6 +39,21 @@ acceptance evidence for the epic.
 6. Regression for **D3**: `router.navigate(to: ScannerResultRoute(code:))`
    renders the result screen rather than blank — the case that is impossible
    before [Task 1](task_1_any_app_route_erasure.md).
+
+**Scheme note (corrected before dispatch).** The scenarios above write `app://`
+as shorthand. The **registered scheme is `iosdigitalwallet://`** (`Module.swift`
+`deepLinkScheme`). For scenarios 1-6 the scheme is irrelevant — they call
+`deepLinkRouter.open(url:)` in process, and the router deliberately does not
+validate scheme or host. For the UI test below it is **not** irrelevant: iOS
+routes by registered scheme, so `simctl openurl app://settings` reaches nothing.
+Use `iosdigitalwallet://` there, and read it from the build setting rather than
+hard-coding it a second time.
+
+**No UI test target exists in this repo.** Adding one is in scope for this task
+and means a Tuist manifest change (`Project.swift` plus a factory in
+`Tuist/ProjectDescriptionHelpers/Module.swift`, alongside the existing
+`appTarget` / `appTestTarget`), and a new scheme entry so `xcodebuild test` runs
+it. Follow the existing factories rather than inventing a different shape.
 
 Scenarios 3 and 4 construct an `AppComposition` with a test-supplied guard, since
 no shipped feature gates anything (see
@@ -137,6 +152,7 @@ drop the requirement.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-9-tier-c-acceptance-suite.md](../epic/ios_deeplink_router/bdd/task-9-tier-c-acceptance-suite.md)
 - Source Spec §10 (Tier C), §13 (acceptance criteria).
 - `docs/architecture/ARCHITECTURE.md` §VI — the three-tier testing standard.
 - **Rollback**: test-only. Deleting the file removes acceptance coverage but

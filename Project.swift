@@ -28,13 +28,17 @@ let project = Project(
             appName: "iOSDigitalWallet",
             bundleId: "com.danhdue.iOSDigitalWalletTests"
         ),
+        Module.appUITestTarget(
+            appName: "iOSDigitalWallet",
+            bundleId: "com.danhdue.iOSDigitalWalletUITests"
+        ),
     ],
     schemes: [
         .scheme(
             name: "iOSDigitalWallet",
             shared: true,
             buildAction: .buildAction(targets: ["iOSDigitalWallet"]),
-            testAction: .targets(["iOSDigitalWalletTests"]),
+            testAction: .targets(["iOSDigitalWalletTests", "iOSDigitalWalletUITests"]),
             runAction: .runAction(executable: "iOSDigitalWallet")
         ),
     ]

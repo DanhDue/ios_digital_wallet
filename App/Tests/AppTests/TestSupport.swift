@@ -120,11 +120,11 @@ final class Stub401URLProtocol: URLProtocol {
     /// A fallback URL used only if a request somehow carries none.
     private static let fallbackURL = URL(fileURLWithPath: "/stub")
 
-    override class func canInit(with _: URLRequest) -> Bool {
+    override static func canInit(with _: URLRequest) -> Bool {
         true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 
@@ -211,4 +211,40 @@ func deepLinkTestURL(_ urlString: String, file: StaticString = #filePath, line: 
         return URL(fileURLWithPath: "/test-setup-failure")
     }
     return url
+}
+
+/// Builds the `NavigationPath` `AppRouter.navigate(to:inTab:)` would produce
+/// for `routes`, so a test can assert exact route **identity and payload**
+/// with a single `XCTAssertEqual(router.tabPaths[i], expectedDeepLinkPath([...]))`
+/// — `NavigationPath` has no public element subscript, but it does conform
+/// to `Equatable`, and `AnyAppRoute`'s equality (`AnyHashable(wrapped) ==
+/// AnyHashable(wrapped)`) compares both the concrete route type and its
+/// stored properties. Mirrors `PlatformTests`'s helper of the same name
+/// (restated here — separate test target, not visible from `App`'s).
+func expectedDeepLinkPath(_ routes: [any AppRoute]) -> NavigationPath {
+    var path = NavigationPath()
+    for route in routes {
+        path.append(AnyAppRoute(route))
+    }
+    return path
+}
+
+// MARK: - DeepLink flow test support (Task 9)
+
+/// Builds a fresh, fully real `AppComposition` for Tier C use: a fresh
+/// `AppEventBus` (never `.shared`, so tests never see each other's events),
+/// an in-memory `SecureCacheStore` (never touches the Keychain), and — when
+/// given — a test guard injected through `AppComposition`'s existing
+/// `deepLinkGuard:` seam (Task 8 delivered it; this does not add a new one).
+/// `tabResolver` is left at its production default (`ShellTabResolver`) so
+/// tab placement always matches the real shell layout; only the guard is
+/// ever swapped. `nil` keeps `AppComposition`'s own production default
+/// (`SessionDeepLinkGuard` with an empty redirect list).
+@MainActor
+func makeComposition(guard deepLinkGuard: (any DeepLinkGuard)? = nil) -> AppComposition {
+    AppComposition(
+        eventBus: AppEventBus(),
+        secureCacheStore: InMemorySecureCacheStore(),
+        deepLinkGuard: deepLinkGuard
+    )
 }
