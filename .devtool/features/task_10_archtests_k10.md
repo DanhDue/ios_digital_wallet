@@ -32,6 +32,14 @@ AST, not regex) and honouring `baseline.txt`.
 | **K10.1** | No two `DeepLinkRoute` declarations across the repo share a pattern string |
 | **K10.2** | Every route type declared in `Platform/Navigation/AppRoutes.swift` appears in at least one `DeepLinkRoute.build` body |
 | **K10.3** | Pattern segments are well-formed — literal `^[a-z0-9-]+$`, parameter `^:[a-z][a-zA-Z0-9]*$` |
+| **K10.4** | `App/Sources/<AppName>App.swift` contains both `.onOpenURL` and `deepLinkRouter.open` |
+
+**K10.4 is carried from Task 8's review.** The `.onOpenURL` modifier is the only
+link in the deep-link chain with no behavioural coverage — deleting it leaves
+every suite green. A source-text pin is crude, but ArchTests already reads repo
+source off disk (`AggregatorRulesTests` and `RouteLocationRulesTests` both use
+`RepoRoot.url(for:)`), so this costs about six lines and fails instantly on
+deletion. It is a regression net, not a substitute for Task 9's UI test.
 
 **K10.2 is the strict one, and deliberately so.** A route promoted to
 `AppRoutes` is by definition a cross-feature entry point; an entry point that
@@ -89,7 +97,7 @@ when this task completes.
 
 ## Definition of Done
 
-- [ ] `swift test --package-path ArchTests` passes; K10.1–K10.3 are present and
+- [ ] `swift test --package-path ArchTests` passes; K10.1–K10.4 are present and
       each has been observed failing on an injected violation (noted per rule).
 - [ ] Failure messages name the offending file and pattern — a rule that fails
       without saying where is not done.

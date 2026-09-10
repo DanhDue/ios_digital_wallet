@@ -21,6 +21,10 @@ final class EventModelTests: XCTestCase {
         _ = UserLoggedOut()
     }
 
+    func testUserLoggedInIsConstructibleAndEquatable() {
+        XCTAssertEqual(UserLoggedIn(), UserLoggedIn())
+    }
+
     func testCrossFeatureRouteValuesAreConstructibleAndEquatable() {
         XCTAssertEqual(AppRoutes.SettingsRoot(), AppRoutes.SettingsRoot())
         XCTAssertEqual(AppRoutes.ScannerRoot(), AppRoutes.ScannerRoot())

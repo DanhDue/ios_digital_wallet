@@ -38,6 +38,20 @@ public struct AppLifecycleChanged: AppEvent {
     }
 }
 
+/// A session began (e.g. sign-in succeeded). The symmetric counterpart of
+/// ``UserLoggedOut``.
+///
+/// The host subscribes to this and calls `DeepLinkRouter.drainPending()`, so
+/// a deep link a guard redirected (with `retainPending: true`) replays once
+/// this fires. **No shipped feature publishes it** — the template ships no
+/// authentication feature — so it is infrastructure with a documented
+/// publisher contract, the same wired-but-unexercised posture
+/// `AppComposition` already documents for `sessionManager` and `apiClient`.
+/// A consuming project publishes it when its own sign-in succeeds.
+public struct UserLoggedIn: AppEvent, Equatable {
+    public init() {}
+}
+
 /// The session ended (e.g. a 401 surfaced through `Core.AuthEventSink`).
 public struct UserLoggedOut: AppEvent {
     /// Why the session ended. Defaults to `.unauthorized` so every pre-existing

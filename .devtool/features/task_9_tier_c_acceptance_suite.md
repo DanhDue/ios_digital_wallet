@@ -50,8 +50,9 @@ this follows the existing pattern rather than inventing a new seam.
 
 - `App/Tests/AppTests/DeepLinkFlowTests.swift` — **new**
 - `App/Tests/AppTests/TestSupport.swift` — existing helpers; add the test guard
-- `App/Sources/Composition/AppComposition.swift` — may need a `deepLinkGuard`
-  init parameter defaulting to the production guard
+- `App/Sources/Composition/AppComposition.swift` — already exposes `deepLinkGuard:`
+  and `tabResolver:` init parameters defaulting to production (Task 8 delivered
+  them); inject the test guard through those, do not add a new seam
 - `App/Sources/Composition/DeepLinkComposition.swift` — from [Task 8](task_8_host_deeplink_wiring.md)
 - `App/Tests/AppTests/NavigationFlowTests.swift` — the existing Tier C precedent to mirror
 - `.github/workflows/ci.yml` — the job that must actually run these
@@ -99,6 +100,31 @@ teeth rather than being tautologically green.
 - [ ] `swift test --package-path ArchTests` still passes.
 - [ ] SwiftLint `--strict` and SwiftFormat `--lint` clean (`App/Tests` is in the
       lint scope).
+
+## Carried requirement from Task 8's review — close the `.onOpenURL` gap
+
+Task 8 wired `.onOpenURL { composition.deepLinkRouter.open($0) }` but **nothing
+proves SwiftUI actually calls it**. Every deep-link test to date drives
+`deepLinkRouter.open(url)` directly, which is the same *callee*; deleting the
+modifier leaves the whole suite green. That delivery hop is the one link with
+zero coverage, and closing it is this task's job.
+
+**The blocker Task 8 hit is a sandbox limitation, not a platform one.** On
+iOS 26.x `xcrun simctl openurl` raises an OS confirmation gate ("Open in
+'…'?"). Task 8 could not dismiss it because `osascript` lacks an
+Accessibility grant and `idb`/`cliclick` are absent. **XCUITest can**, because it
+drives SpringBoard through the automation session rather than the TCC-gated path:
+
+```swift
+let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+springboard.buttons["Open"].tap()
+```
+
+So add a UI test that opens a real URL through the OS and asserts the app
+navigated. This repo has no UI test target yet — adding one is in scope for this
+task. If it proves genuinely unworkable, say so explicitly with the evidence and
+fall back to the ArchTests source pin (carried to Task 10), but do not silently
+drop the requirement.
 
 ## Dependencies & Blockers
 

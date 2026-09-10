@@ -13,6 +13,13 @@ public enum Module {
     /// Platforms every target in the template ships to.
     public static let destinations: Destinations = .iOS
 
+    /// The URL scheme registered for deep links (Task 8, Source Spec §4.10):
+    /// `App/Resources/Info.plist`'s `CFBundleURLSchemes` references it as
+    /// `$(DEEPLINK_SCHEME)`. The single source of truth for the literal — no
+    /// other file in the repo may hard-code it — so `scripts/rename_project.sh`
+    /// (Task 12) has exactly one place to rewrite.
+    public static let deepLinkScheme = "iosdigitalwallet"
+
     /// Pre-build SwiftLint gate, attached to every target the factory produces
     /// (app today, local SPM packages in Phase 1) so a style violation fails the
     /// build the same way in Xcode and in CI. One config at repo root
@@ -70,7 +77,10 @@ public enum Module {
                 "App/Resources/Localizable.xcstrings",
             ],
             scripts: [mergeLocalizationsScript, swiftLintScript],
-            dependencies: dependencies
+            dependencies: dependencies,
+            settings: .settings(base: [
+                "DEEPLINK_SCHEME": .string(deepLinkScheme),
+            ])
         )
     }
 

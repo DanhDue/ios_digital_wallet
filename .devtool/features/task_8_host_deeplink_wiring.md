@@ -1,13 +1,13 @@
 ---
 id: "task_8_host_deeplink_wiring"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T21:01:28+07:00"
+completedAt: "2026-09-10T21:01:28+07:00"
 labels: ["app", "composition", "deeplink", "tuist", "infrastructure"]
 order: "a8"
 ---
@@ -133,6 +133,7 @@ route lands in — belongs.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-8-host-deeplink-wiring.md](../epic/ios_deeplink_router/bdd/task-8-host-deeplink-wiring.md)
 - Source Spec §4.8 (host wiring), §4.9 (`UserLoggedIn`), §4.10 (scheme and
   rename script).
 - `App/Sources/Composition/NetworkComposition.swift` — the existing precedent for

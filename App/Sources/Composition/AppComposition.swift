@@ -43,6 +43,14 @@ struct AppComposition {
     let sessionManager: any SessionManaging
     /// The composed, refresh-capable client — same rationale as `sessionManager`.
     let apiClient: any APIClient
+    /// The deep-link engine (Task 8): built over `router`, gated by
+    /// `deepLinkGuard`, tab-placed by `tabResolver`, with every entry of
+    /// `routeProviders` registered. `iOSDigitalWalletApp` drives it from
+    /// `.onOpenURL`.
+    let deepLinkRouter: DeepLinkRouter
+    /// Keeps the `UserLoggedIn` → `drainPending()` subscription alive for the
+    /// composition's lifetime.
+    private let deepLinkReplayObserver: DeepLinkReplayObserver
 
     /// - Parameters:
     ///   - eventBus: the shared event channel. Defaults to `AppEventBus.shared`
@@ -51,11 +59,18 @@ struct AppComposition {
     ///     2) selected on cold start.
     ///   - secureCacheStore: session-token persistence, backed by the Keychain
     ///     in production. Tests inject an in-memory fake.
+    ///   - deepLinkGuard: the deep-link engine's authentication seam. Defaults
+    ///     to `SessionDeepLinkGuard(session: sessionManager, redirectTo: [])` —
+    ///     the template ships no authentication feature. Tests inject a fake.
+    ///   - tabResolver: the deep-link engine's tab-placement seam. Defaults to
+    ///     `ShellTabResolver()`. Tests inject a fake.
     init(
         eventBus: AppEventBus = .shared,
         config: ShellConfig = ShellConfig(),
         cacheStore: (any CacheStore)? = nil,
-        secureCacheStore: SecureCacheStore = KeychainCacheStore(service: "com.iosdigitalwallet.session")
+        secureCacheStore: SecureCacheStore = KeychainCacheStore(service: "com.iosdigitalwallet.session"),
+        deepLinkGuard: (any DeepLinkGuard)? = nil,
+        tabResolver: (any TabResolver)? = nil
     ) {
         self.eventBus = eventBus
 
@@ -101,6 +116,18 @@ struct AppComposition {
         // app:route-providers:end
 
         routeProviders = providers
+
+        let resolvedDeepLinkGuard = deepLinkGuard ?? SessionDeepLinkGuard(session: sessionManager, redirectTo: [])
+        let resolvedTabResolver = tabResolver ?? ShellTabResolver()
+        let deepLinkRouter = DeepLinkComposition.makeRouter(
+            router: router,
+            providers: providers,
+            deepLinkGuard: resolvedDeepLinkGuard,
+            tabResolver: resolvedTabResolver,
+            logger: logger
+        )
+        self.deepLinkRouter = deepLinkRouter
+        deepLinkReplayObserver = DeepLinkReplayObserver(eventBus: eventBus, deepLinkRouter: deepLinkRouter)
 
         shellViewModel = ShellViewModel(config: config, router: router, eventBus: eventBus)
     }

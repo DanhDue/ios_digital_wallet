@@ -2,6 +2,7 @@ import Combine
 import Core
 import Foundation
 import Platform
+import SwiftUI
 import XCTest
 @testable import iOSDigitalWallet
 
@@ -151,4 +152,63 @@ extension URLSession {
         config.protocolClasses = [Stub401URLProtocol.self]
         return URLSession(configuration: config)
     }
+}
+
+// MARK: - DeepLink test doubles (Task 8)
+
+/// A `RouteProvider` that declares exactly the `DeepLinkRoute`s passed to it —
+/// mirrors `Packages/Platform/Tests/PlatformTests/TestSupport.swift`'s
+/// `FakeDeepLinkRouteProvider`, restated here because that type belongs to a
+/// separate test target (`PlatformTests`) and is not visible from `App`'s.
+/// `canHandle`/`destination` are never exercised by `DeepLinkRouter` — it only
+/// ever reads `deepLinks` — so both are trivial stubs.
+final class FakeDeepLinkRouteProvider: RouteProvider {
+    private let routes: [DeepLinkRoute]
+
+    init(_ routes: [DeepLinkRoute]) {
+        self.routes = routes
+    }
+
+    func canHandle(_: any AppRoute) -> Bool {
+        false
+    }
+
+    func destination(for _: any AppRoute) -> AnyView {
+        AnyView(EmptyView())
+    }
+
+    @MainActor
+    var deepLinks: [DeepLinkRoute] {
+        routes
+    }
+}
+
+/// Configurable `DeepLinkGuard` fake. Records every `evaluate` call so a test
+/// can assert an exact invocation count, mirroring `PlatformTests`'s fake of
+/// the same name (again restated here — separate test target, not visible
+/// from `App`'s).
+@MainActor
+final class FakeDeepLinkGuard: DeepLinkGuard {
+    private(set) var callCount = 0
+    var decide: (_ stack: [any AppRoute], _ requiresAuth: Bool) -> GuardDecision
+
+    init(decide: @escaping (_ stack: [any AppRoute], _ requiresAuth: Bool) -> GuardDecision = { _, _ in .allow }) {
+        self.decide = decide
+    }
+
+    func evaluate(_ stack: [any AppRoute], requiresAuth: Bool) -> GuardDecision {
+        callCount += 1
+        return decide(stack, requiresAuth)
+    }
+}
+
+/// Builds a `URL` from `urlString`, failing the current test (rather than
+/// crashing on a force-unwrap) if construction fails — mirrors
+/// `PlatformTests`'s helper of the same name.
+func deepLinkTestURL(_ urlString: String, file: StaticString = #filePath, line: UInt = #line) -> URL {
+    guard let url = URL(string: urlString) else {
+        XCTFail("test setup: '\(urlString)' must construct a URL", file: file, line: line)
+        return URL(fileURLWithPath: "/test-setup-failure")
+    }
+    return url
 }

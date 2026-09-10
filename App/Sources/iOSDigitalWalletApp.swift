@@ -16,6 +16,9 @@ struct iOSDigitalWalletApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(composition: composition)
+                .onOpenURL { url in
+                    composition.deepLinkRouter.open(url)
+                }
                 .onChange(of: scenePhase) { newPhase in
                     lifecycleObserver.handle(newPhase)
                 }
