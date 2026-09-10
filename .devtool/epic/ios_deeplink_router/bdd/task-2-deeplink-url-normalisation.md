@@ -82,11 +82,20 @@ Feature: DeepLink URL normalisation (Source Spec §4.1)
   Scenario: Raw unicode path segment is preserved
     Given "app://settings/héllo" → path ["settings", "héllo"]
 
-  Scenario: A percent-encoded slash inside a segment becomes a segment
-    boundary after decoding (documented consequence of reading the
-    already-decoded URLComponents.path, per the brief's explicit
-    instruction — not a bug)
-    Given "app://settings/lang%2Fuage" → path ["settings", "lang", "uage"]
+  # SUPERSEDED by controller Ruling 4 during review. Kept, not deleted: that this
+  # was analysed, accepted, and then overturned is the whole point of the record.
+  # Original scenario (WRONG — no longer the contract):
+  #   A percent-encoded slash inside a segment becomes a segment boundary after
+  #   decoding. Given "app://settings/lang%2Fuage" → path ["settings", "lang", "uage"]
+  # Rejected because RFC 3986 §3.3 makes %2F data inside a segment rather than a
+  # delimiter, and because /scanner/result/:code (Task 7) would then silently fail
+  # to match a QR payload containing an encoded slash — an undiagnosable no-op.
+
+  Scenario: A percent-encoded slash stays inside its segment
+    Given "app://settings/lang%2Fuage" → path ["settings", "lang/uage"]
+
+  Scenario: A Task 7 scanner payload with an encoded slash stays three segments
+    Given "app://scanner/result/a%2Fb" → path ["scanner", "result", "a/b"]
 
   # --- Case partitions ---
 

@@ -1,13 +1,13 @@
 ---
 id: "task_2_deeplink_url_normalisation"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T10:31:16+07:00"
+completedAt: "2026-09-10T10:31:16+07:00"
 labels: ["platform", "deeplink", "parsing"]
 order: "a2"
 ---
@@ -40,8 +40,8 @@ public struct DeepLink: Equatable, Sendable {
 | Custom scheme — `app://settings/language` | `URLComponents.host` is `"settings"`, path is `/language` ⇒ **host is prepended as the first segment** ⇒ `["settings", "language"]` |
 | Universal Link — `https://example.com/settings/language` | scheme is `http`/`https` ⇒ **host is discarded** ⇒ `["settings", "language"]` |
 | Trailing / doubled slashes | empty segments removed |
-| Case | segments stored lowercased for literal comparison; parameter **values** keep their original case |
-| Percent-encoding | read via `URLComponents.path` / `queryItems`, so values arrive decoded |
+| Case | segments are stored **verbatim**, never lowercased. `DeepLinkPattern` (Task 3) lowercases both sides only when comparing a **literal** segment, so a captured parameter value keeps its original case |
+| Percent-encoding | query values arrive decoded via `queryItems`. Path segments are split from `percentEncodedPath` **before** decoding, so an encoded slash (`%2F`) stays inside its segment per RFC 3986 §3.3 instead of creating a boundary |
 | Duplicate query keys | **last one wins** — never a trap |
 | Query item with no value (`?flag`) | maps to `""` |
 | `URLComponents(url:resolvingAgainstBaseURL: false)` fails | `init?` returns `nil` |
@@ -105,6 +105,7 @@ An empty normalised path (`app://`) is legal and later matches the pattern `"/"`
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-2-deeplink-url-normalisation.md](../epic/ios_deeplink_router/bdd/task-2-deeplink-url-normalisation.md)
 - Source Spec §4.1 (`DeepLink` — the normalised URL), §10 Tier A scenario table.
 - Apple: `URLComponents`, `URL` — host/path semantics differ per scheme.
 - **Rollback**: additive only. Deleting the two new files restores the previous
