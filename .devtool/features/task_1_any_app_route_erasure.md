@@ -124,6 +124,7 @@ type's doc comment.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-1-any-app-route-erasure.md](../epic/ios_deeplink_router/bdd/task-1-any-app-route-erasure.md)
 - Source Spec §4.7 (`AnyAppRoute` and the `Shell` destination collapse), §1.3
   blocker **D3**.
 - `docs/architecture/ARCHITECTURE.md` — navigation section, to be updated in

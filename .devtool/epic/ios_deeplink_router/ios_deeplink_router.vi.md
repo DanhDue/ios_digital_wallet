@@ -266,3 +266,13 @@ bước" của template.
 | 12 | [rename_project.sh URL-scheme rewrite](../../features/task_12_rename_script_scheme.md) | P5 |
 | 13 | [CI: remove the xcodebuild test→build fallback](../../features/task_13_ci_test_fallback_removal.md) | P5 |
 | 14 | [Documentation: DEEPLINK.md and updates](../../features/task_14_deeplink_docs.md) | P5 |
+
+### Lưu vết BDD
+
+Implementer của mỗi task chạy một lượt QA sinh ra Gherkin scenarios trước khi viết
+bất kỳ test nào, đúng chuẩn Tier A của repo ("Gherkin BDD scenarios → XCTest 1:1",
+`ARCHITECTURE.md` §VI). Phần phân tích đó được ghi vào một workspace tạm bị
+git-ignore và sẽ bị xoá khi epic kết thúc, nên nó được chép sang [`bdd/`](bdd/) mỗi
+khi một task hoàn tất — mỗi task một file, có link từ mục References của task. Đây
+là lưu vết lịch sử về những gì đã được cân nhắc, kể cả các partition cố ý loại bỏ;
+dạng thực thi được luôn là bộ XCTest.

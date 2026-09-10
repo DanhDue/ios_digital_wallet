@@ -270,3 +270,13 @@ runs at every step" principle.
 | 12 | [rename_project.sh URL-scheme rewrite](../../features/task_12_rename_script_scheme.md) | P5 |
 | 13 | [CI: remove the xcodebuild test→build fallback](../../features/task_13_ci_test_fallback_removal.md) | P5 |
 | 14 | [Documentation: DEEPLINK.md and updates](../../features/task_14_deeplink_docs.md) | P5 |
+
+### BDD record
+
+Each task's implementer runs a QA pass producing Gherkin scenarios before writing
+any test, per the repo's Tier A standard ("Gherkin BDD scenarios → XCTest 1:1",
+`ARCHITECTURE.md` §VI). That analysis is written to a scratch workspace that is
+git-ignored and deleted when the epic finishes, so it is copied into
+[`bdd/`](bdd/) as each task completes — one file per task, linked from the task's
+References section. It is a historical record of what was analysed, including
+partitions deliberately excluded; the executable form is always the XCTest suite.
