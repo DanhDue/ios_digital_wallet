@@ -1,13 +1,13 @@
 ---
 id: "task_3_deeplink_pattern_matching"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T10:44:27+07:00"
+completedAt: "2026-09-10T10:44:27+07:00"
 labels: ["platform", "deeplink", "parsing"]
 order: "a3"
 ---
@@ -107,6 +107,7 @@ public struct DeepLinkParams: Equatable, Sendable {
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-3-deeplink-pattern-matching.md](../epic/ios_deeplink_router/bdd/task-3-deeplink-pattern-matching.md)
 - Source Spec §4.2 (`DeepLinkPattern` / `DeepLinkParams`), §10 Tier A table.
 - **Rollback**: additive only — delete the three new files. Nothing outside the
   package references them until Task 4.
