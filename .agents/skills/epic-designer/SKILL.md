@@ -89,10 +89,10 @@ Each task file MUST adhere to this exact structure:
    ---
    ```
 2. **Title**: `# Task <number>: <Task Name>`
-3. **Epic Reference**: A link back to the parent HLD, e.g. `Epic: [<epic_name>](../epic/<epic_name>/<epic_name>.en.md)`. This is the agent's entry point back to architecture/diagram context.
+3. **Epic Reference**: A link back to the parent HLD, e.g. `Epic: [<epic_name>](../epic/<epic_name>/<epic_name>.en.md)`. This is the agent's entry point back to architecture/diagram context. **The `../` depth is correct only while the card sits directly in `.devtool/features/`** — it breaks the moment the card is archived into `.devtool/features/done/`. See "Archiving a completed task" below; the same applies to every other link in the card that points outside `.devtool/features/` (BDD records, spec sections, docs).
 4. **Requirement Analysis**: Context and requirements specific to this task.
 5. **Relevant Files & Context Pointers**: An explicit bullet list of exact file/directory paths this task reads or modifies (e.g. `packages/core/lib/utils/log.dart`). This is what lets an agent load full context in one pass instead of searching — always populate it, even if just 2-3 paths.
-6. **Design Rationale**: Architecture decisions or design patterns chosen. **Crucially, review the available skills in `.agent/skills/` and if any skill is directly applicable to this task (e.g., `api_integration`, `mobile-uiux-promax`), explicitly note it here so the developer or agent knows which skill to invoke when implementing.**
+6. **Design Rationale**: Architecture decisions or design patterns chosen. **Crucially, review the available skills in `.agents/skills/` and if any skill is directly applicable to this task (e.g., `api_integration`, `mobile-uiux-promax`), explicitly note it here so the developer or agent knows which skill to invoke when implementing.**
 7. **TDD Checklist**:
    - [ ] **RED**: Write failing tests (Unit/Widget/Integration).
    - [ ] **GREEN**: Write minimal code to pass the tests.
@@ -106,11 +106,11 @@ Each task file MUST adhere to this exact structure:
 ### Step 3: Finalize & Commit
 After the Epic Overview and all confirmed task files are written (or updated), commit them to git — mirroring the `brainstorming` skill's convention:
 
-- Read `.agent/config.yml` — check the `auto_commit` setting.
+- Read `.agents/config.yml` — check the `auto_commit` setting.
 - If `auto_commit: true` (default when absent): stage exactly the generated/modified paths (the epic's `.devtool/epic/<epic_name>/` directory and each new/modified `.devtool/features/task_*.md` file) — never `git add .` or `git add -A`, to avoid staging unrelated changes. Then commit:
   - New epic: `git commit -m "docs: generate epic and tasks for <epic_name>"`
   - Update to an existing epic: `git commit -m "docs: add tasks to epic <epic_name>"`
-- If `auto_commit: false`: skip staging and committing entirely. Print: "Skipping commit (auto_commit: false in .agent/config.yml). Files are ready for manual commit."
+- If `auto_commit: false`: skip staging and committing entirely. Print: "Skipping commit (auto_commit: false in .agents/config.yml). Files are ready for manual commit."
 
 ### Updating an Existing Epic
 When new requirements arrive for an epic already in progress, do not regenerate or renumber existing files. Append new task files continuing the existing number/`order` sequence, and append their links to the Epic Overview's Kanban Tasks Breakdown section (in both language variants).
@@ -118,6 +118,14 @@ When new requirements arrive for an epic already in progress, do not regenerate 
 **CRITICALLY**: If the new requirements change the architecture, data flow, or actors (e.g. a new task introduces a new component like `TraceInterceptor`), you MUST also update the corresponding Mermaid diagrams (Architecture graph, Use Cases flowchart, Sequence diagram) in the Epic Overview — in both language variants. Do not let the diagrams silently go stale while only the task list grows.
 
 Finally, update the Epic's **Status** field if the overall epic phase has changed. Only edit an existing task file in place if its own scope changed before implementation started. Apply Step 3 (Finalize & Commit) here too — commit the updated/new files once confirmed.
+
+### Archiving a completed task
+
+A finished card does not stay at `.devtool/features/task_<n>.md`; the board files it under `.devtool/features/done/`. **That move changes the card's directory depth, so every relative link inside it that leaves `.devtool/features/` silently breaks** — `../epic/…` must become `../../epic/…`. Nothing warns you: the file still renders, the links just go nowhere.
+
+Whenever you move a card into `done/` — or notice one that was moved without its links being fixed — repoint every such link one level deeper and verify each one resolves from the card's new location before committing. Task-to-task links (`Blocked by [Task 1](task_1_….md)`) need no change while both cards are in the same directory, but a link from an archived card to a still-active one does.
+
+Prefer committing the move and the link repointing together, so the tree never carries a card whose links are broken. This applies to the mirrored copy in any other checkout or worktree as well; fix whichever copy is on the branch that will merge.
 
 ## Red Flags - STOP and Start Over
 - Writing task files before the user has confirmed the task breakdown checkpoint.
@@ -129,6 +137,7 @@ Finally, update the Epic's **Status** field if the overall epic phase has change
 - Skipping the Mermaid diagrams in the Epic Overview.
 - Adding a task that changes architecture/data flow/actors without updating the Epic Overview's Mermaid diagrams to match.
 - A task file missing its Epic Reference link or Relevant Files section.
+- Moving a card into `.devtool/features/done/` without repointing its `../epic/…` links to `../../epic/…` (see "Archiving a completed task").
 - Mixing languages within a single task file.
 
 If you violate any of these red flags, delete the generated files and start over.

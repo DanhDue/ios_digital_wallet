@@ -80,7 +80,7 @@ This is an autonomous read-and-internalize pass, not a re-run of the interactive
 
 1. Run (note: the argument is the **slug**, not the directory name):
    ```bash
-   python3 .agent/skills/epic-implementation/resources/scripts/compute_execution_order.py <epic_slug>
+   python3 .agents/skills/epic-implementation/resources/scripts/compute_execution_order.py <epic_slug>
    ```
    Check the scan summary line it prints first (`Scanned N task_*.md files; M matched epic ...; K had no parseable frontmatter or a different epic.`). If `M` is smaller than the number of tasks you read in Phase 0, a task file has broken frontmatter or the wrong `epic:` value — fix that before going any further, or the epic will silently run short a task.
 2. Read the "Manual review advised" section of the output (if any) and cross-check it against what you read in Phase 0 — a task's own prose may recommend a later placement than its strict dependency layer allows (this happened for `logging-refactor`'s Task 7: graph-eligible right after Task 2, but its own file recommends doing it after Tasks 1-4). Adjust the flattened order by hand if the prose note should win.
@@ -97,7 +97,7 @@ These are Phase 1's closing steps, not a separate phase — they run after the s
    The trailing `develop` is **not optional**. Omit it and, if you are currently on some other branch, the epic worktree silently branches from the wrong place and every task's commit lands on top of unrelated work.
 5. Bootstrap the worktree so it can actually build:
    ```bash
-   .agent/skills/epic-implementation/resources/scripts/bootstrap_worktree.sh <worktree_path>
+   .agents/skills/epic-implementation/resources/scripts/bootstrap_worktree.sh <worktree_path>
    ```
    This can be run from any checkout of the repo — it resolves the main checkout via git's shared common dir, so being inside the new worktree (where `superpowers:using-git-worktrees` leaves you) is fine. It copies `secureFiles/` in, places platform config via `copy_secure_configurations`, and runs `melos bootstrap`. It does **not** run `pod install` — this project uses Swift Package Manager, not CocoaPods. It exits non-zero if `copy_secure_configurations` reported any missing file, rather than claiming success for a worktree that cannot build.
 6. **Verify the bootstrap actually worked** before dispatching any subagent — the script's own success message is necessary, not sufficient:
