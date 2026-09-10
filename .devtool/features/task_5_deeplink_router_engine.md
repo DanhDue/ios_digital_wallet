@@ -1,13 +1,13 @@
 ---
 id: "task_5_deeplink_router_engine"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T14:53:04+07:00"
+completedAt: "2026-09-10T14:53:04+07:00"
 labels: ["platform", "deeplink", "navigation", "architecture"]
 order: "a5"
 ---
@@ -63,8 +63,24 @@ public enum DeepLinkOutcome: Equatable { case opened, pendingGuard, denied, unma
 ```swift
 var stack = resolvedStack
 let placement = tabResolver?.placement(for: stack[0])
-let tab = placement?.tab ?? router.selectedTab
-if placement?.isTabRoot == true { stack.removeFirst() }
+
+// A tab is usable only if it indexes into `tabPaths`. Every AppRouter mutator
+// silently no-ops on a bad index, so an unusable tab would return `.opened`
+// having moved nothing. `selectedTab` is validated too: AppRouter.init does not
+// clamp `initialTab`, so the current tab can itself be out of range.
+func usable(_ candidate: Int?) -> Int? {
+    guard let candidate, router.tabPaths.indices.contains(candidate) else { return nil }
+    return candidate
+}
+
+guard let tab = usable(placement?.tab) ?? usable(router.selectedTab) else {
+    log("no usable tab"); return .denied      // degenerate router; never silently .opened
+}
+
+// `isTabRoot` is a claim about ONE tab. If that tab was rejected, the claim is
+// rejected with it — otherwise we would drop a route that is not the root of
+// the tab we actually navigate to.
+if placement?.isTabRoot == true, tab == placement?.tab { stack.removeFirst() }
 
 router.switchTab(tab)
 router.popToRoot(inTab: tab)
@@ -121,7 +137,9 @@ for route in stack { router.navigate(to: route, inTab: tab) }
       `build` returns `[]` ⇒ `.unmatched` · malformed URL ⇒ `.unmatched`.
 - [ ] **RED**: navigation — `.allow` switches to the resolved tab, pops to root,
       then pushes in declaration order · `isTabRoot` drops the first element ·
-      `placement` `nil` uses the current tab · an out-of-range tab does not trap.
+      `placement` `nil` uses the current tab · an out-of-range tab falls back to
+      the current tab and still navigates — never a silent no-op that returns
+      `.opened` having done nothing.
 - [ ] **RED**: gating — `.redirect(retainPending: true)` stores the pending link
       and pushes the redirect stack, returning `.pendingGuard` ·
       `.redirect(retainPending: false)` stores nothing · `.deny` returns
@@ -156,6 +174,7 @@ for route in stack { router.navigate(to: route, inTab: tab) }
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-5-deeplink-router-engine.md](../epic/ios_deeplink_router/bdd/task-5-deeplink-router-engine.md)
 - Source Spec §4.5 (seams), §4.6 (engine, navigation algorithm, pending,
   re-entrancy), §6 (error-handling matrix), §10 Tier A table.
 - **Rollback**: nothing outside `Platform` references the engine until
