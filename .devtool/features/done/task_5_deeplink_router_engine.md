@@ -15,7 +15,7 @@ order: "a5"
 # Task 5: DeepLinkRouter Engine, Guard/Tab Seams, Pending Replay
 
 ## Epic Reference
-Epic: [ios_deeplink_router](../epic/ios_deeplink_router/ios_deeplink_router.en.md)
+Epic: [ios_deeplink_router](../../epic/ios_deeplink_router/ios_deeplink_router.en.md)
 
 ## Requirement Analysis
 
@@ -174,7 +174,7 @@ for route in stack { router.navigate(to: route, inTab: tab) }
 
 ## References & Rollback
 
-- BDD scenarios captured at implementation time: [task-5-deeplink-router-engine.md](../epic/ios_deeplink_router/bdd/task-5-deeplink-router-engine.md)
+- BDD scenarios captured at implementation time: [task-5-deeplink-router-engine.md](../../epic/ios_deeplink_router/bdd/task-5-deeplink-router-engine.md)
 - Source Spec §4.5 (seams), §4.6 (engine, navigation algorithm, pending,
   re-entrancy), §6 (error-handling matrix), §10 Tier A table.
 - **Rollback**: nothing outside `Platform` references the engine until
