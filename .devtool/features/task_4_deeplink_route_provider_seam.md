@@ -1,13 +1,13 @@
 ---
 id: "task_4_deeplink_route_provider_seam"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T11:01:36+07:00"
+completedAt: "2026-09-10T11:01:36+07:00"
 labels: ["platform", "deeplink", "public-api"]
 order: "a4"
 ---
@@ -102,6 +102,10 @@ Two properties matter and must be pinned by tests:
 - [ ] `swift test --package-path Features/Settings` and
       `swift test --package-path Features/Scanner` pass **with no source change
       in either feature** — proving the default keeps existing providers valid.
+- [ ] `swift test --package-path Packages/Shell` passes — Shell's test target
+      declares **two** further `RouteProvider` conformances
+      (`ShellTests/TestSupport.swift`, `ShellTests/FeatureBlindRenderTests.swift`)
+      that must keep compiling on the default implementation.
 - [ ] `protocol AppRoute` is unchanged (no `Sendable` conformance added).
 - [ ] `swift test --package-path ArchTests` passes — **K5** still accepts both
       shipped `RouteProvider` conformances.
@@ -117,6 +121,7 @@ Two properties matter and must be pinned by tests:
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-4-deeplink-route-provider-seam.md](../epic/ios_deeplink_router/bdd/task-4-deeplink-route-provider-seam.md)
 - Source Spec §4.3 (`DeepLinkRoute`), §4.4 (`RouteProvider` extension).
 - Existing convention: `SettingsRouteProvider.makeViewModel: @MainActor () -> …`.
 - **Rollback**: the protocol requirement has a default implementation, so
