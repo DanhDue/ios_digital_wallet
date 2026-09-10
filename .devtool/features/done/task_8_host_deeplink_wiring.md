@@ -15,7 +15,7 @@ order: "a8"
 # Task 8: Host Wiring — Composition, onOpenURL, URL Scheme, UserLoggedIn
 
 ## Epic Reference
-Epic: [ios_deeplink_router](../epic/ios_deeplink_router/ios_deeplink_router.en.md)
+Epic: [ios_deeplink_router](../../epic/ios_deeplink_router/ios_deeplink_router.en.md)
 
 ## Requirement Analysis
 
@@ -133,7 +133,7 @@ route lands in — belongs.
 
 ## References & Rollback
 
-- BDD scenarios captured at implementation time: [task-8-host-deeplink-wiring.md](../epic/ios_deeplink_router/bdd/task-8-host-deeplink-wiring.md)
+- BDD scenarios captured at implementation time: [task-8-host-deeplink-wiring.md](../../epic/ios_deeplink_router/bdd/task-8-host-deeplink-wiring.md)
 - Source Spec §4.8 (host wiring), §4.9 (`UserLoggedIn`), §4.10 (scheme and
   rename script).
 - `App/Sources/Composition/NetworkComposition.swift` — the existing precedent for
