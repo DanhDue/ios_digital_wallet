@@ -5,11 +5,11 @@
 | Field | Value |
 |---|---|
 | **Epic name** | `ios_deeplink_router` |
-| **Status** | Ready for implementation (design approved 2026-09-10) |
+| **Status** | In progress — 1 of 14 tasks done (design approved 2026-09-10) |
 | **Target Release** | iOS Super App Template — next template revision |
 | **Source Spec** | [2026-09-10-ios-deeplink-router-design.md](2026-09-10-ios-deeplink-router-design.md) |
 | **Precedent** | `super_app_governance` 4 pillars / 8 criteria; `ios_super_app_template` §6.1 (deep link explicitly deferred) |
-| **Branch** | `epic/ios-deeplink-router` |
+| **Branch** | `epic/ios_deeplink_router` (worktree `.worktrees/ios_deeplink_router`, based on `epic/ios-deeplink-router`) |
 
 ---
 
@@ -89,7 +89,7 @@ all** — cross-feature navigation is an API surface that has never executed.
 ### 4.1 High-Level Architecture
 
 ```mermaid
-graph TD
+flowchart TD
     OS["iOS — onOpenURL"] --> APP
 
     subgraph AppLayer["App (composition root — the only multi-feature module)"]
@@ -117,7 +117,6 @@ graph TD
         SCAN["ScannerRouteProvider.deepLinks"]
     end
 
-    APP --> DLR
     APP -.installs.-> GUARD
     APP -.installs.-> TABS
     DLR --> GUARD
@@ -131,7 +130,7 @@ graph TD
     SET -.registered by App.-> DLR
     SCAN -.registered by App.-> DLR
     BUS -.UserLoggedIn.-> APP
-    APP -.drainPending.-> DLR
+    APP -->|builds · drainPending| DLR
 
     subgraph Gate["ArchTests"]
         K10["K10.1 unique patterns<br/>K10.2 AppRoutes addressable<br/>K10.3 pattern grammar"]
@@ -222,7 +221,7 @@ sequenceDiagram
 | `TabPlacement` carries `isTabRoot` | `ShellView` renders tab roots via `router.destination(for: AppRoutes.…Root())`. Without this flag, `/settings` would `popToRoot` then push `SettingsRoot` again, showing the screen twice |
 | Pending store holds exactly one link, no TTL | A deep link means "go here now"; a newer link supersedes an older one |
 | Redirect target is evaluated once | A guard that redirects its own redirect target would loop forever; a non-`.allow` result becomes `.denied` |
-| `AnyAppRoute` boxing at the `NavigationPath` boundary | `navigationDestination(for:)` matches concrete types; erasure collapses N destinations to one and ends `Shell`'s knowledge of route types (**D3**, R3, R5) |
+| `AnyAppRoute` boxing at the `NavigationPath` boundary | `navigationDestination(for:)` matches concrete types; erasure collapses N destinations to one so adding a route never edits `Shell` (**D3**, R3, R5). `Shell` still names route types in its three fixed tab-root builders — a bounded mapping that does not grow with routes; see spec §4.5 |
 | Unmatched links change nothing — no fallback to Home | Losing the user's current screen because a malformed link arrived is worse than ignoring the link |
 
 ---

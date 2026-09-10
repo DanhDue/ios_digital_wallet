@@ -106,7 +106,7 @@ API surface that has never executed in production code.
 |---|---|---|
 | **R1** | `Platform` never learns the concepts "authentication", "tab index", or any feature name | Code review + the two seam protocols in §4.5; `Platform`'s manifest already forbids the imports |
 | **R2** | A feature owns its own URL contract and can test it with no app present | `RouteProvider.deepLinks` lives in the feature package; Tier A tests per feature |
-| **R3** | `Shell` references no concrete route type after this epic | ArchTests **K6** (existing) + the single erased destination in §4.7 |
+| **R3** | Adding a route never requires editing `Shell`: no per-route `.navigationDestination`, and no route type named anywhere in `Shell` except its fixed tab-root builders | ArchTests **K6** (existing) + the single erased destination in §4.7 |
 | **R4** | `App` remains the only module that knows more than one feature | ArchTests **K6** (existing) |
 | **R5** | Adding a feature via Mason touches no other feature's files | Brick change in §8; marker regions unchanged |
 | **R6** | No new external dependency | `Package.swift` review |
@@ -242,7 +242,13 @@ public protocol TabResolver {
 
 `isTabRoot` exists because `ShellView` renders tab 1's root as
 `router.destination(for: AppRoutes.ScannerRoot())` and tab 2's as
-`AppRoutes.SettingsRoot()`. Without it, opening `/settings` would `popToRoot`
+`AppRoutes.SettingsRoot()`. **These three tab-root builders are the one place
+`Shell` still names a route type, and they stay** — they are a bounded,
+compile-time mapping of three tabs that does not grow when routes are added,
+which is what **R3** actually requires. Moving them into `ShellConfig` so `App`
+supplies them (which would also let `ShellTabResolver` be derived rather than
+restated — see §4.8) is a genuine improvement and a candidate follow-up epic; it
+is deliberately out of scope here. Without it, opening `/settings` would `popToRoot`
 (already showing Settings) and then push `SettingsRoot` again, displaying the
 screen twice. When the resolved stack's **first** element is that tab's root, the
 router drops it and pushes only the remainder.

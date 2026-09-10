@@ -5,11 +5,11 @@
 | Trường | Giá trị |
 |---|---|
 | **Epic name** | `ios_deeplink_router` |
-| **Trạng thái** | Sẵn sàng thi công (design đã duyệt 2026-09-10) |
+| **Trạng thái** | Đang thi công — xong 1/14 task (design đã duyệt 2026-09-10) |
 | **Target Release** | iOS Super App Template — bản template kế tiếp |
 | **Source Spec** | [2026-09-10-ios-deeplink-router-design.md](2026-09-10-ios-deeplink-router-design.md) |
 | **Tài liệu nền** | `super_app_governance` 4 trụ / 8 tiêu chí; `ios_super_app_template` §6.1 (deep link bị hoãn có chủ ý) |
-| **Branch** | `epic/ios-deeplink-router` |
+| **Branch** | `epic/ios_deeplink_router` (worktree `.worktrees/ios_deeplink_router`, base từ `epic/ios-deeplink-router`) |
 
 ---
 
@@ -85,7 +85,7 @@ Quan sát thứ bảy cho thấy mức rủi ro: **chưa feature nào gọi `nav
 ### 4.1 Kiến trúc tổng thể
 
 ```mermaid
-graph TD
+flowchart TD
     OS["iOS — onOpenURL"] --> APP
 
     subgraph AppLayer["App (composition root — module duy nhất biết nhiều feature)"]
@@ -113,7 +113,6 @@ graph TD
         SCAN["ScannerRouteProvider.deepLinks"]
     end
 
-    APP --> DLR
     APP -.cài đặt.-> GUARD
     APP -.cài đặt.-> TABS
     DLR --> GUARD
@@ -127,7 +126,7 @@ graph TD
     SET -.App đăng ký.-> DLR
     SCAN -.App đăng ký.-> DLR
     BUS -.UserLoggedIn.-> APP
-    APP -.drainPending.-> DLR
+    APP -->|builds · drainPending| DLR
 
     subgraph Gate["ArchTests"]
         K10["K10.1 pattern không trùng<br/>K10.2 AppRoutes phải địa chỉ được<br/>K10.3 ngữ pháp pattern"]
@@ -218,7 +217,7 @@ sequenceDiagram
 | `TabPlacement` mang cờ `isTabRoot` | `ShellView` render tab root bằng `router.destination(for: AppRoutes.…Root())`. Không có cờ này thì `/settings` sẽ `popToRoot` rồi push `SettingsRoot` lần nữa, hiện màn hai lần |
 | Pending giữ đúng một link, không TTL | Deep link nghĩa là "đi tới đó ngay"; link mới đè link cũ |
 | Đích redirect chỉ được evaluate một lần | Guard redirect chính đích redirect sẽ loop vô hạn; kết quả khác `.allow` thành `.denied` |
-| Bọc `AnyAppRoute` tại biên `NavigationPath` | `navigationDestination(for:)` khớp theo concrete type; erasure gom N destination về một và chấm dứt việc `Shell` biết kiểu route (**D3**, R3, R5) |
+| Bọc `AnyAppRoute` tại biên `NavigationPath` | `navigationDestination(for:)` khớp theo concrete type; erasure gom N destination về một nên thêm route không bao giờ phải sửa `Shell` (**D3**, R3, R5). `Shell` vẫn gọi tên route ở ba tab-root builder cố định — một ánh xạ có biên, không phình ra khi thêm route; xem spec §4.5 |
 | Link không khớp thì không đổi gì — không fallback về Home | Mất màn đang xem của user chỉ vì một link rác còn tệ hơn là bỏ qua link |
 
 ---
