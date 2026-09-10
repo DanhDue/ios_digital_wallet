@@ -1,13 +1,13 @@
 ---
 id: "task_7_feature_deeplink_declarations"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T20:17:26+07:00"
+completedAt: "2026-09-10T20:17:26+07:00"
 labels: ["feature", "deeplink", "settings", "scanner"]
 order: "a7"
 ---
@@ -115,6 +115,7 @@ route unmodified.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-7-feature-deeplink-declarations.md](../epic/ios_deeplink_router/bdd/task-7-feature-deeplink-declarations.md)
 - Source Spec §4.11 (template deep-link map), §10 Tier A per-feature section.
 - `.devtool/epic/ios_super_app_template/2026-09-02-ios-super-app-template-design.md`
   §8 — the cross-feature communication table these declarations extend.

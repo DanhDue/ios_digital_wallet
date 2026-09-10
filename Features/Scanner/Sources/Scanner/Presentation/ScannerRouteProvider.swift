@@ -48,6 +48,29 @@ public final class ScannerRouteProvider: RouteProvider {
         route is AppRoutes.ScannerRoot || route is ScannerResultRoute
     }
 
+    /// Scanner's URL contract (Task 7, Source Spec §4.11): `/scanner` and
+    /// `/scanner/result/:code`. Neither sets `requiresAuth` — the template
+    /// ships no authentication feature, so gating a link here would deny the
+    /// template's own demo link on a fresh clone (the flag's behaviour is
+    /// covered elsewhere, by Task 5's fake guard and Task 9's injected one).
+    ///
+    /// **Convention:** each `build` closure's array is the parent-to-child
+    /// stack, starting with this feature's tab-root route
+    /// (`AppRoutes.ScannerRoot()`) as its first element — the router's
+    /// `isTabRoot` de-duplication (Task 5) depends on that ordering to avoid
+    /// pushing a duplicate root screen when landing on this tab.
+    public var deepLinks: [DeepLinkRoute] {
+        [
+            DeepLinkRoute("/scanner") { _ in [AppRoutes.ScannerRoot()] },
+            DeepLinkRoute("/scanner/result/:code") { params in
+                // A pattern declaring `:code` cannot match a link missing that
+                // segment, so `params["code"]` is always present here — `?? ""`
+                // is defensive only, never a reachable fallback.
+                [AppRoutes.ScannerRoot(), ScannerResultRoute(code: params["code"] ?? "")]
+            },
+        ]
+    }
+
     public func destination(for route: any AppRoute) -> AnyView {
         if route is AppRoutes.ScannerRoot {
             return AnyView(DeferredScannerView(makeViewModel: makeViewModel))

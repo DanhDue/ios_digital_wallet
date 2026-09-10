@@ -26,6 +26,23 @@ public final class SettingsRouteProvider: RouteProvider {
         route is AppRoutes.SettingsRoot
     }
 
+    /// Settings' URL contract (Task 7, Source Spec §4.11): `/settings` only.
+    /// `requiresAuth` is not set — the template ships no authentication
+    /// feature, so gating a link here would deny the template's own demo
+    /// link on a fresh clone (the flag's behaviour is covered elsewhere, by
+    /// Task 5's fake guard and Task 9's injected one).
+    ///
+    /// **Convention:** the `build` closure's array is the parent-to-child
+    /// stack, starting with this feature's tab-root route
+    /// (`AppRoutes.SettingsRoot()`) as its first element — the router's
+    /// `isTabRoot` de-duplication (Task 5) depends on that ordering to avoid
+    /// pushing a duplicate root screen when landing on this tab.
+    public var deepLinks: [DeepLinkRoute] {
+        [
+            DeepLinkRoute("/settings") { _ in [AppRoutes.SettingsRoot()] },
+        ]
+    }
+
     public func destination(for route: any AppRoute) -> AnyView {
         guard route is AppRoutes.SettingsRoot else {
             return AnyView(EmptyView())
