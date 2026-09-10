@@ -43,6 +43,13 @@ struct NumberedRoute: AppRoute {
     let value: Int
 }
 
+/// Same shape as `NumberedRoute` (one stored `Int`) but a **distinct type**.
+/// Used to prove `AnyAppRoute` equality does not collapse two different route
+/// types that happen to carry an identical stored value.
+struct AltNumberedRoute: AppRoute {
+    let value: Int
+}
+
 /// A `RouteProvider` that handles exactly one concrete route type and records
 /// each `destination(for:)` call.
 final class MockRouteProvider<Handled: AppRoute>: RouteProvider {

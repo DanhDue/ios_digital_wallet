@@ -8,6 +8,29 @@ import XCTest
     import UIKit
 #endif
 
+/// A route with **no entry in `AppRoutes`** — the shape of every feature-private
+/// child screen a future deep link will target. Declared here (App test
+/// target), not in a Feature module: only this file registers it.
+private struct UnregisteredRoute: AppRoute {
+    let id: Int
+}
+
+/// Handles only `UnregisteredRoute`, so a nonzero call count proves resolution
+/// came from `ShellView`'s single erased `.navigationDestination`, not from
+/// the Settings/Scanner providers `AppComposition` already registers.
+private final class UnregisteredRouteProvider: RouteProvider {
+    private(set) var destinationCallCount = 0
+
+    func canHandle(_ route: any AppRoute) -> Bool {
+        route is UnregisteredRoute
+    }
+
+    func destination(for _: any AppRoute) -> AnyView {
+        destinationCallCount += 1
+        return AnyView(Text("unregistered"))
+    }
+}
+
 /// Tier C — the §4.3 end-to-end navigation flow, driven through the *composed*
 /// app (router + providers + shell built by `AppComposition`).
 @MainActor
@@ -65,6 +88,41 @@ final class NavigationFlowTests: XCTestCase {
             XCTAssertNotNil(host.view)
             XCTAssertEqual(sut.router.selectedTab, 2, "Settings is the default-selected tab")
             XCTAssertEqual(sut.router.tabPaths.count, 3, "three tabs: Home / Scanner / Settings")
+        }
+    #endif
+
+    // MARK: Blank-screen closure (blocker D3)
+
+    #if canImport(UIKit)
+        func testPushingARouteWithNoAppRoutesEntryResolvesThroughTheErasedDestinationInsteadOfBlank() {
+            // Before the AnyAppRoute erasure, ShellView named only
+            // AppRoutes.SettingsRoot / .ScannerRoot in its .navigationDestinations,
+            // so any other route — every feature-private child screen a deep link
+            // would need to reach — rendered nothing. This is the "demonstrated
+            // by a test, not by inspection" proof the task's Definition of Done
+            // requires, exercised through the fully composed app on a live host.
+            let sut = AppComposition(eventBus: AppEventBus())
+            let provider = UnregisteredRouteProvider()
+            sut.router.register(provider)
+            sut.router.navigate(to: UnregisteredRoute(id: 1), inTab: sut.router.selectedTab)
+
+            let host = UIHostingController(rootView: RootView(composition: sut))
+            // A `NavigationStack` only walks an already-populated path into its
+            // `.navigationDestination` closures once it is part of a real key
+            // window — `loadViewIfNeeded()` alone (as the sibling test above
+            // uses for a *rootless* check) is not enough here.
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            host.view.layoutIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+
+            XCTAssertNotNil(host.view)
+            XCTAssertGreaterThan(
+                provider.destinationCallCount,
+                0,
+                "a route absent from AppRoutes must resolve through the single erased destination, not render blank"
+            )
         }
     #endif
 }

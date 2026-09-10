@@ -52,6 +52,75 @@ final class AppRouterTests: XCTestCase {
         XCTAssertTrue(first.lastRoute is RouteA)
     }
 
+    // MARK: Boxing (AnyAppRoute erasure)
+
+    // `NavigationPath` conforms to `Equatable` by comparing its type-erased
+    // elements, so building an "expected" path by hand and comparing with
+    // `==` is enough to observe which concrete type `navigate` actually
+    // stores — without ever needing a getter into `NavigationPath` itself.
+
+    func testNavigateAppendsABoxedAnyAppRouteToThePath() {
+        let router = AppRouter(tabCount: 1, initialTab: 0)
+
+        router.navigate(to: RouteA(), inTab: 0)
+
+        var expected = NavigationPath()
+        expected.append(AnyAppRoute(RouteA()))
+        XCTAssertEqual(router.tabPaths[0], expected)
+    }
+
+    func testNavigateDoesNotStoreTheRawUnboxedRoute() {
+        let router = AppRouter(tabCount: 1, initialTab: 0)
+
+        router.navigate(to: RouteA(), inTab: 0)
+
+        var unboxed = NavigationPath()
+        unboxed.append(RouteA())
+        XCTAssertNotEqual(
+            router.tabPaths[0],
+            unboxed,
+            "navigate must store AnyAppRoute, not the bare route value"
+        )
+    }
+
+    func testTwoDistinctEmptyValueRouteTypesRemainOrderedAndDistinctAfterBoxing() {
+        let router = AppRouter(tabCount: 1, initialTab: 0)
+
+        router.navigate(to: RouteA(), inTab: 0)
+        router.navigate(to: RouteB(), inTab: 0)
+
+        var expected = NavigationPath()
+        expected.append(AnyAppRoute(RouteA()))
+        expected.append(AnyAppRoute(RouteB()))
+        XCTAssertEqual(router.tabPaths[0], expected)
+
+        var reversed = NavigationPath()
+        reversed.append(AnyAppRoute(RouteB()))
+        reversed.append(AnyAppRoute(RouteA()))
+        XCTAssertNotEqual(router.tabPaths[0], reversed)
+    }
+
+    func testWholesaleNavigationPathReassignmentSimulatingBackButtonPopIsPreservedByNavigate() {
+        // `ShellView.pathBinding(for:)`'s Binding setter assigns a whole new
+        // `NavigationPath` back into `tabPaths[index]` — this is exactly what
+        // SwiftUI does when the user taps Back. Simulate it directly against
+        // the router's public `tabPaths`, since the binding itself is private.
+        let router = AppRouter(tabCount: 1, initialTab: 0)
+        router.navigate(to: RouteA(), inTab: 0)
+        router.navigate(to: RouteB(), inTab: 0)
+        XCTAssertEqual(router.tabPaths[0].count, 2)
+
+        var truncated = NavigationPath()
+        truncated.append(AnyAppRoute(RouteA()))
+        router.tabPaths[0] = truncated
+
+        XCTAssertEqual(router.tabPaths[0].count, 1)
+        XCTAssertEqual(router.tabPaths[0], truncated)
+
+        router.navigate(to: RouteB(), inTab: 0)
+        XCTAssertEqual(router.tabPaths[0].count, 2, "navigate must append cleanly after a wholesale reassignment")
+    }
+
     // MARK: Boundary / equivalence
 
     func testPopOnEmptyPathIsANoOp() {

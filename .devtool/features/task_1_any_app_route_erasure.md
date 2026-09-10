@@ -1,13 +1,13 @@
 ---
 id: "task_1_any_app_route_erasure"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-10T09:32:54+07:00"
+completedAt: "2026-09-10T09:32:54+07:00"
 labels: ["architecture", "navigation", "platform", "shell", "breaking-change"]
 order: "a1"
 ---

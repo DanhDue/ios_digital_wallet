@@ -50,16 +50,15 @@ public struct ShellView: View {
         }
     }
 
-    /// A `NavigationStack` bound to `router.tabPaths[index]`, with the shared
-    /// route destinations delegated back to the router.
+    /// A `NavigationStack` bound to `router.tabPaths[index]`, with every route
+    /// destination delegated back to the router through the single erased
+    /// `AnyAppRoute` type — one `.navigationDestination` serves every route,
+    /// present and future, shared or feature-private (Source Spec §4.7).
     private func tabStack(index: Int, @ViewBuilder root: () -> some View) -> some View {
         NavigationStack(path: pathBinding(for: index)) {
             root()
-                .navigationDestination(for: AppRoutes.SettingsRoot.self) { route in
-                    router.destination(for: route)
-                }
-                .navigationDestination(for: AppRoutes.ScannerRoot.self) { route in
-                    router.destination(for: route)
+                .navigationDestination(for: AnyAppRoute.self) { boxed in
+                    router.destination(for: boxed.wrapped)
                 }
         }
     }

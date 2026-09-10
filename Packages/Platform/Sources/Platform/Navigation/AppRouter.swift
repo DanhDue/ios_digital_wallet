@@ -37,10 +37,14 @@ public final class AppRouter: ObservableObject {
     ///
     /// An out-of-range `tab` is ignored (no trap) — this refines the spec's
     /// one-liner as the task's "guard gracefully" rule requires.
+    ///
+    /// `route` is boxed into ``AnyAppRoute`` before it reaches
+    /// `NavigationPath`, so every route — regardless of concrete type —
+    /// resolves through `ShellView`'s single erased `.navigationDestination`.
     public func navigate(to route: any AppRoute, inTab tab: Int? = nil) {
         let index = tab ?? selectedTab
         guard tabPaths.indices.contains(index) else { return }
-        tabPaths[index].append(route)
+        tabPaths[index].append(AnyAppRoute(route))
     }
 
     /// Pop one level off a tab's stack. No-op on an empty stack or an
