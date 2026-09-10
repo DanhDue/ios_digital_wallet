@@ -310,8 +310,24 @@ reachable without auth" is documented for guard authors.
 ```swift
 var stack = resolvedStack
 let placement = tabResolver?.placement(for: stack[0])
-let tab = placement?.tab ?? router.selectedTab
-if placement?.isTabRoot == true { stack.removeFirst() }
+
+// A tab is usable only if it indexes into `tabPaths`. Every AppRouter mutator
+// silently no-ops on a bad index, so an unusable tab would return `.opened`
+// having moved nothing. `selectedTab` is validated too: AppRouter.init does not
+// clamp `initialTab`, so the current tab can itself be out of range.
+func usable(_ candidate: Int?) -> Int? {
+    guard let candidate, router.tabPaths.indices.contains(candidate) else { return nil }
+    return candidate
+}
+
+guard let tab = usable(placement?.tab) ?? usable(router.selectedTab) else {
+    log("no usable tab"); return .denied      // degenerate router; never silently .opened
+}
+
+// `isTabRoot` is a claim about ONE tab. If that tab was rejected, the claim is
+// rejected with it — otherwise we would drop a route that is not the root of
+// the tab we actually navigate to.
+if placement?.isTabRoot == true, tab == placement?.tab { stack.removeFirst() }
 
 router.switchTab(tab)
 router.popToRoot(inTab: tab)
