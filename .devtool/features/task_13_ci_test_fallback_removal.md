@@ -1,6 +1,6 @@
 ---
 id: "task_13_ci_test_fallback_removal"
-status: "in-progress"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
