@@ -37,6 +37,22 @@ public final class {{name.pascalCase()}}RouteProvider: RouteProvider {
         route is {{name.pascalCase()}}Root
     }
 
+    /// This feature's URL contract: `/{{name.paramCase()}}`. Does not
+    /// set `requiresAuth` — the template ships no authentication feature, so
+    /// gating this link would deny it on a fresh clone (the flag's behaviour is
+    /// covered elsewhere, by a fake guard in tests and a real one once the app
+    /// has authentication).
+    ///
+    /// **Convention:** each `build` closure's array is the parent-to-child
+    /// stack, starting with this feature's tab-root route
+    /// (`{{name.pascalCase()}}Root()`) as its first element — the router's
+    /// `isTabRoot` de-duplication depends on that ordering to avoid pushing a
+    /// duplicate root screen when landing on this tab.
+    /// See: Features/Scanner/Sources/Scanner/Presentation/ScannerRouteProvider.swift
+    public var deepLinks: [DeepLinkRoute] {
+        [DeepLinkRoute("/{{name.paramCase()}}") { _ in [{{name.pascalCase()}}Root()] }]
+    }
+
     public func destination(for route: any AppRoute) -> AnyView {
         guard route is {{name.pascalCase()}}Root else {
             return AnyView(EmptyView())

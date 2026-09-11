@@ -101,7 +101,13 @@ Future<void> run(HookContext context) async {
     ..info('  By default, `${name}Root` is private to Features/$name (ArchTests K9).')
     ..info('  Only if another feature must navigate here: move `${name}Root`')
     ..info('  into Packages/Platform/Sources/Platform/Navigation/AppRoutes.swift')
-    ..info('  as `AppRoutes.${name}Root`.');
+    ..info('  as `AppRoutes.${name}Root`.')
+    ..info('')
+    ..info('Architecture note (Deep links):')
+    ..info('  `${name}RouteProvider.deepLinks` already declares this feature\'s')
+    ..info('  root pattern (ArchTests K10) — register the provider on')
+    ..info('  `deepLinkRouter` (automatic inside the marker region) and add a')
+    ..info('  `TabPlacement` in `ShellTabResolver` if this feature owns a tab.');
 }
 
 /// Inserts [entry] into the `[begin]`..`[end]` marker region of [file], keeping

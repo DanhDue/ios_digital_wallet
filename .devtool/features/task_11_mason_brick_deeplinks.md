@@ -1,13 +1,13 @@
 ---
 id: "task_11_mason_brick_deeplinks"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-11T11:31:46+07:00"
+completedAt: "2026-09-11T11:31:46+07:00"
 labels: ["tooling", "mason", "scaffolding"]
 order: "a11"
 ---
@@ -27,17 +27,24 @@ Teach the brick's `RouteProvider` template to emit a `deepLinks` property:
 
 ```swift
 public var deepLinks: [DeepLinkRoute] {
-    [DeepLinkRoute("/{{name.snakeCase()}}") { _ in [{{name.pascalCase()}}Root()] }]
+    [DeepLinkRoute("/{{name.paramCase()}}") { _ in [{{name.pascalCase()}}Root()] }]
 }
 ```
 
-Two constraints on the generated pattern:
+Three constraints on the generated pattern:
 
-- It must satisfy **K10.3** — literal segments are `^[a-z0-9-]+$`. Confirm which
-  Mason case helper produces that for a multi-word feature name (`snakeCase`
-  yields underscores, which K10.3 rejects); use `paramCase`/kebab if that is what
-  the brick exposes, and pin the choice with a Tier B scenario using a two-word
-  feature name.
+- **`paramCase()` is mandatory, and the choice is already settled** — do not
+  re-derive it. K10.3 requires literal segments to match `^[a-z0-9-]+$`.
+  `snakeCase()` yields `payment_history` for a two-word feature, and the
+  underscore fails that rule, so a brick emitting it would generate code that
+  reddens CI the first time anyone scaffolds a multi-word feature. `paramCase()`
+  yields `payment-history` and is **already used elsewhere in this same brick**,
+  so no new helper is involved. Pin it with a Tier B scenario using a two-word
+  name.
+- **K10.6 requires the emitted pattern to be a static string literal.** The
+  template's `{{…}}` placeholder is substituted at generation time, so the
+  generated file contains a plain literal — that satisfies K10.6. Do not make the
+  generated code build its pattern from a constant or an interpolation.
 - It must satisfy **K10.1** — a newly generated feature must not collide with an
   existing pattern. The feature name is already unique across the repo, so the
   pattern inherits that uniqueness; the Tier B table records it.
@@ -83,7 +90,7 @@ substitution is stated here rather than silently dropping structure.
 | 1 | `mason make ios_mvi_feature --name Payments` | `PaymentsRouteProvider` contains `deepLinks` with pattern `/payments` |
 | 2 | `mason make ios_mvi_feature --name PaymentHistory` (two words) | pattern satisfies K10.3 — no underscore, no uppercase |
 | 3 | `swift test --package-path Features/Payments` | passes with no manual edit |
-| 4 | `swift test --package-path ArchTests` | K10.1/K10.2/K10.3 green with the generated feature present |
+| 4 | `swift test --package-path ArchTests` | **all six** K10 rules green with the generated feature present |
 | 5 | `tuist generate --no-open && xcodebuild build` | app builds with the generated feature wired |
 | 6 | `mason make ios_remove_feature --name Payments` then `git status` | tree clean; no orphan marker-region lines |
 | 7 | Brick checklist output | contains the new `deepLinkRouter` / `TabPlacement` line |
@@ -98,8 +105,27 @@ substitution is stated here rather than silently dropping structure.
       `ScannerRouteProvider.deepLinks` (same ordering, same doc-comment style).
 - [ ] No other feature's files are touched by generation or removal (invariant
       **R5**) — proven by `git status` in scenarios 6.
-- [ ] `mason-lock.json` updated if the brick version changed.
+- [ ] `brick.yaml`'s version bumped if the brick's contract changed. (**Not** `mason-lock.json` — it is gitignored at `.gitignore:22`, so it can never be part of a commit; the earlier wording was unsatisfiable.)
 - [ ] SwiftLint `--strict` clean on the generated feature before any manual edit.
+
+## Adjacent brick defects — deliberately OUT of this task's scope
+
+Running the generator for real in [Task 6](task_6_scanner_result_subfeature.md)
+surfaced two pre-existing brick defects. Neither is deep-link related, so neither
+is fixed here; both are recorded so they are not lost with this epic.
+
+1. **`ios_mvi_subfeature/hooks/post_gen.dart:43-54` writes identical untranslated
+   English into both the `en` and `vi` entries** for the auto-added title key, and
+   nothing validates against it. Every subfeature generated so far has shipped an
+   untranslated Vietnamese string, silently — the catalogue stays valid and the
+   build stays green. Affects `ios_mvi_subfeature` only.
+2. **Neither `ios_mvi_feature` nor `ios_mvi_subfeature` ships a
+   `{{name.pascalCase()}}ViewTests.swift` template**, so generated features and
+   subfeatures arrive without a view test while every hand-written feature in the
+   repo has one. Task 6 had to add one by hand.
+
+Fixing either is a separate decision: they widen a deep-link epic into brick
+maintenance. Raise them with the epic owner rather than absorbing them silently.
 
 ## Dependencies & Blockers
 
@@ -110,6 +136,7 @@ substitution is stated here rather than silently dropping structure.
 
 ## References & Rollback
 
+- Scenario analysis captured at implementation time: [task-11-mason-brick-deeplinks.md](../epic/ios_deeplink_router/bdd/task-11-mason-brick-deeplinks.md)
 - Source Spec §8 (Mason brick changes).
 - `README.md` — "Add a feature"; `bricks/ios_remove_feature` — the inverse.
 - **Rollback**: revert the template file and the hook's checklist string. Already

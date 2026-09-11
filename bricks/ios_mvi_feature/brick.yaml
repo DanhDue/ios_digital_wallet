@@ -4,7 +4,7 @@ description: >-
   (Features/<Name>/) mirroring Settings, then auto-wires
   it into the Tuist manifests. Source Spec §10 / §4.4.
 
-version: 0.1.0+1
+version: 0.2.0+1
 
 environment:
   mason: ">=0.1.0 <0.2.0"
