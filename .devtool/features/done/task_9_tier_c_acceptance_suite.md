@@ -15,7 +15,7 @@ order: "a9"
 # Task 9: Tier C End-to-End Acceptance Suite
 
 ## Epic Reference
-Epic: [ios_deeplink_router](../epic/ios_deeplink_router/ios_deeplink_router.en.md)
+Epic: [ios_deeplink_router](../../epic/ios_deeplink_router/ios_deeplink_router.en.md)
 
 ## Requirement Analysis
 
@@ -152,7 +152,7 @@ drop the requirement.
 
 ## References & Rollback
 
-- BDD scenarios captured at implementation time: [task-9-tier-c-acceptance-suite.md](../epic/ios_deeplink_router/bdd/task-9-tier-c-acceptance-suite.md)
+- BDD scenarios captured at implementation time: [task-9-tier-c-acceptance-suite.md](../../epic/ios_deeplink_router/bdd/task-9-tier-c-acceptance-suite.md)
 - Source Spec §10 (Tier C), §13 (acceptance criteria).
 - `docs/architecture/ARCHITECTURE.md` §VI — the three-tier testing standard.
 - **Rollback**: test-only. Deleting the file removes acceptance coverage but
