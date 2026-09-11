@@ -34,7 +34,7 @@ it.
   `Presentation`. Ships `Settings` (a real reference feature) and
   `Scanner` (a stub). Depend only on the infrastructure packages —
   **never on another feature**.
-- **`ArchTests/`** — standalone swift-syntax architecture gate (rules K1–K9).
+- **`ArchTests/`** — standalone swift-syntax architecture gate (rules K1–K10).
   Never linked into the app. Run with `swift test --package-path ArchTests`.
 - **`Tuist/`** — `Package.swift` (the SPM graph Tuist reads) and
   `ProjectDescriptionHelpers/Module.swift` (the shared target factory). The
@@ -71,7 +71,7 @@ it.
 
 1. **Respect the dependency graph.** A feature imports infrastructure only,
    never another feature. Cross-feature traffic goes through `Platform`
-   (`AppRoutes` / `AppEventBus`). `ArchTests` (K1–K9) + `check_module_boundaries.sh`
+   (`AppRoutes` / `AppEventBus`). `ArchTests` (K1–K10) + `check_module_boundaries.sh`
    enforce this.
 2. **Domain is pure Swift** — no `import SwiftUI` / `UIKit` / `Combine` under
    any `Sources/*/Domain/`.
@@ -96,3 +96,8 @@ it.
    - No structural collisions: a leaf string key must not share a prefix with child properties (e.g. use `settings.account.title`, never `settings.account` if `settings.account.profile` exists).
    - Only `en` and `vi` are bundled statically in binary catalogs; `ja`, `ko`, etc. are strictly remote OTA.
    - See `.agents/rules/LOCALIZATION_RULES.md` and `docs/LOCALIZATION.md` for full guidance.
+9. **Deep links**: a route promoted into `Platform.AppRoutes` must be
+   reachable by at least one `DeepLinkRoute` in some `RouteProvider.deepLinks`
+   (ArchTests K10.2) — a cross-feature entry point unreachable by URL fails
+   CI. See `docs/architecture/DEEPLINK.md` for the URL grammar, the
+   parent-chain convention, and the guard/tab-resolver contracts.

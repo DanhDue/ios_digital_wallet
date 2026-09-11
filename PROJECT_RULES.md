@@ -16,7 +16,7 @@ short form.
   ViewModel → View`.
 - **Package per module**: every infrastructure module, the `Shell`, and every
   feature is its own local SPM package. Boundaries are enforced by the compiler
-  (no declared dependency ⇒ no import), by `ArchTests` (K1–K9, swift-syntax),
+  (no declared dependency ⇒ no import), by `ArchTests` (K1–K10, swift-syntax),
   and by `scripts/check_module_boundaries.sh`.
 - **Features never depend on features.** Cross-feature communication goes
   through `Platform` — `AppRoutes` (shared route registry) and `AppEventBus`.
@@ -25,6 +25,11 @@ short form.
 - **Composition happens only in `App/`.** The host is the one place that knows
   about more than one feature; it wires DI and registers each feature's
   `RouteProvider`. `Shell` is feature-blind.
+- **A route promoted into `Platform.AppRoutes` must declare a deep-link
+  pattern.** Every `AppRoutes` member must be referenced by at least one
+  `DeepLinkRoute` in some `RouteProvider.deepLinks` (`ArchTests` K10.2) — a
+  cross-feature entry point that cannot be addressed by URL fails CI. See
+  `docs/architecture/DEEPLINK.md`.
 
 ## Presentation layer (MVI)
 

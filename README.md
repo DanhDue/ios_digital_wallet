@@ -85,6 +85,27 @@ Other bricks: `ios_mvi_subfeature --feature X --name Y` (adds a screen to an
 existing feature), `ios_remove_feature --name X` (exact inverse of
 `ios_mvi_feature`), `ios_remove_subfeature --feature X --name Y`.
 
+The generated `PaymentsRouteProvider.deepLinks` already declares this
+feature's root pattern (`/payments`) — any route later promoted into
+`Platform.AppRoutes` must be reachable by one (ArchTests K10.2). Scaffolding
+also touches localization files (`Localizable.xcstrings` catalogues,
+`backend_translations/*.json`, `Translations.generated.swift`) and
+`Tuist/Package.resolved`, not just the feature package — see
+[`docs/architecture/DEEPLINK.md`](docs/architecture/DEEPLINK.md) §2 for the
+full list. Smoke-test any registered pattern once a simulator is booted:
+
+```bash
+xcrun simctl openurl booted "iosdigitalwallet://scanner/result/DEMO123"
+```
+
+iOS 26 can raise an "Open in '…'?" confirmation the first time; tap **Open**
+in Simulator.app to proceed (a bare shell command can't dismiss it — that's
+why `App/UITests/DeepLinkOpenURLUITests.swift` drives it through
+`XCUIApplication.open(_:)` instead for CI). See
+[`docs/architecture/DEEPLINK.md`](docs/architecture/DEEPLINK.md) for the full
+grammar, the guard/tab-resolver contracts, and the obligations a consuming
+project must satisfy.
+
 ## Project layout
 
 ```text
@@ -102,9 +123,9 @@ existing feature), `ios_remove_feature --name X` (exact inverse of
 │   └── Shell/               # tab layout + per-tab NavigationStack; feature-blind; HomeStubView
 │                            #                                                   (→ Platform, Framework, AppUIKit)
 ├── Features/                # Settings (real reference), Scanner (stub) — decentralized Localizable.xcstrings
-├── ArchTests/               # Standalone swift-syntax architecture gate (K1–K9) — NEVER linked into the app
+├── ArchTests/               # Standalone swift-syntax architecture gate (K1–K10) — NEVER linked into the app
 │   ├── Sources/ArchTestSupport/  # RepoRoot, SyntaxScanner, Baseline, BoundaryWhitelist
-│   ├── Tests/ArchTests/          # the K1–K9 rule bodies + support unit tests (31 tests)
+│   ├── Tests/ArchTests/          # the K1–K10 rule bodies + support unit tests (37 tests)
 │   └── baseline.txt              # accepted-violation ledger — empty (greenfield)
 ├── bricks/                  # Mason bricks: ios_mvi_feature / ios_mvi_subfeature / ios_remove_{feature,subfeature}
 ├── quality/                 # .swiftlint.yml, .swiftformat — one config for the whole repo; run from root
@@ -126,12 +147,13 @@ Read **[`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md)*
 MVI contract (`Action` / `State` / `Event`, `dispatch → onAction → reduce`, the
 `launch(key:)` async-effect), the module map and 4-tier dependency graph,
 cross-feature communication through `Platform`, the iOS stack rationale, worked
-code examples, and the `ArchTests` **K1–K9** governance table.
+code examples, and the `ArchTests` **K1–K10** governance table.
 
 For detailed guides:
 - **[`docs/LOCALIZATION.md`](docs/LOCALIZATION.md)** — decentralized multi-module String Catalogs, Slang-style code generation (`t.<module>.<key>`), and bi-directional Backend OTA synchronization.
 - **[`docs/architecture/NETWORKING.md`](docs/architecture/NETWORKING.md)** — HTTP client, interceptors, and environment configuration.
 - **[`docs/architecture/REFRESH_TOKEN.md`](docs/architecture/REFRESH_TOKEN.md)** — atomic token refresh and 401 handling.
+- **[`docs/architecture/DEEPLINK.md`](docs/architecture/DEEPLINK.md)** — the URL grammar, declaring `deepLinks` from a feature, the guard/tab-resolver contracts, pending-link replay, and the `ArchTests` K10 rules.
 
 ## Testing tiers
 

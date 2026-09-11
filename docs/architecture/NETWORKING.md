@@ -321,7 +321,7 @@ default.
   detail: single-flight coordination, force-logout cases, `TokenRefresher`
   DIP wiring.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the module map (`Network` row), the
-  4-tier dependency graph, and `ArchTests` K1–K9 (K7 governs `Core`'s
+  4-tier dependency graph, and `ArchTests` K1–K10 (K7 governs `Core`'s
   boundary).
 - Flutter `docs/architecture/NETWORKING.md` — the cross-platform sibling this
   document mirrors.

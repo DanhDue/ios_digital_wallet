@@ -4,7 +4,7 @@
 [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md).**
 Read it for the layer rules, the MVI contract, the module map and 4-tier
 dependency graph, cross-feature communication, the iOS stack rationale, code
-examples, and the `ArchTests` K1–K9 governance table. This page is only a
+examples, and the `ArchTests` K1–K10 governance table. This page is only a
 one-paragraph orientation.
 
 ## Summary
@@ -20,6 +20,6 @@ composition root (manual constructor-injection DI, `RouteProvider` registration,
 lifecycle events) and the `Shell` builds the tab layout with a per-tab
 `NavigationStack` while staying feature-blind. The project graph is declared with
 Tuist and generated on demand (`.xcodeproj` / `.xcworkspace` are not committed);
-`ArchTests` (swift-syntax, rules K1–K9) plus
+`ArchTests` (swift-syntax, rules K1–K10) plus
 `scripts/check_module_boundaries.sh` and GitHub Actions CI keep the rules
 honest.

@@ -27,10 +27,20 @@ import Foundation
 /// **`init` is intentionally permissive, not validating.** It never rejects
 /// a malformed pattern string at runtime — `DeepLinkPattern(":")` is legal
 /// and produces a parameter named `""`. Pattern grammar (literal
-/// `^[a-z0-9-]+$`, parameter `^:[a-z][a-zA-Z0-9]*$`) is enforced once, at
-/// build time, by ArchTests K10.3 (a later task), which walks `segments` —
-/// the same parsing this type already does for every pattern — rather than
-/// re-deriving the split/classify logic itself.
+/// `^[a-z0-9-]+$`, parameter `^:[a-z][a-zA-Z0-9]*$`, ArchTests K10.3) and
+/// no-duplicate-parameter-name (K10.5) are enforced once, at build time — but
+/// **not** by calling into this type. `ArchTests` is a standalone
+/// swift-syntax package that deliberately does not depend on `Platform` (see
+/// `docs/architecture/ARCHITECTURE.md` §VI), so it cannot walk this `init`'s
+/// `segments`. Instead, `DeepLinkRulesTests.patternSegments(_:)` re-derives
+/// the identical `split(separator: "/", omittingEmptySubsequences: true)`
+/// split as a second, hand-maintained copy of this logic. **There are two
+/// copies of "how a pattern breaks into segments" with nothing keeping them
+/// in sync:** if this `init` ever changes `omittingEmptySubsequences`, or
+/// adds case-folding or percent-decoding before the split, update
+/// `ArchTests/Tests/ArchTests/DeepLinkRulesTests.swift`'s
+/// `patternSegments(_:)` too, or K10.3/K10.5 will silently drift from what
+/// this type actually does.
 ///
 /// **`Hashable`** — K10.1 forbids duplicate patterns and the router's
 /// dispatch table (Task 5) is keyed on this type, both of which want a
@@ -53,10 +63,12 @@ public struct DeepLinkPattern: Hashable, Sendable {
     }
 
     /// The pattern, parsed into an ordered list of literal and parameter
-    /// segments. This is the single place pattern strings are ever split —
-    /// `match(_:)` only ever walks this array, it never re-parses the
-    /// original string, so there is exactly one definition of "how a
-    /// pattern breaks into segments" for K10.3 to reuse.
+    /// segments. This is the single place *this type* ever splits a pattern
+    /// string — `match(_:)` only ever walks this array, it never re-parses
+    /// the original string. ArchTests' K10.3/K10.5 do **not** reuse this
+    /// array — see the `init` doc comment above for why a second,
+    /// hand-maintained copy of the split lives in `DeepLinkRulesTests`
+    /// instead.
     public let segments: [Segment]
 
     /// Parses `pattern` into `segments`. A leading `/` is optional and

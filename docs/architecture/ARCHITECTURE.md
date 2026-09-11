@@ -49,7 +49,7 @@ for every project generated from it.
   - [1. Contract + `MviViewModel` subclass](#1-contract--mviviewmodel-subclass)
   - [2. `RouteProvider` contribution](#2-routeprovider-contribution)
 - [VI. Governance](#vi-governance)
-  - [1. `ArchTests` rules K1–K9](#1-archtests-rules-k1k9)
+  - [1. `ArchTests` rules K1–K10](#1-archtests-rules-k1k10)
   - [2. `check_module_boundaries.sh`](#2-check_module_boundariessh)
   - [3. CI](#3-ci)
 - [VII. Known gaps](#vii-known-gaps)
@@ -320,7 +320,7 @@ package on a tier has an edge to a sibling on the same tier.
 | `AppUIKit` | `Packages/AppUIKit` | SwiftUI design system: `AppColor` / `AppFont` / `AppSpacing` / `AppTheme` tokens, `AppButton` / `AppTextField` / `AppLoadingView` / `AppErrorView` / `AppEmptyStateView`. Purely presentational. | `Core` — **not** `Framework` |
 | `Platform` | `Packages/Platform` | Cross-feature seam: `AppRoute` / `AppRoutes`, `RouteProvider`, per-tab `AppRouter`, `AppEvent` / `AppEventBus`. | `Core` |
 | `Features/*` | `Features/*` | One product feature each (`Data` / `Domain` / `Presentation` + `RouteProvider`). Ships `Settings` (real) + `Scanner` (stub). **Blind to every other feature.** | `Platform`, `Framework`, `AppUIKit` (+ `Network` when it does IO) |
-| `ArchTests` | `ArchTests/` | Standalone swift-syntax architecture gate (K1–K9). Never linked into the app. | `swift-syntax` |
+| `ArchTests` | `ArchTests/` | Standalone swift-syntax architecture gate (K1–K10). Never linked into the app. | `swift-syntax` |
 
 ### 3. The 4-tier dependency graph
 
@@ -417,7 +417,29 @@ the protocol in `Core` and let the other feature implement it.
 **Lifecycle event vocabulary** (`Platform.AppEvent`): `ShellTabVisibilityChanged`
 (published by `Shell` on tab change), `AppLifecycleChanged` (published by `App`'s
 lifecycle observer from `ScenePhase`), `UserLoggedOut` (published by `App` after
-`Network`'s 401 interceptor calls `Core.AuthEventSink`).
+`Network`'s 401 interceptor calls `Core.AuthEventSink`), `UserLoggedIn`
+(published by a consuming project's own sign-in flow — no shipped feature
+publishes it; see [`DEEPLINK.md`](DEEPLINK.md) §4 for the ordering obligation
+this carries with `Core.SessionManaging`).
+
+**`AnyAppRoute` — one `.navigationDestination` for every route.**
+`AppRoute` itself stays a bare `Hashable` marker protocol; every concrete
+route (`AppRoutes.SettingsRoot`, a feature-private route, a deep-linked
+child) is boxed into `Platform.AnyAppRoute` by `AppRouter.navigate(to:inTab:)`
+before it ever reaches `SwiftUI.NavigationPath`. Erasure is necessary, not
+cosmetic: `NavigationPath.append` keys `.navigationDestination(for:)`
+matching to the *concrete* static type of the appended value, so pushing
+bare route values would force `ShellView` to name one `.navigationDestination`
+per route type across every feature — the blank-screen failure recorded as
+blocker **D3** in the deep-link epic's Source Spec (any route `ShellView`
+doesn't explicitly name renders nothing). Boxing every route into the single
+type `AnyAppRoute` collapses that to one
+`.navigationDestination(for: AnyAppRoute.self)` in `ShellView`, serving every
+route — shared or feature-private, present or future — without `Shell` ever
+naming a concrete feature type. Equality/hashing delegate to
+`AnyHashable(wrapped)`, so two different route types with identical stored
+properties still compare unequal, which `NavigationPath` needs to never
+conflate distinct routes during back navigation.
 
 ### 5. Usage with Mason
 
@@ -614,7 +636,7 @@ appRouter.register(settingsProvider)
 
 ## VI. Governance
 
-### 1. `ArchTests` rules K1–K9
+### 1. `ArchTests` rules K1–K10
 
 `swift test --package-path ArchTests`. A standalone swift-syntax package,
 **never linked into the app**. `ArchTests/baseline.txt` (tolerated pre-existing
@@ -633,7 +655,19 @@ greenfield.
 | **K7** | `Core` declares no sibling infra dependency and imports none of `Framework` / `Network` / `AppUIKit` / `Platform` | manifest string check + swift-syntax import scan | **enabled** |
 | **K8** | *(no iOS analogue — Android's DFM inverted-dependency exemption; iOS has no Dynamic Feature Modules)* | — | n/a |
 | **K9** | an `AppRoute` used by more than one feature is declared in `Platform/AppRoutes`, not in a feature | swift-syntax cross-package usage scan | Phase 2 (Task 12) |
+| **K10.1** | two `DeepLinkRoute` declarations anywhere in the repo share a pattern string (duplicates would silently shadow each other at resolution time) | swift-syntax: `SyntaxScanner.deepLinkRouteCalls(in:)`, one AST pass over every `DeepLinkRoute(...)` call site under `Features/*/Sources`, `Packages/*/Sources`, `App/Sources` | **enabled** |
+| **K10.2** | an `AppRoutes` member is declared but no `DeepLinkRoute.build` body references it (a cross-feature entry point unreachable by URL) | shares `AppRouteScanning.appRouteTypeNames(in:)` with K9's traversal | **enabled** |
+| **K10.3** | a pattern segment is malformed: literal not matching `^[a-z0-9-]+$`, parameter not matching `^:[a-z][a-zA-Z0-9]*$` | swift-syntax; re-derives `DeepLinkPattern`'s `/`-split locally, since `ArchTests` does not depend on `Platform` — see `DeepLinkPattern.swift`'s doc comment for the duplication this implies | **enabled** |
+| **K10.4** | the app entry point does not wire `.onOpenURL` to `deepLinkRouter.open` | source-text pin (deliberately not AST — only a UI test can prove `.onOpenURL` is actually called at runtime) | **enabled** |
+| **K10.5** | a single pattern declares the same parameter name twice (`DeepLinkPattern.match` would resolve the repeat last-wins, silently dropping a captured value) | swift-syntax, same re-derived split as K10.3 | **enabled** |
+| **K10.6** | a `DeepLinkRoute(...)` call's first argument is not a static string literal (an interpolated / `let`-bound / parameter-passed pattern would otherwise vanish from K10.1, K10.3 and K10.5 simultaneously) | swift-syntax: `SyntaxScanner.unresolvedDeepLinkRouteCalls(in:)` | **enabled** |
 | **AppUIKit ∌ Framework** | `AppUIKit`'s manifest declares no `Framework` dependency; no `AppUIKit` source imports `Framework` | manifest string check + import scan | **enabled** |
+
+**K10** governs `DeepLinkRoute` declarations, scattered across every feature
+package. See [`DEEPLINK.md`](DEEPLINK.md) §7 for the full rationale
+(including the two hand-maintained pattern-splitting copies K10.3/K10.5
+depend on) and `ArchTests/Tests/ArchTests/DeepLinkRulesTests.swift` for the
+rule bodies.
 
 **K2 / K5 limitation.** Without a full type-resolution pass, K2's "reference"
 check is identifier-substring matching (it can miss a reference hidden behind a
@@ -676,7 +710,7 @@ The pinned toolchain (`tuist`, `swiftlint`, `swiftformat`) is installed via
 
 | Gap | State | Note |
 |---|---|---|
-| **Deep-link / state restoration** | architecture ready, not built | `AppRouter` holds one `NavigationPath` per tab, which is `Codable`-friendly, but the template only pushes / pops per tab. Serializing and rehydrating the paths across launches is left to the consuming project. |
+| **State restoration** | architecture ready, not built | `AppRouter` holds one `NavigationPath` per tab, which is `Codable`-friendly, but the template only pushes / pops per tab at runtime. Serializing and rehydrating the paths across process launches — so a killed-and-relaunched app resumes exactly where the user left off — is left to the consuming project. (Deep linking itself — resolving a `URL` into a pushed stack on cold or warm launch — is built; see [`DEEPLINK.md`](DEEPLINK.md).) |
 | **No Dynamic Feature Module equivalent** | out of scope (Non-Goal) | iOS has no on-demand install-time delivery like Android DFM. The template is a single monolithic app; every feature package is linked at build time. `ArchTests` K8 has no iOS analogue. |
 | **App Extensions** (Widget, Share, Watch) | out of scope | The layering supports it — an extension target would depend on `Core` / a feature's `Domain` — but none is built. |
 | **`epic-implementation` skill is Flutter-flavoured** | verification is remapped | That skill assumes `melos` / `.dart_tool`. For this repo, bootstrap and verification use `tuist generate` + `xcodebuild` + `swift test --package-path <pkg>`; the Testing Standard's Tier A/B/C and BDD → TDD → RED → GREEN discipline still apply, targeting Swift / XCTest. |
@@ -692,7 +726,8 @@ The pinned toolchain (`tuist`, `swiftlint`, `swiftformat`) is installed via
 - [`../../AGENTS.md`](../../AGENTS.md) — project context for tooling.
 - [`NETWORKING.md`](NETWORKING.md) — `Network` package architecture, the decentralised `<Name>Uri` / `<Name>Endpoints` pattern, `BaseResponseObject<T>`.
 - [`REFRESH_TOKEN.md`](REFRESH_TOKEN.md) — the refresh-token subsystem: single-flight coordination, the force-logout ladder, `TokenRefresher` DIP wiring.
-- `ArchTests/Tests/ArchTests/` — the K1–K9 rule bodies (`LayerRulesTests`, `DeclRulesTests`, `HostRulesTests`).
+- [`DEEPLINK.md`](DEEPLINK.md) — the deep-link subsystem: the URL grammar, declaring `deepLinks` from a feature, the guard/tab-resolver contracts and their consumer obligations, pending-link replay, and `ArchTests` K10.
+- `ArchTests/Tests/ArchTests/` — the K1–K10 rule bodies (`LayerRulesTests`, `DeclRulesTests`, `HostRulesTests`, `DeepLinkRulesTests`).
 - `quality/.swiftlint.yml`, `quality/.swiftformat` — style configuration.
 
 ### Epic design
