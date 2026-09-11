@@ -1,13 +1,13 @@
 ---
 id: "task_13_ci_test_fallback_removal"
-status: "todo"
+status: "in-progress"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-11T13:05:08+07:00"
+completedAt: "2026-09-11T13:05:08+07:00"
 labels: ["ci", "governance", "infrastructure"]
 order: "a13"
 ---
@@ -97,6 +97,39 @@ repo's Tier B standard; the substitution is stated rather than dropped.
       `needs: [quality, packages]`.
 - [ ] The obsolete Phase 0 comment is removed rather than left misleading.
 
+## Carried notes from Task 9's review — read before editing the workflow
+
+1. **`-workspace` is not optional in this repo.** `xcodebuild test -scheme iOSDigitalWallet`
+   without `-workspace iOSDigitalWallet.xcworkspace` is unreliable here (a
+   pre-existing implicit-dependency resolution problem, not caused by this epic).
+   The current `ci.yml` already passes it — **keep it**. Removing the fallback must
+   not quietly also drop the flag.
+2. **The UI tests share the scheme's `testAction`.** Task 9 added
+   `App/UITests` and wired it into the same scheme, so once the fallback is gone a
+   single XCUITest flake reds the whole `app` job. That may well be what you want —
+   an acceptance test that can be ignored is worthless — but it is a deliberate
+   choice, not an accident. State in the report which you chose and why.
+3. **The `iPhone 16` pin is already brittle.** `ci.yml` hard-codes
+   `name=iPhone 16,OS=latest`; that device does not exist on this machine
+   (available: iPhone 17 Pro / 17 / 16e / Air) and may or may not exist on the
+   `macos-15` runner image. With the fallback in place a bad destination silently
+   degraded to a build; without it, the job goes red for a reason that has nothing
+   to do with the code. Prefer a destination that cannot vanish — e.g. selecting by
+   platform rather than by device name — over pinning a model.
+
+## Definition of Done — CI-proof item, restated honestly
+
+The original DoD asked for "a PR with an intentionally failing app test produced a
+**red** `app` job — run URL recorded". That requires pushing this branch to
+`origin` and opening a pull request, which is an outward-facing action outside an
+implementer's remit. Split it:
+
+- **Achievable locally, and required:** run the exact command the workflow will
+  run, against a deliberately broken app test, and show it exits non-zero — then
+  revert. This proves the command itself fails rather than degrading.
+- **Requires a push, and is the epic owner's call:** the GitHub run. Record it as
+  outstanding rather than claiming it; do not push.
+
 ## Dependencies & Blockers
 
 - Blocked by nothing. This task has no code dependency on any other.
@@ -109,6 +142,7 @@ repo's Tier B standard; the substitution is stated rather than dropped.
 
 ## References & Rollback
 
+- Failure analysis captured at implementation time: [task-13-ci-test-fallback-removal.md](../epic/ios_deeplink_router/bdd/task-13-ci-test-fallback-removal.md)
 - Source Spec §9 (CI hardening), §1.2 criterion 4.2 scorecard row.
 - `.github/workflows/ci.yml` — current job definitions.
 - **Rollback**: restore the `if/else` block. Note in the PR that doing so

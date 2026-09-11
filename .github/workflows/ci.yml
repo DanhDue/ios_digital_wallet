@@ -77,24 +77,48 @@ jobs:
       - name: Generate the Xcode project
         run: tuist generate --no-open
 
-      # There are no test targets yet (Phase 0). Try `xcodebuild test`; if it
-      # fails only because there is nothing to test, fall back to a plain build.
-      # Real test targets arrive in Phase 1.
+      # App/Tests/AppTests and App/UITests are real test targets wired into the
+      # scheme's testAction; a failure here must fail the job (governance 4.2).
       - name: Build & test the app
         run: |
           set -o pipefail
-          destination='platform=iOS Simulator,name=iPhone 16,OS=latest'
-          if xcodebuild test \
-              -workspace iOSDigitalWallet.xcworkspace \
-              -scheme iOSDigitalWallet \
-              -destination "$destination" \
-              CODE_SIGNING_ALLOWED=NO; then
-            echo "xcodebuild test succeeded."
-          else
-            echo "xcodebuild test failed (expected until Phase 1 adds test targets) — building instead."
-            xcodebuild build \
-              -workspace iOSDigitalWallet.xcworkspace \
-              -scheme iOSDigitalWallet \
-              -destination "$destination" \
-              CODE_SIGNING_ALLOWED=NO
+
+          # Pin by platform, not by device model name. `xcodebuild test`
+          # requires a concrete simulator (a generic/platform destination is
+          # rejected for the test action), but hard-coding a model name (e.g.
+          # the previous "iPhone 16") rots the moment Apple renames or drops
+          # that generation from the default simulator set — which is exactly
+          # what happened here. Ask the installed Xcode for any available
+          # iPhone simulator instead, choosing the newest installed iOS
+          # runtime by numeric [major, minor] comparison (not a lexicographic
+          # string sort, which misorders single- vs double-digit majors), and
+          # select that device by its own UDID so the device and its OS
+          # version can never disagree with each other — there is no separate
+          # "OS=latest" re-qualification step to drift out of sync.
+          selection=$(xcrun simctl list devices available -j | jq -r '
+            [
+              .devices
+              | to_entries
+              | map(select(.key | test("\\.iOS-[0-9]+-[0-9]+$")))
+              | sort_by(.key | capture("iOS-(?<maj>[0-9]+)-(?<min>[0-9]+)")
+                              | [(.maj | tonumber), (.min | tonumber)])
+              | reverse[]
+              | .value[]
+              | select(.name | startswith("iPhone"))
+            ][0]
+            | if . == null then empty else "\(.name)\t\(.udid)" end
+          ')
+          if [ -z "$selection" ]; then
+            echo "::error::No available iPhone simulator found on this runner."
+            exit 1
           fi
+          device_name="${selection%%$'\t'*}"
+          device_udid="${selection##*$'\t'}"
+          destination="platform=iOS Simulator,id=$device_udid"
+          echo "Using destination: $destination (device: $device_name)"
+
+          xcodebuild test \
+            -workspace iOSDigitalWallet.xcworkspace \
+            -scheme iOSDigitalWallet \
+            -destination "$destination" \
+            CODE_SIGNING_ALLOWED=NO
