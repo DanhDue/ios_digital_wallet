@@ -1,13 +1,13 @@
 ---
 id: "task_10_archtests_k10"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "ios_deeplink_router"
 dueDate: null
 created: "2026-09-10T03:42:16+07:00"
-modified: "2026-09-10T03:42:16+07:00"
-completedAt: null
+modified: "2026-09-11T10:54:23+07:00"
+completedAt: "2026-09-11T10:54:23+07:00"
 labels: ["governance", "archtests", "swift-syntax", "ci"]
 order: "a10"
 ---
@@ -33,6 +33,15 @@ AST, not regex) and honouring `baseline.txt`.
 | **K10.2** | Every route type declared in `Platform/Navigation/AppRoutes.swift` appears in at least one `DeepLinkRoute.build` body |
 | **K10.3** | Pattern segments are well-formed — literal `^[a-z0-9-]+$`, parameter `^:[a-z][a-zA-Z0-9]*$` |
 | **K10.4** | `App/Sources/<AppName>App.swift` contains both `.onOpenURL` and `deepLinkRouter.open` |
+| **K10.5** | No single pattern declares the same parameter name twice (e.g. `/tx/:id/:id`) |
+
+**K10.5 is carried from Task 3's Ruling 5.** `DeepLinkPattern.match` resolves a
+repeated parameter name last-wins, which silently drops one captured value. That
+behaviour is the only coherent one for a deliberately non-validating `init`, so it
+was accepted at runtime — but such a pattern is almost certainly an author typo,
+and rejecting it at build time is strictly better than discarding data at run
+time. The rule walks the same `Segment` list K10.3 already parses, so it costs
+almost nothing on top.
 
 **K10.4 is carried from Task 8's review.** The `.onOpenURL` modifier is the only
 link in the deep-link chain with no behavioural coverage — deleting it leaves
@@ -89,6 +98,10 @@ when this task completes.
 - [ ] **RED**: K10.3 — inject `"/Settings"` (uppercase), `"/settings/:Code"`
       (uppercase parameter) and `"/settings/lang_code"` (underscore) and observe
       each fail.
+- [ ] **RED**: K10.4 — delete `.onOpenURL` from the app entry point and observe
+      the rule fail, naming the file.
+- [ ] **RED**: K10.5 — inject `"/tx/:id/:id"` and observe the rule fail, naming
+      the repeated parameter.
 - [ ] **GREEN**: implement the three rules against the real repository tree; all
       pass with the declarations from
       [Task 7](task_7_feature_deeplink_declarations.md).
@@ -97,7 +110,7 @@ when this task completes.
 
 ## Definition of Done
 
-- [ ] `swift test --package-path ArchTests` passes; K10.1–K10.4 are present and
+- [ ] `swift test --package-path ArchTests` passes; K10.1–K10.5 are present and
       each has been observed failing on an injected violation (noted per rule).
 - [ ] Failure messages name the offending file and pattern — a rule that fails
       without saying where is not done.
@@ -114,6 +127,7 @@ when this task completes.
 
 ## References & Rollback
 
+- BDD scenarios captured at implementation time: [task-10-archtests-k10.md](../epic/ios_deeplink_router/bdd/task-10-archtests-k10.md)
 - Source Spec §7 (Governance — ArchTests K10).
 - `docs/architecture/ARCHITECTURE.md` §VI — the K1–K9 governance table K10 joins
   (updated in [Task 14](task_14_deeplink_docs.md)).

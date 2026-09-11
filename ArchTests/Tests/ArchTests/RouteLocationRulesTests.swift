@@ -25,8 +25,8 @@ final class RouteLocationRulesTests: XCTestCase {
         // feature name -> set of AppRoute type names it declares
         var declared: [String: Set<String>] = [:]
         for feature in features {
-            declared[feature] = appRouteTypeNames(
-                inSourcesOf: RepoRoot.url(for: "Features/\(feature)/Sources")
+            declared[feature] = AppRouteScanning.appRouteTypeNames(
+                in: SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Features/\(feature)/Sources"))
             )
         }
 
@@ -80,7 +80,9 @@ final class RouteLocationRulesTests: XCTestCase {
     func testK9_NoFeatureRedeclaresAScreenRootFromAppRoutes() throws {
         var offenders: [String] = []
         for feature in try featurePackageNames() {
-            let names = appRouteTypeNames(inSourcesOf: RepoRoot.url(for: "Features/\(feature)/Sources"))
+            let names = AppRouteScanning.appRouteTypeNames(
+                in: SyntaxScanner.swiftFiles(under: RepoRoot.url(for: "Features/\(feature)/Sources"))
+            )
             for shared in ["SettingsRoot", "ScannerRoot"] where names.contains(shared) {
                 offenders.append("\(feature) re-declares AppRoutes.\(shared)")
             }
@@ -89,32 +91,6 @@ final class RouteLocationRulesTests: XCTestCase {
     }
 
     // MARK: Helpers
-
-    /// AppRoute-conforming type names declared under `sources`. Uses the AST for
-    /// top-level declarations and a regex for types nested in a namespace enum.
-    private func appRouteTypeNames(inSourcesOf sources: URL) -> Set<String> {
-        var names: Set<String> = []
-        let declPattern = try? NSRegularExpression(
-            pattern: #"(?:struct|enum|class)\s+([A-Za-z_]\w*)\s*:\s*[^\{]*\bAppRoute\b"#
-        )
-        for file in SyntaxScanner.swiftFiles(under: sources) {
-            if let tree = try? SyntaxScanner.parse(fileAt: file) {
-                let conformers = SyntaxScanner.topLevelDeclarations(in: tree)
-                    .filter { $0.inheritedTypeNames.contains { name in name.hasPrefix("AppRoute") } }
-                for decl in conformers {
-                    names.insert(decl.name)
-                }
-            }
-            guard let source = try? String(contentsOf: file, encoding: .utf8), let declPattern else { continue }
-            let range = NSRange(source.startIndex..., in: source)
-            for match in declPattern.matches(in: source, range: range) {
-                if let nameRange = Range(match.range(at: 1), in: source) {
-                    names.insert(String(source[nameRange]))
-                }
-            }
-        }
-        return names
-    }
 
     private func sourcesReferenceIdentifier(_ identifier: String, under root: URL) -> Bool {
         for file in SyntaxScanner.swiftFiles(under: root) {
