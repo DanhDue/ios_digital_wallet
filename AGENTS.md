@@ -1,5 +1,18 @@
 # AGENTS.md — iOS Super App Template — Project Context
 
+Skills come from the **`d3nexus`** agent kit
+([DanhDue/ai-agent-tools](https://github.com/DanhDue/ai-agent-tools)), installed per machine and
+shared by every mobile project — this repo vendors none of its own.
+
+## Rules
+
+@.agents/rules/LOCALIZATION_RULES.md
+
+> The `@` line is a Claude Code import. Antigravity discovers `.agents/rules/*.md` natively, so
+> the rule loads in both runtimes without being duplicated. The kit's own rules
+> (`CRITICAL_RULES`, coding guidelines) ship with the plugin.
+
+
 ## Project overview
 
 A **governed multi-package native iOS template**: Clean Architecture + MVI +

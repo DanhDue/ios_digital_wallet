@@ -1,0 +1,6 @@
+{
+    "rules": [
+        ".agents/rules/LOCALIZATION_RULES.md"
+    ],
+    "auto_commit": true
+}
