@@ -1,5 +1,7 @@
 {
     "rules": [
+        ".agents/rules/CRITICAL_RULES.md",
+        ".agents/rules/CLAUDE.md",
         ".agents/rules/LOCALIZATION_RULES.md"
     ],
     "auto_commit": true

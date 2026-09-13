@@ -6,6 +6,8 @@ shared by every mobile project — this repo vendors none of its own.
 
 ## Rules
 
+@.agents/rules/CRITICAL_RULES.md
+@.agents/rules/CLAUDE.md
 @.agents/rules/LOCALIZATION_RULES.md
 
 > The `@` line is a Claude Code import. Antigravity discovers `.agents/rules/*.md` natively, so
