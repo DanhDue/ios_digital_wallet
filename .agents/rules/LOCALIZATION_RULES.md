@@ -2,58 +2,87 @@
 trigger: always_on
 ---
 
-# AI Agent Rules — Localization & Translations (DOs & DON'Ts)
+# Localization & Translations — Agent Rules (DOs & DON'Ts)
 
-Tài liệu quy tắc bắt buộc dành cho AI Agents khi làm việc với hệ thống Localization trong dự án **iOS Super App Template**.
-
----
-
-## 1. Nguyên tắc cốt lõi (Core Principles)
-
-1. **Phân quyền Module (Decentralized Catalogs)**:
-   - Các chuỗi bản dịch thuộc về module nào phải nằm trong `Localizable.xcstrings` của module đó:
-     - Feature: `Features/<Feature>/Sources/<Feature>/Resources/Localizable.xcstrings`
-     - Shell: `Packages/Shell/Sources/Shell/Resources/Localizable.xcstrings`
-   - ❌ **TUYỆT ĐỐI KHÔNG** thêm chuỗi trực tiếp vào `App/Resources/Localizable.xcstrings` hoặc `Packages/Platform/Resources/Localizable.xcstrings`. Hai file này là đích tự động sinh (auto-generated destinations).
-
-2. **Quy ước đặt Key (Key Naming Convention)**:
-   - Tất cả các phần trong key **bắt buộc** phải là **`camelCase`** (`^[a-z][a-zA-Z0-9]*$`).
-   - ❌ **CẤM** dùng `snake_case` (ví dụ: `settings.user_profile`), `kebab-case` (`settings.user-profile`), hoặc `PascalCase` (`Settings.Account.Title`).
-   - Tối thiểu 2 phân đoạn: `<feature>.<key>`. ❌ **CẤM** dùng key cộc lốc không có prefix như `"title"`, `"logout"`.
-
-3. **Phân tầng Key (Hierarchical Scoping)**:
-   - **Cấp Feature (2 cấp)**: `<feature>.<key>` (ví dụ: `settings.title`, `settings.logout`, `scanner.title`). Dùng cho title root màn hình, nút bấm và thông báo chung của feature.
-   - **Cấp Subfeature (3 cấp)**: `<feature>.<subfeature>.<key>` (ví dụ: `settings.account.profile`, `settings.preferences.darkMode`). Dùng cho màn hình con (`Presentation/<Subfeature>/`), section card, hoặc bottom sheet.
-   - Tiền tố `<feature>` phải trùng khớp với tên module sở hữu (trong `Features/Settings` phải bắt đầu bằng `settings.`).
-
-4. **Tránh xung đột cấu trúc (No Structural Collision)**:
-   - Một key không được là tiền tố của key khác (Leaf vs. Branch collision).
-   - ❌ **SAI**: Khai báo key `"settings.account"` (chuỗi leaf) đồng thời có `"settings.account.profile"` (branch).
-   - ✅ **ĐÚNG**: Đổi thành `"settings.account.title"` và `"settings.account.profile"`.
-
-5. **Sử dụng trong SwiftUI View**:
-   - Khai báo `@Environment(\.t) private var t: Translations`.
-   - Sử dụng dot-notation có type-safety: `t.<feature>.<key>` hoặc `t.<feature>.<subfeature>.<key>`.
-   - ❌ **HẠN CHẾ** dùng chuỗi literal cứng `Text("...")` hoặc `t("literal.key")` nếu đã có typed accessors.
-
-6. **Chính sách ngôn ngữ tĩnh vs. OTA**:
-   - Binary mặc định chỉ đóng gói **`en` (English)** và **`vi` (Tiếng Việt)**.
-   - ❌ **KHÔNG** thêm `ja`, `ko` hoặc các ngôn ngữ khác vào file `.xcstrings` cục bộ. Chúng được nạp 100% động qua OTA.
-
-7. **Bắt buộc Re-sync sau khi sửa**:
-   - Luôn chạy `python3 scripts/merge_localizations.py` (hoặc build Xcode) sau khi thêm, sửa hoặc xóa bất kỳ key nào trong file `.xcstrings` để:
-     - Chạy qua bộ kiểm tra hợp lệ `validate_catalogs`.
-     - Đồng bộ master catalogs.
-     - Tái tạo `Translations.generated.swift`.
-     - Xuất các file JSON cho Backend (`App/Resources/backend_translations/`).
+Mandatory rules for AI agents working on the localization system of the **iOS Super App
+Template**. Full background: [`docs/LOCALIZATION.md`](../../docs/LOCALIZATION.md).
 
 ---
 
-## 2. Checklist kiểm tra nhanh trước khi hoàn thành task
+## 1. Core Principles
 
-- [ ] File `.xcstrings` có chứa `"version": "1.0"` ở root?
-- [ ] Tất cả các key mới đều là `camelCase` (`^[a-z][a-zA-Z0-9]*$`)?
-- [ ] Tiền tố của key có khớp với tên feature hiện tại?
-- [ ] Không có xung đột giữa key lá và key nhánh (`<name>` vs `<name>.<child>`)?
-- [ ] Đã chạy `python3 scripts/merge_localizations.py` và output báo `🛡️ All module catalogs passed DOs & DON'Ts validation rules`?
-- [ ] Đã chạy `swift test --package-path ArchTests` và `mise exec -- swiftlint` đảm bảo không lỗi?
+### 1. Decentralized catalogs
+
+Strings live in the `Localizable.xcstrings` of the module that owns them:
+
+- Feature: `Features/<Feature>/Sources/<Feature>/Resources/Localizable.xcstrings`
+- Shell: `Packages/Shell/Sources/Shell/Resources/Localizable.xcstrings`
+
+❌ **Never** add a string directly to `App/Resources/Localizable.xcstrings` or
+`Packages/Platform/Resources/Localizable.xcstrings`. Those two are **auto-generated
+destinations** — anything written there is overwritten on the next sync.
+
+### 2. Key naming convention
+
+- Every segment of a key **must** be `camelCase` (`^[a-z][a-zA-Z0-9]*$`).
+- ❌ No `snake_case` (`settings.user_profile`), `kebab-case` (`settings.user-profile`), or
+  `PascalCase` (`Settings.Account.Title`).
+- Minimum two segments: `<feature>.<key>`. ❌ No bare, unprefixed keys such as `"title"` or
+  `"logout"`.
+
+### 3. Hierarchical scoping
+
+- **Feature level (2 segments)** — `<feature>.<key>`, e.g. `settings.title`, `settings.logout`,
+  `scanner.title`. Use for a screen's root title, buttons, and messages shared across the feature.
+- **Subfeature level (3 segments)** — `<feature>.<subfeature>.<key>`, e.g.
+  `settings.account.profile`, `settings.preferences.darkMode`. Use for sub-screens
+  (`Presentation/<Subfeature>/`), section cards, and bottom sheets.
+- The `<feature>` prefix must match the owning module: anything in `Features/Settings` starts
+  with `settings.`.
+
+### 4. No structural collision
+
+A key must never be a prefix of another key (leaf vs. branch collision).
+
+- ❌ **Wrong**: `"settings.account"` as a leaf string while `"settings.account.profile"` exists.
+- ✅ **Right**: `"settings.account.title"` alongside `"settings.account.profile"`.
+
+### 5. Use in SwiftUI views
+
+- Declare `@Environment(\.t) private var t: Translations`.
+- Use the type-safe dot notation: `t.<feature>.<key>` or `t.<feature>.<subfeature>.<key>`.
+- ❌ Avoid hardcoded literals — `Text("...")` or `t("literal.key")` — when a typed accessor
+  already exists.
+
+### 6. Static vs. OTA languages
+
+- The binary bundles **only `en` (English)** and **`vi` (Vietnamese)**.
+- ❌ Do **not** add `ja`, `ko`, or any other language to a local `.xcstrings`. They are loaded
+  entirely over the air.
+
+### 7. Re-sync is mandatory after any edit
+
+After adding, changing, or removing **any** key in a `.xcstrings`, run:
+
+```bash
+python3 scripts/merge_localizations.py
+```
+
+(or build in Xcode, which triggers it). It:
+
+- runs the `validate_catalogs` checks,
+- syncs the master catalogs,
+- regenerates `Translations.generated.swift`,
+- exports the backend JSON to `App/Resources/backend_translations/`.
+
+---
+
+## 2. Pre-completion checklist
+
+- [ ] Does the `.xcstrings` still carry `"version": "1.0"` at its root?
+- [ ] Is every new key `camelCase` (`^[a-z][a-zA-Z0-9]*$`)?
+- [ ] Does each key's prefix match the feature that owns it?
+- [ ] Is there no leaf/branch collision (`<name>` vs `<name>.<child>`)?
+- [ ] Did `python3 scripts/merge_localizations.py` report
+      `🛡️ All module catalogs passed DOs & DON'Ts validation rules`?
+- [ ] Do `swift test --package-path ArchTests` and `mise exec -- swiftlint` both pass?
