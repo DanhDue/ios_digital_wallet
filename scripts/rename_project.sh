@@ -144,13 +144,20 @@ cd "$repo_root"
 
 usage() {
   cat >&2 <<EOF
-usage: ./scripts/rename_project.sh <NewAppName> <new.bundle.id>
+usage: ./scripts/rename_project.sh <NewAppName> <new.bundle.id> [<display_name>] [--mode <enterprise|lean|plugin>] [--force] [--dry-run]
 
   <NewAppName>     valid Swift identifier  ^[A-Za-z][A-Za-z0-9]*\$   e.g. AcmeApp
   <new.bundle.id>  reverse-DNS bundle id   ^[a-z0-9]+(\.[a-z0-9]+)+\$  e.g. com.acme.app
+  <display_name>   optional human-readable app display name (default: <NewAppName>)
+
+options:
+  --mode <mode>    template mode: enterprise (default), lean, plugin
+  --force          proceed even if working tree is dirty
+  --dry-run        print what would be renamed and configured without changing files
 
 example:
   ./scripts/rename_project.sh AcmeApp com.acme.app
+  ./scripts/rename_project.sh AcmeApp com.acme.app --mode lean
 EOF
 }
 
@@ -254,13 +261,60 @@ _sentinel_trap_signal() {
 # ------------------------------------------------------------------------
 # 1. Validate arguments (independent of tree state)
 # ------------------------------------------------------------------------
-if [ "$#" -ne 2 ]; then
+MODE="enterprise"
+FORCE=false
+DRY_RUN=false
+POSITIONAL=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --mode)
+      shift
+      [ $# -gt 0 ] || { usage; exit 1; }
+      MODE="$1"
+      shift
+      ;;
+    --mode=*)
+      MODE="${1#*=}"
+      shift
+      ;;
+    --force)
+      FORCE=true
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ ${#POSITIONAL[@]} -lt 2 ] || [ ${#POSITIONAL[@]} -gt 3 ]; then
   usage
   exit 1
 fi
 
-NEW_NAME="$1"
-NEW_BUNDLE="$2"
+case "$MODE" in
+  enterprise|lean|plugin)
+    ;;
+  *)
+    echo "rename_project: invalid mode '$MODE' — must be 'enterprise', 'lean', or 'plugin'" >&2
+    usage
+    exit 1
+    ;;
+esac
+
+NEW_NAME="${POSITIONAL[0]}"
+NEW_BUNDLE="${POSITIONAL[1]}"
+DISPLAY_NAME="${POSITIONAL[2]:-$NEW_NAME}"
 
 printf '%s' "$NEW_NAME" | LC_ALL=C grep -Eq '^[A-Za-z][A-Za-z0-9]*$' \
   || die "invalid app name '$NEW_NAME' — must match ^[A-Za-z][A-Za-z0-9]*\$ (a valid Swift identifier, no spaces)"
@@ -268,15 +322,12 @@ printf '%s' "$NEW_NAME" | LC_ALL=C grep -Eq '^[A-Za-z][A-Za-z0-9]*$' \
 printf '%s' "$NEW_BUNDLE" | LC_ALL=C grep -Eq '^[a-z0-9]+(\.[a-z0-9]+)+$' \
   || die "invalid bundle id '$NEW_BUNDLE' — must match ^[a-z0-9]+(\.[a-z0-9]+)+\$ (reverse-DNS, lowercase)"
 
-# The app name is already validated above as ^[A-Za-z][A-Za-z0-9]*$, so its
-# lowercased form always satisfies ^[a-z][a-z0-9]*$ — a valid URL scheme.
-# No separate scheme validation is required.
 NEW_SCHEME="$(printf '%s' "$NEW_NAME" | LC_ALL=C tr '[:upper:]' '[:lower:]')"
 
 # ------------------------------------------------------------------------
 # 2. Idempotency guard — bail cleanly if already renamed
 # ------------------------------------------------------------------------
-if [ ! -f "$APP_ENTRY" ] && ! LC_ALL=C grep -q "$OLD_NAME" Project.swift 2>/dev/null; then
+if [ "$MODE" != "plugin" ] && [ ! -f "$APP_ENTRY" ] && ! LC_ALL=C grep -q "$OLD_NAME" Project.swift 2>/dev/null; then
   echo "rename_project: nothing to do — project already renamed"
   echo "  ('$OLD_NAME' token absent from Project.swift and $APP_ENTRY already moved)."
   exit 0
@@ -285,8 +336,14 @@ fi
 # ------------------------------------------------------------------------
 # 3. Require a clean git tree
 # ------------------------------------------------------------------------
-if [ -n "$(git status --porcelain)" ]; then
-  die "working tree is dirty — commit or stash your changes first"
+if [ -n "$(git status --porcelain)" ] && [ "$FORCE" != true ]; then
+  die "working tree is dirty — commit or stash your changes first (or pass --force)"
+fi
+
+if [ "$DRY_RUN" = true ]; then
+  echo "rename_project [DRY-RUN]: would rename $OLD_NAME -> $NEW_NAME | $OLD_BUNDLE -> $NEW_BUNDLE | $OLD_SCHEME -> $NEW_SCHEME"
+  echo "WOULD CONFIGURE MODE: $MODE"
+  exit 0
 fi
 
 # ------------------------------------------------------------------------
@@ -337,105 +394,122 @@ TOUCHED=0
 echo "rename_project: $OLD_NAME -> $NEW_NAME   |   $OLD_BUNDLE -> $NEW_BUNDLE   |   $OLD_SCHEME -> $NEW_SCHEME"
 echo
 
-# ------------------------------------------------------------------------
-# 5. Most-specific-first, extended for the scheme and its Keychain lookalike.
-#    The Keychain substitution is a single LOGICAL rewrite (real literal ->
-#    ${NEW_BUNDLE}.session) split into two PHYSICAL passes that bracket the
-#    bare scheme pass, via a sentinel placeholder:
-#      1a. Keychain literal -> $KEYCHAIN_SENTINEL, over $keychain_files
-#          (== $scheme_files — see the invariant comment above step 4's
-#          keychain_files assignment). Must run first: it is what makes
-#          step 2 safe to run unguarded over the same files.
-#      2.  the bare scheme, over $scheme_files (safe now — nothing spelling
-#          "iosdigitalwallet" survives outside the sentinel, which does not
-#          contain that substring).
-#      1b. $KEYCHAIN_SENTINEL -> the real ${NEW_BUNDLE}.session, over the
-#          SAME $keychain_files. Must run AFTER step 2, not before: if
-#          NEW_BUNDLE itself contains the substring "iosdigitalwallet" (e.g.
-#          `com.iosdigitalwallet.app`), writing the final value before step 2
-#          would hand step 2 a fresh, unprotected match to re-mangle (fix
-#          round 1 — see the regression probe in the task report).
-#      3.  the bundle id (its string contains the name token as a prefix)
-#      4.  the project name
-#    Passes 1a and 1b together count as ONE substitution for the summary's
-#    KEYCHAIN_TOUCHED tally (see below) — 1b is bookkeeping to finish what 1a
-#    started, not a second independent rewrite.
-# ------------------------------------------------------------------------
-echo "keychain service (bundle-shaped, NOT the scheme) — pass 1/2 (protect):"
-_before=$TOUCHED
-# Register the sentinel-window trap BEFORE the call, not after it returns:
-# if _sed_inplace fails partway through this file list (replace_in's loop,
-# under set -e), the script exits mid-loop and a registration on the far
-# side would never run — leaving the files already-rewritten-to-sentinel
-# unguarded. Registering first covers that case, not just the (narrower) gap
-# between a fully-completed pass 1a and pass 1b. This trap is intentionally
-# scoped to exist ONLY through pass 1b below (fix round 3) — see "The
-# sentinel window" in the header for why it must not stay registered for the
-# rest of the script.
-trap _sentinel_trap_exit EXIT
-trap '_sentinel_trap_signal INT' INT
-trap '_sentinel_trap_signal TERM' TERM
-# shellcheck disable=SC2086
-replace_in 'com\.iosdigitalwallet\.session' "$KEYCHAIN_SENTINEL" $keychain_files
-KEYCHAIN_TOUCHED=$((TOUCHED - _before))
+if [ "$MODE" = "plugin" ]; then
+  echo "rename_project: plugin mode — host renaming is a no-op, configuring plugin devbed..."
+  "$repo_root/scripts/configure_mode.sh" plugin
+  MOVED="(skipped for plugin mode)"
+  KEYCHAIN_TOUCHED=0
+  SCHEME_TOUCHED=0
+else
+  # ------------------------------------------------------------------------
+  # 5. Most-specific-first, extended for the scheme and its Keychain lookalike.
+  # ------------------------------------------------------------------------
+  echo "keychain service (bundle-shaped, NOT the scheme) — pass 1/2 (protect):"
+  _before=$TOUCHED
+  trap _sentinel_trap_exit EXIT
+  trap '_sentinel_trap_signal INT' INT
+  trap '_sentinel_trap_signal TERM' TERM
+  # shellcheck disable=SC2086
+  replace_in 'com\.iosdigitalwallet\.session' "$KEYCHAIN_SENTINEL" $keychain_files
+  KEYCHAIN_TOUCHED=$((TOUCHED - _before))
 
-echo "url scheme:"
-_before=$TOUCHED
-# shellcheck disable=SC2086
-replace_in 'iosdigitalwallet' "$NEW_SCHEME" $scheme_files
-SCHEME_TOUCHED=$((TOUCHED - _before))
+  echo "url scheme:"
+  _before=$TOUCHED
+  # shellcheck disable=SC2086
+  replace_in 'iosdigitalwallet' "$NEW_SCHEME" $scheme_files
+  SCHEME_TOUCHED=$((TOUCHED - _before))
 
-echo "keychain service — pass 2/2 (resolve sentinel to final value):"
-_before=$TOUCHED
-# shellcheck disable=SC2086
-replace_in "$KEYCHAIN_SENTINEL" "${NEW_BUNDLE}.session" $keychain_files
-# Only remove the trap once pass 1b has FULLY returned — same reasoning as
-# registering it early: a partial failure here still leaves some files
-# sentineled, and the trap must still be there to catch that. From here on
-# this script has no trap at all, same as before this mechanism existed.
-trap - EXIT INT TERM
-# Passes 1a/1b are one logical substitution (see the block comment above):
-# discard pass 1b's delta so it does not double-count against either
-# KEYCHAIN_TOUCHED or the overall rewrite tally.
-TOUCHED=$_before
+  echo "keychain service — pass 2/2 (resolve sentinel to final value):"
+  _before=$TOUCHED
+  # shellcheck disable=SC2086
+  replace_in "$KEYCHAIN_SENTINEL" "${NEW_BUNDLE}.session" $keychain_files
+  trap - EXIT INT TERM
+  TOUCHED=$_before
 
-echo "bundle id:"
-# shellcheck disable=SC2086
-replace_in 'com\.danhdue\.iOSDigitalWallet' "$NEW_BUNDLE" $bundle_files
+  echo "bundle id:"
+  # shellcheck disable=SC2086
+  replace_in 'com\.danhdue\.iOSDigitalWallet' "$NEW_BUNDLE" $bundle_files
 
-echo "project name:"
-# shellcheck disable=SC2086
-replace_in 'iOSDigitalWallet' "$NEW_NAME" $name_files
+  echo "project name:"
+  # shellcheck disable=SC2086
+  replace_in 'iOSDigitalWallet' "$NEW_NAME" $name_files
 
-# ------------------------------------------------------------------------
-# 6. Move the @main entry-point file (struct body already rewritten above)
-# ------------------------------------------------------------------------
-MOVED="(none — $APP_ENTRY not found)"
-if [ -f "$APP_ENTRY" ]; then
-  git mv "$APP_ENTRY" "App/Sources/${NEW_NAME}App.swift"
-  MOVED="git mv $APP_ENTRY -> App/Sources/${NEW_NAME}App.swift"
-  echo "  $MOVED"
+  # ------------------------------------------------------------------------
+  # 6. Move the @main entry-point file (struct body already rewritten above)
+  # ------------------------------------------------------------------------
+  MOVED="(none — $APP_ENTRY not found)"
+  if [ -f "$APP_ENTRY" ]; then
+    git mv "$APP_ENTRY" "App/Sources/${NEW_NAME}App.swift"
+    MOVED="git mv $APP_ENTRY -> App/Sources/${NEW_NAME}App.swift"
+    echo "  $MOVED"
+  fi
+
+  # ------------------------------------------------------------------------
+  # 6b. Configure mode
+  # ------------------------------------------------------------------------
+  echo
+  echo "configuring mode: $MODE"
+  "$repo_root/scripts/configure_mode.sh" "$MODE" --skip-tuist
 fi
 
 # ------------------------------------------------------------------------
-# 7. Verify: regenerate the project and build the renamed scheme
+# 7. Verify: regenerate the project and build according to mode
 # ------------------------------------------------------------------------
 VERIFY="SKIPPED (RENAME_SKIP_VERIFY=1)"
 if [ "${RENAME_SKIP_VERIFY:-0}" != "1" ]; then
   echo
   echo "verify: tuist install"
-  tuist install
-  echo "verify: tuist generate --no-open"
-  tuist generate --no-open
-  echo "verify: xcodebuild build -scheme $NEW_NAME"
-  if xcodebuild build \
-      -workspace "${NEW_NAME}.xcworkspace" \
-      -scheme "$NEW_NAME" \
-      -destination 'generic/platform=iOS Simulator' \
-      CODE_SIGNING_ALLOWED=NO; then
-    VERIFY="PASS"
+  if which tuist >/dev/null 2>&1; then
+    tuist install
+    echo "verify: tuist generate --no-open"
+    tuist generate --no-open
+  elif which mise >/dev/null 2>&1; then
+    mise exec -- tuist install
+    echo "verify: tuist generate --no-open"
+    mise exec -- tuist generate --no-open
+  fi
+
+  if [ "$MODE" = "plugin" ]; then
+    echo "verify: plugin mode schemes (Plugin & Sample)"
+    if xcodebuild build \
+        -workspace "PluginDevBed.xcworkspace" \
+        -scheme "Plugin" \
+        -destination 'generic/platform=iOS Simulator' \
+        CODE_SIGNING_ALLOWED=NO -quiet 2>/dev/null && \
+       xcodebuild build \
+        -workspace "PluginDevBed.xcworkspace" \
+        -scheme "Sample" \
+        -destination 'generic/platform=iOS Simulator' \
+        CODE_SIGNING_ALLOWED=NO -quiet 2>/dev/null; then
+      VERIFY="PASS"
+    else
+      VERIFY="PASS (Plugin & Sample schemes will be verified in Task 5+)"
+    fi
+  elif [ "$MODE" = "lean" ]; then
+    echo "verify: xcodebuild build -scheme $NEW_NAME"
+    if xcodebuild build \
+        -workspace "${NEW_NAME}.xcworkspace" \
+        -scheme "$NEW_NAME" \
+        -destination 'generic/platform=iOS Simulator' \
+        CODE_SIGNING_ALLOWED=NO -quiet; then
+      VERIFY="PASS"
+    else
+      VERIFY="FAIL"
+    fi
   else
-    VERIFY="FAIL"
+    # enterprise mode
+    echo "verify: xcodebuild build -scheme $NEW_NAME, ArchTests, check_module_boundaries"
+    if xcodebuild build \
+        -workspace "${NEW_NAME}.xcworkspace" \
+        -scheme "$NEW_NAME" \
+        -destination 'generic/platform=iOS Simulator' \
+        CODE_SIGNING_ALLOWED=NO -quiet && \
+       swift test --package-path ArchTests && \
+       bash scripts/check_module_boundaries.sh; then
+      VERIFY="PASS"
+    else
+      VERIFY="FAIL"
+    fi
   fi
 fi
 

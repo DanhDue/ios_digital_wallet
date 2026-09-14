@@ -1,13 +1,13 @@
 ---
 id: "task_4_rename_project_mode_integration"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:54Z"
-modified: "2026-09-13T21:29:54Z"
-completedAt: null
+modified: "2026-09-14T15:09:00Z"
+completedAt: "2026-09-14T15:09:00Z"
 labels: ["tooling", "automation", "scripting"]
 order: "a4"
 ---
