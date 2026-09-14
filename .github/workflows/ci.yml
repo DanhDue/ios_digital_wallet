@@ -142,10 +142,10 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Configure Plugin mode
-        run: ./scripts/configure_mode.sh plugin
+      - name: Bootstrap Plugin DevBed engine binding
+        run: ./scripts/bootstrap_devbed.sh
 
-      - name: Build & test Plugin package
+      - name: Build & test Plugin package in isolation
         run: |
           selection=$(xcrun simctl list devices available -j | jq -r '
             [
@@ -167,8 +167,11 @@ jobs:
           device_udid="${selection##*$'\t'}"
           destination="platform=iOS Simulator,id=$device_udid"
 
-          (cd Plugin && xcodebuild build -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
-          (cd Plugin && xcodebuild test -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
+          (cd Plugin && rm -rf Plugin.xcodeproj && xcodebuild build -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
+          (cd Plugin && rm -rf Plugin.xcodeproj && xcodebuild test -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
+
+      - name: Configure Plugin mode
+        run: ./scripts/configure_mode.sh plugin
 
       - name: Build & test Sample runner
         run: |
