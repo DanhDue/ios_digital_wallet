@@ -30,6 +30,7 @@ public struct ShellView: View {
                 }
                 .tag(0)
 
+            // shell:scanner-tab:begin
             tabStack(index: 1) { router.destination(for: AppRoutes.ScannerRoot()) }
                 .tabItem {
                     Label(
@@ -38,7 +39,9 @@ public struct ShellView: View {
                     )
                 }
                 .tag(1)
+            // shell:scanner-tab:end
 
+            // shell:settings-tab:begin
             tabStack(index: 2) { router.destination(for: AppRoutes.SettingsRoot()) }
                 .tabItem {
                     Label(
@@ -47,6 +50,7 @@ public struct ShellView: View {
                     )
                 }
                 .tag(2)
+            // shell:settings-tab:end
         }
     }
 

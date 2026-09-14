@@ -1,13 +1,13 @@
 ---
 id: "task_1_marker_regions_and_mode_seam"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:15Z"
-modified: "2026-09-13T21:29:15Z"
-completedAt: null
+modified: "2026-09-14T14:50:00+07:00"
+completedAt: "2026-09-14T14:50:00+07:00"
 labels: ["architecture", "tooling", "refactor"]
 order: "a1"
 ---

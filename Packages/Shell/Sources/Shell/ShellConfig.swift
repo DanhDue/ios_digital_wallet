@@ -9,7 +9,9 @@ public struct ShellConfig: Equatable {
     /// and Android templates.
     public let initialTab: Int
 
+    // shell:config-defaults:begin
     public init(tabCount: Int = 3, initialTab: Int = 2) {
+        // shell:config-defaults:end
         self.tabCount = tabCount
         self.initialTab = initialTab
     }

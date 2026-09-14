@@ -79,8 +79,10 @@ struct SessionDeepLinkGuard: DeepLinkGuard {
 struct ShellTabResolver: TabResolver {
     func placement(for route: any AppRoute) -> Platform.TabPlacement? {
         switch route {
+        // app:tab-resolver-scanner:begin
         case is AppRoutes.ScannerRoot:
             Platform.TabPlacement(tab: 1, isTabRoot: true)
+        // app:tab-resolver-scanner:end
         case is AppRoutes.SettingsRoot:
             Platform.TabPlacement(tab: 2, isTabRoot: true)
         default:

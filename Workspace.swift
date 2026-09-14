@@ -1,8 +1,9 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
-/// Workspace = the App project. Phase 1 adds the local SPM packages here.
+/// Workspace = the App project.
 let workspace = Workspace(
-    name: "iOSDigitalWallet",
+    name: activeMode == .plugin ? "PluginDevbed" : "iOSDigitalWallet",
     projects: [
         ".",
     ]
