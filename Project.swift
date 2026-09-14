@@ -1,3 +1,4 @@
+import Foundation
 import ProjectDescription
 import ProjectDescriptionHelpers
 
@@ -97,8 +98,12 @@ case .plugin:
             product: .app,
             bundleId: "com.danhdue.Sample",
             deploymentTargets: .iOS(Module.iOSDeploymentTarget),
-            infoPlist: .file(path: "Sample/Resources/Info.plist"),
-            sources: ["Sample/Sources/**"],
+            infoPlist: FileManager.default.fileExists(atPath: "Sample/Resources/Info.plist")
+                ? .file(path: "Sample/Resources/Info.plist")
+                : .default,
+            sources: FileManager.default.fileExists(atPath: "Sample/Sources")
+                ? ["Sample/Sources/**"]
+                : [],
             dependencies: [
                 .external(name: "Plugin"),
             ]

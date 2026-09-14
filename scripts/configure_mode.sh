@@ -282,8 +282,10 @@ if [ "$SKIP_TUIST" = false ]; then
         (
             cd "$ROOT_DIR"
             if which tuist >/dev/null 2>&1; then
+                tuist install --update
                 tuist generate --no-open
             else
+                mise exec -- tuist install --update
                 mise exec -- tuist generate --no-open
             fi
         )

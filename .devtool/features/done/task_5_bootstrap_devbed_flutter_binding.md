@@ -1,13 +1,13 @@
 ---
 id: "task_5_bootstrap_devbed_flutter_binding"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:54Z"
-modified: "2026-09-13T21:29:54Z"
-completedAt: null
+modified: "2026-09-14T15:18:00Z"
+completedAt: "2026-09-14T15:18:00Z"
 labels: ["tooling", "automation", "architecture", "flutter-interop"]
 order: "a5"
 ---
@@ -131,14 +131,14 @@ Scenario: configure_mode.sh plugin triggers bootstrap  [Tier C - Integration]
 
 ## Test & Verification Checklist
 
-- [ ] **RED**: Write the bootstrap scenarios as shell assertions first (fake SDK roots under a
+- [x] **RED**: Write the bootstrap scenarios as shell assertions first (fake SDK roots under a
       temp dir for the negative cases). Confirm they fail before implementation.
-- [ ] **GREEN**: Implement `bootstrap_devbed.sh`; add `Plugin/Vendor/` to `.gitignore`; replace
+- [x] **GREEN**: Implement `bootstrap_devbed.sh`; add `Plugin/Vendor/` to `.gitignore`; replace
       the `plugin`-branch stub in `configure_mode.sh`.
-- [ ] **REFACTOR**: `shellcheck` clean; resolution logic in one function under 20 lines.
-- [ ] **Tier B**: `swiftlint --strict` and `swiftformat --lint` stay clean (the script adds no
+- [x] **REFACTOR**: `shellcheck` clean; resolution logic in one function under 20 lines.
+- [x] **Tier B**: `swiftlint --strict` and `swiftformat --lint` stay clean (the script adds no
       Swift, but `Plugin/Package.swift` must be formatted).
-- [ ] **Tier C**: `./scripts/configure_mode.sh plugin` then the documented `xcodebuild -scheme
+- [x] **Tier C**: `./scripts/configure_mode.sh plugin` then the documented `xcodebuild -scheme
       Plugin -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO` succeeds on a
       skeleton source importing Flutter.
 

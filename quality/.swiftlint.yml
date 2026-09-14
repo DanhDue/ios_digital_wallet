@@ -20,6 +20,8 @@ included:
   - ../Features
   - ../ArchTests/Sources
   - ../ArchTests/Tests
+  - ../Plugin
+  - ../Sample
 
 # Generated graph, Tuist manifests, and pre-existing Xcode template stubs that
 # are NOT wired into the Tuist project must never be linted.

@@ -24,3 +24,6 @@ mason-lock.json
 
 # Git worktrees (epic-implementation)
 .worktrees/
+
+# Plugin engine binding vendor directory
+Plugin/Vendor/
