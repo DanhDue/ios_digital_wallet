@@ -28,3 +28,8 @@ bricks:
     path: bricks/ios_remove_feature
   ios_remove_subfeature:
     path: bricks/ios_remove_subfeature
+  ios_native_plugin:
+    path: bricks/ios_native_plugin
+  ios_add_native_ui:
+    path: bricks/ios_add_native_ui
+

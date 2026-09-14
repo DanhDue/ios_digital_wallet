@@ -1,0 +1,21 @@
+name: ios_native_plugin
+description: >-
+  Scaffolds a four-layer Clean-Architecture Flutter native plugin SPM package
+  for iOS (Sources/<name>/, Tests/<name>Tests/), with optional SwiftUI native UI,
+  FactoryKit 3.3.2 DI, and Pigeon or PlatformViewFactory. Parity with pac_native_plugin.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  name:
+    type: string
+    description: Plugin name in snake_case or PascalCase (e.g. biometric_auth).
+    prompt: Plugin name?
+  has_ui:
+    type: boolean
+    description: Whether this plugin includes SwiftUI native UI.
+    default: true
+    prompt: Does this plugin include SwiftUI native UI?

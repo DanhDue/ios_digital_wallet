@@ -1,0 +1,15 @@
+name: ios_add_native_ui
+description: >-
+  Upgrades a headless iOS native plugin to include SwiftUI native UI,
+  adding Presentation/, PlatformView, and PlatformViewFactory. Parity with pac_add_native_ui.
+
+version: 0.1.0+1
+
+environment:
+  mason: ">=0.1.0 <0.2.0"
+
+vars:
+  name:
+    type: string
+    description: Plugin name in snake_case or PascalCase (e.g. biometric_auth).
+    prompt: Plugin name?
