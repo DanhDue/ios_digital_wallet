@@ -1,13 +1,13 @@
 ---
 id: "task_7_flutter_platform_layer"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:30:41Z"
-modified: "2026-09-13T21:30:41Z"
-completedAt: null
+modified: "2026-09-14T15:29:00Z"
+completedAt: "2026-09-14T15:29:00Z"
 labels: ["architecture", "feature", "flutter-interop"]
 order: "a7"
 ---
@@ -126,16 +126,16 @@ Scenario: The Platform layer compiles against the real engine  [Tier C - Integra
 
 ## Test & Verification Checklist
 
-- [ ] **RED**: Write `MyPluginHostApiImplTests` and `MyPlatformViewTests` from the scenarios above,
+- [x] **RED**: Write `MyPluginHostApiImplTests` and `MyPlatformViewTests` from the scenarios above,
       with a stub `FlutterPluginRegistrar` / messenger. Confirm they fail first.
-- [ ] **GREEN**: Implement `MyPlugin`, `MyPluginHostApiImpl`, `MyPlatformViewFactory`,
+- [x] **GREEN**: Implement `MyPlugin`, `MyPluginHostApiImpl`, `MyPlatformViewFactory`,
       `MyPlatformView`, and check in the generated `Messages.g.swift`.
-- [ ] **REFACTOR**: `swiftformat --config quality/.swiftformat .`,
+- [x] **REFACTOR**: `swiftformat --config quality/.swiftformat .`,
       `swiftlint lint --strict --config quality/.swiftlint.yml` (with `Messages.g.swift` excluded
       as generated); no force-unwrap or `try!`.
-- [ ] **Tier A**: `xcodebuild test -scheme Plugin` green, including the Task 6 classes.
-- [ ] **Tier B**: SwiftLint strict and SwiftFormat lint clean across `Plugin/`.
-- [ ] **Tier C**: Deferred to [Task 8](task_8_scaffold_sample_runner_app.md).
+- [x] **Tier A**: `xcodebuild test -scheme Plugin` green, including the Task 6 classes.
+- [x] **Tier B**: SwiftLint strict and SwiftFormat lint clean across `Plugin/`.
+- [x] **Tier C**: Deferred to [Task 8](task_8_scaffold_sample_runner_app.md).
 
 ## Definition of Done
 
