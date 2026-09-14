@@ -9,7 +9,7 @@ import Platform
 /// single source of truth for the visible tab; every mutation flows through
 /// `dispatch(.selectTab(_:))` so the reduce / router / bus writes stay ordered.
 public final class ShellViewModel: MviViewModel<ShellState, ShellAction, ShellEvent> {
-    private let config: ShellConfig
+    public let config: ShellConfig
     private let router: AppRouter
     private let eventBus: AppEventBus
 

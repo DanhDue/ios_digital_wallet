@@ -42,7 +42,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ShellTests",
-            dependencies: ["Shell"]
+            dependencies: ["Shell"],
+            // shell:test-excludes:begin
+            exclude: []
+            // shell:test-excludes:end
         ),
     ]
 )

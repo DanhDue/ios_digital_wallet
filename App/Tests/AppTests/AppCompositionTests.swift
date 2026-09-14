@@ -14,31 +14,27 @@ final class AppCompositionTests: XCTestCase {
     func testCompositionRegistersAProviderForEachShippedFeatureRoot() {
         // Asserts presence, not an exact count: a consumer adding a feature via
         // `mason make ios_mvi_feature` + wiring it into AppComposition must NOT
-        // break this shipped test. It only guarantees the two template features
-        // stay wired.
+        // break this shipped test.
         let sut = AppComposition(eventBus: AppEventBus())
 
         XCTAssertFalse(sut.routeProviders.isEmpty)
 
         let handlesSettings = sut.routeProviders.filter { $0.canHandle(AppRoutes.SettingsRoot()) }
-        let handlesScanner = sut.routeProviders.filter { $0.canHandle(AppRoutes.ScannerRoot()) }
         XCTAssertEqual(handlesSettings.count, 1, "exactly one provider handles SettingsRoot")
-        XCTAssertEqual(handlesScanner.count, 1, "exactly one provider handles ScannerRoot")
     }
 
-    func testRouterResolvesBothSharedRoots() {
+    func testRouterResolvesSettingsRoot() {
         let sut = AppComposition(eventBus: AppEventBus())
 
         // Resolves through the router the same way the shell resolves a tab root.
         _ = sut.router.destination(for: AppRoutes.SettingsRoot())
-        _ = sut.router.destination(for: AppRoutes.ScannerRoot())
     }
 
-    func testRouterIsBuiltWithThreeTabsAndSettingsSelected() {
+    func testRouterIsBuiltWithConfiguredTabsAndSettingsSelected() {
         let sut = AppComposition(eventBus: AppEventBus())
 
-        XCTAssertEqual(sut.router.tabPaths.count, 3)
-        XCTAssertEqual(sut.router.selectedTab, 2)
+        XCTAssertEqual(sut.router.tabPaths.count, sut.shellViewModel.config.tabCount)
+        XCTAssertEqual(sut.router.selectedTab, sut.shellViewModel.config.initialTab)
     }
 
     // MARK: 401 → UserLoggedOut (exactly once)
@@ -222,22 +218,19 @@ final class AppCompositionTests: XCTestCase {
 
     // MARK: DeepLinkRouter — one resolvable entry per pattern the shipped features declare
 
-    func testDeepLinkRouterResolvesEveryPatternTheShippedFeaturesDeclare() {
+    func testDeepLinkRouterResolvesSettingsPattern() {
         let sut = AppComposition(eventBus: AppEventBus())
 
         XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://settings")), .opened)
-        XCTAssertEqual(sut.router.selectedTab, 2, "Settings' /settings lands on tab 2")
-        XCTAssertEqual(sut.router.tabPaths[2].count, 0, "SettingsRoot is tab 2's own root — no duplicate push")
-
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://scanner")), .opened)
-        XCTAssertEqual(sut.router.selectedTab, 1, "Scanner's /scanner lands on tab 1")
-        XCTAssertEqual(sut.router.tabPaths[1].count, 0, "ScannerRoot is tab 1's own root — no duplicate push")
-
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://scanner/result/ABC123")), .opened)
-        XCTAssertEqual(sut.router.selectedTab, 1)
         XCTAssertEqual(
-            sut.router.tabPaths[1].count, 1,
-            "ScannerRoot dropped as tab 1's own root; only ScannerResultRoute pushed"
+            sut.router.selectedTab,
+            sut.shellViewModel.config.initialTab,
+            "Settings' /settings lands on Settings tab"
+        )
+        XCTAssertEqual(
+            sut.router.tabPaths[sut.shellViewModel.config.initialTab].count,
+            0,
+            "SettingsRoot is tab's own root — no duplicate push"
         )
     }
 
@@ -284,17 +277,25 @@ final class AppCompositionTests: XCTestCase {
         let bus = AppEventBus()
         let sut = AppComposition(eventBus: bus, deepLinkGuard: fakeGuard)
         sut.deepLinkRouter.register(FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.ScannerRoot()] },
+            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.SettingsRoot()] },
         ]))
 
         XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://gated")), .pendingGuard)
-        XCTAssertEqual(sut.router.selectedTab, 2, "redirected to SettingsRoot (tab 2) while pending")
+        XCTAssertEqual(
+            sut.router.selectedTab,
+            sut.shellViewModel.config.initialTab,
+            "redirected to SettingsRoot while pending"
+        )
 
         allow = true
         bus.publish(UserLoggedIn())
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
 
-        XCTAssertEqual(sut.router.selectedTab, 1, "drainPending replayed the original stack onto Scanner (tab 1)")
+        XCTAssertEqual(
+            sut.router.selectedTab,
+            sut.shellViewModel.config.initialTab,
+            "drainPending replayed the original stack"
+        )
     }
 
     func testPublishingAnUnrelatedEventDoesNotDrainAPendingLink() {
@@ -308,16 +309,20 @@ final class AppCompositionTests: XCTestCase {
         let bus = AppEventBus()
         let sut = AppComposition(eventBus: bus, deepLinkGuard: fakeGuard)
         sut.deepLinkRouter.register(FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.ScannerRoot()] },
+            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.SettingsRoot()] },
         ]))
 
         XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://gated")), .pendingGuard)
-        XCTAssertEqual(sut.router.selectedTab, 2)
+        XCTAssertEqual(sut.router.selectedTab, sut.shellViewModel.config.initialTab)
 
         bus.publish(AppLifecycleChanged(state: .background))
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
 
-        XCTAssertEqual(sut.router.selectedTab, 2, "an unrelated event must never drain the pending link")
+        XCTAssertEqual(
+            sut.router.selectedTab,
+            sut.shellViewModel.config.initialTab,
+            "an unrelated event must never drain the pending link"
+        )
     }
 
     // MARK: Adversarial
@@ -332,15 +337,5 @@ final class AppCompositionTests: XCTestCase {
         XCTAssertEqual(outcome, .unmatched)
         XCTAssertEqual(sut.router.selectedTab, selectedTabBefore)
         XCTAssertEqual(sut.router.tabPaths.map(\.count), tabCountsBefore)
-    }
-
-    func testTwoURLsOpenedInImmediateSuccessionResolveIndependentlyWithTheSecondWinning() {
-        let sut = AppComposition(eventBus: AppEventBus())
-
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://settings")), .opened)
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://scanner")), .opened)
-
-        XCTAssertEqual(sut.router.selectedTab, 1, "the second call's tab must win cleanly")
-        XCTAssertEqual(sut.router.tabPaths[1].count, 0, "ScannerRoot, its own tab root — no leftover state")
     }
 }

@@ -40,7 +40,8 @@ private final class UnregisteredRouteProvider: RouteProvider {
 @MainActor
 final class FeatureBlindRenderTests: XCTestCase {
     func testShellResolvesSettingsTabContentThroughAFakeProvider() {
-        let router = AppRouter(tabCount: 3, initialTab: 2)
+        let config = ShellConfig()
+        let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
         let provider = FakeRouteProvider(label: "fake settings")
         router.register(provider)
 
@@ -51,11 +52,12 @@ final class FeatureBlindRenderTests: XCTestCase {
 
     #if canImport(UIKit)
         func testHostingShellViewWithAFakeProviderDoesNotCrashAndResolvesTabTwo() {
-            let router = AppRouter(tabCount: 3, initialTab: 2)
+            let config = ShellConfig()
+            let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
             let provider = FakeRouteProvider(label: "fake settings")
             router.register(provider)
             let sut = ShellViewModel(
-                config: ShellConfig(tabCount: 3, initialTab: 2),
+                config: config,
                 router: router,
                 eventBus: AppEventBus()
             )
@@ -70,7 +72,7 @@ final class FeatureBlindRenderTests: XCTestCase {
             XCTAssertGreaterThan(
                 provider.destinationCallCount,
                 0,
-                "tab 2 root resolved via the fake provider, not a Feature import"
+                "settings root resolved via the fake provider, not a Feature import"
             )
         }
 
@@ -83,13 +85,14 @@ final class FeatureBlindRenderTests: XCTestCase {
             // destination for it, before or after) and observing the fake
             // provider fire is the "demonstrated by a test" proof the DoD asks
             // for.
-            let router = AppRouter(tabCount: 3, initialTab: 0)
+            let config = ShellConfig()
+            let router = AppRouter(tabCount: config.tabCount, initialTab: 0)
             let unregisteredProvider = UnregisteredRouteProvider()
             router.register(unregisteredProvider)
             router.navigate(to: UnregisteredFeaturePrivateRoute(id: 1), inTab: 0)
 
             let sut = ShellViewModel(
-                config: ShellConfig(tabCount: 3, initialTab: 0),
+                config: ShellConfig(tabCount: config.tabCount, initialTab: 0),
                 router: router,
                 eventBus: AppEventBus()
             )

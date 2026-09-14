@@ -8,41 +8,46 @@ import XCTest
 @MainActor
 final class ReTapTests: XCTestCase {
     func testReTapPopsActiveTabToRootAndEmitsScrollToTopWithNoStateOrBusChange() {
-        let router = AppRouter(tabCount: 3, initialTab: 2)
-        router.navigate(to: AppRoutes.SettingsRoot(), inTab: 2)
-        router.navigate(to: AppRoutes.SettingsRoot(), inTab: 2)
-        XCTAssertEqual(router.tabPaths[2].count, 2)
+        let config = ShellConfig()
+        let tab = config.initialTab
+        let router = AppRouter(tabCount: config.tabCount, initialTab: tab)
+        router.navigate(to: AppRoutes.SettingsRoot(), inTab: tab)
+        router.navigate(to: AppRoutes.SettingsRoot(), inTab: tab)
+        XCTAssertEqual(router.tabPaths[tab].count, 2)
 
         let bus = AppEventBus()
-        let sut = ShellViewModel(config: ShellConfig(tabCount: 3, initialTab: 2), router: router, eventBus: bus)
+        let sut = ShellViewModel(config: config, router: router, eventBus: bus)
         let events = Recorder(sut.eventSubject)
         let visibility = bus.visibilityRecorder()
         let states = Recorder(sut.$uiState.map(\.selectedTab))
 
-        sut.dispatch(.selectTab(2))
+        sut.dispatch(.selectTab(tab))
 
-        XCTAssertEqual(router.tabPaths[2].count, 0, "popToRoot(inTab: 2) ran")
-        XCTAssertEqual(sut.uiState.selectedTab, 2)
-        XCTAssertEqual(states.values, [2], "no reduce on re-tap")
+        XCTAssertEqual(router.tabPaths[tab].count, 0, "popToRoot(inTab: \(tab)) ran")
+        XCTAssertEqual(sut.uiState.selectedTab, tab)
+        XCTAssertEqual(states.values, [tab], "no reduce on re-tap")
         XCTAssertTrue(visibility.values.isEmpty, "no bus publish on re-tap")
-        XCTAssertEqual(events.values, [.scrollToTop(tab: 2)])
+        XCTAssertEqual(events.values, [.scrollToTop(tab: tab)])
     }
 
     func testReTapLeavesOtherTabsStacksUntouched() {
-        let router = AppRouter(tabCount: 3, initialTab: 2)
-        router.navigate(to: AppRoutes.ScannerRoot(), inTab: 1)
+        let config = ShellConfig()
+        let tab = config.initialTab
+        let router = AppRouter(tabCount: config.tabCount, initialTab: tab)
+        router.navigate(to: AppRoutes.SettingsRoot(), inTab: 0)
         let bus = AppEventBus()
-        let sut = ShellViewModel(config: ShellConfig(tabCount: 3, initialTab: 2), router: router, eventBus: bus)
+        let sut = ShellViewModel(config: config, router: router, eventBus: bus)
 
-        sut.dispatch(.selectTab(2))
+        sut.dispatch(.selectTab(tab))
 
-        XCTAssertEqual(router.tabPaths[1].count, 1, "only the re-tapped tab is popped")
+        XCTAssertEqual(router.tabPaths[0].count, 1, "only the re-tapped tab is popped")
     }
 
     func testSwitchingToADifferentTabDoesNotEmitScrollToTop() {
-        let router = AppRouter(tabCount: 3, initialTab: 2)
+        let config = ShellConfig()
+        let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
         let bus = AppEventBus()
-        let sut = ShellViewModel(config: ShellConfig(tabCount: 3, initialTab: 2), router: router, eventBus: bus)
+        let sut = ShellViewModel(config: config, router: router, eventBus: bus)
         let events = Recorder(sut.eventSubject)
 
         sut.dispatch(.selectTab(0))
@@ -51,9 +56,10 @@ final class ReTapTests: XCTestCase {
     }
 
     func testReTapOnANonInitialTabAfterSwitching() {
-        let router = AppRouter(tabCount: 3, initialTab: 2)
+        let config = ShellConfig()
+        let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
         let bus = AppEventBus()
-        let sut = ShellViewModel(config: ShellConfig(tabCount: 3, initialTab: 2), router: router, eventBus: bus)
+        let sut = ShellViewModel(config: config, router: router, eventBus: bus)
         sut.dispatch(.selectTab(0))
         router.navigate(to: AppRoutes.SettingsRoot(), inTab: 0)
         let events = Recorder(sut.eventSubject)

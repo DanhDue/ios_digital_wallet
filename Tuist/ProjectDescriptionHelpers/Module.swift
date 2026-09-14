@@ -93,7 +93,8 @@ public enum Module {
     ///   - bundleId: bundle identifier for the test bundle.
     public static func appTestTarget(
         appName: String,
-        bundleId: String
+        bundleId: String,
+        sources: SourceFilesList = ["App/Tests/**"]
     ) -> Target {
         .target(
             name: "\(appName)Tests",
@@ -102,7 +103,7 @@ public enum Module {
             bundleId: bundleId,
             deploymentTargets: .iOS(iOSDeploymentTarget),
             infoPlist: .default,
-            sources: ["App/Tests/**"],
+            sources: sources,
             scripts: [swiftLintScript],
             dependencies: [.target(name: appName)]
         )
@@ -130,7 +131,8 @@ public enum Module {
     ///   - bundleId: bundle identifier for the UI test bundle.
     public static func appUITestTarget(
         appName: String,
-        bundleId: String
+        bundleId: String,
+        sources: SourceFilesList = ["App/UITests/**"]
     ) -> Target {
         .target(
             name: "\(appName)UITests",
@@ -141,7 +143,7 @@ public enum Module {
             infoPlist: .extendingDefault(with: [
                 "DeepLinkScheme": "$(DEEPLINK_SCHEME)",
             ]),
-            sources: ["App/UITests/**"],
+            sources: sources,
             scripts: [swiftLintScript],
             dependencies: [.target(name: appName)],
             settings: .settings(base: [

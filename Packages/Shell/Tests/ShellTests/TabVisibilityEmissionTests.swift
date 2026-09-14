@@ -11,12 +11,13 @@ final class TabVisibilityEmissionTests: XCTestCase {
     func testSwitchingTabsPublishesExactlyOldFalseThenNewTrue() {
         let env = ShellTestEnv()
         let visibility = env.bus.visibilityRecorder()
+        let targetTab = 0
 
-        env.sut.dispatch(.selectTab(1))
+        env.sut.dispatch(.selectTab(targetTab))
 
         XCTAssertEqual(visibility.values, [
-            VisibilityChange(tab: 2, visible: false),
-            VisibilityChange(tab: 1, visible: true),
+            VisibilityChange(tab: env.config.initialTab, visible: false),
+            VisibilityChange(tab: targetTab, visible: true),
         ])
     }
 
@@ -26,25 +27,23 @@ final class TabVisibilityEmissionTests: XCTestCase {
 
         env.sut.dispatch(.selectTab(0))
 
-        XCTAssertEqual(states.values, [2, 0])
+        XCTAssertEqual(states.values, [env.config.initialTab, 0])
     }
 
     func testThreeRapidSwitchesFormAConsistentOldToNewChainWithNoGaps() {
         let env = ShellTestEnv()
         let visibility = env.bus.visibilityRecorder()
 
-        env.sut.dispatch(.selectTab(0))
-        env.sut.dispatch(.selectTab(1))
-        env.sut.dispatch(.selectTab(2))
+        let otherTab = (env.config.initialTab == 0) ? 1 : 0
+        env.sut.dispatch(.selectTab(otherTab))
+        env.sut.dispatch(.selectTab(env.config.initialTab))
 
         let values = visibility.values
         XCTAssertEqual(values, [
-            VisibilityChange(tab: 2, visible: false),
-            VisibilityChange(tab: 0, visible: true),
-            VisibilityChange(tab: 0, visible: false),
-            VisibilityChange(tab: 1, visible: true),
-            VisibilityChange(tab: 1, visible: false),
-            VisibilityChange(tab: 2, visible: true),
+            VisibilityChange(tab: env.config.initialTab, visible: false),
+            VisibilityChange(tab: otherTab, visible: true),
+            VisibilityChange(tab: otherTab, visible: false),
+            VisibilityChange(tab: env.config.initialTab, visible: true),
         ])
 
         // Structural: pairs are (prev,false)(new,true); the `true` of one pair
@@ -62,7 +61,7 @@ final class TabVisibilityEmissionTests: XCTestCase {
         let env = ShellTestEnv()
         let visibility = env.bus.visibilityRecorder()
 
-        env.sut.dispatch(.selectTab(2))
+        env.sut.dispatch(.selectTab(env.config.initialTab))
 
         XCTAssertTrue(visibility.values.isEmpty)
     }

@@ -10,44 +10,57 @@ import XCTest
 /// URL contracts.
 @MainActor
 final class DeepLinkCompositionTests: XCTestCase {
+    private struct FirstRoute: AppRoute {}
+    private struct SecondRoute: AppRoute {}
+
+    private struct TestResolver: TabResolver {
+        func placement(for route: any AppRoute) -> Platform.TabPlacement? {
+            switch route {
+            case is FirstRoute: Platform.TabPlacement(tab: 0, isTabRoot: true)
+            case is SecondRoute: Platform.TabPlacement(tab: 1, isTabRoot: true)
+            default: nil
+            }
+        }
+    }
+
     // MARK: Registration order (first match wins)
 
     func testProvidersAreRegisteredInTheOrderTheyAppearInTheProvidersArray() {
-        let router = AppRouter(tabCount: 3, initialTab: 0)
+        let router = AppRouter(tabCount: 2, initialTab: 1)
         let first = FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/dup") { _ in [AppRoutes.ScannerRoot()] },
+            DeepLinkRoute("/dup") { _ in [FirstRoute()] },
         ])
         let second = FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/dup") { _ in [AppRoutes.SettingsRoot()] },
+            DeepLinkRoute("/dup") { _ in [SecondRoute()] },
         ])
         let deepLinkRouter = DeepLinkComposition.makeRouter(
             router: router,
             providers: [first, second],
             deepLinkGuard: FakeDeepLinkGuard(),
-            tabResolver: ShellTabResolver()
+            tabResolver: TestResolver()
         )
 
         XCTAssertEqual(deepLinkRouter.open(deepLinkTestURL("app://dup")), .opened)
-        XCTAssertEqual(router.selectedTab, 1, "the FIRST-registered provider's /dup must win")
+        XCTAssertEqual(router.selectedTab, 0, "the FIRST-registered provider's /dup must win")
     }
 
     func testReversingProviderOrderReversesWhichPatternWins() {
-        let router = AppRouter(tabCount: 3, initialTab: 0)
+        let router = AppRouter(tabCount: 2, initialTab: 0)
         let first = FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/dup") { _ in [AppRoutes.ScannerRoot()] },
+            DeepLinkRoute("/dup") { _ in [FirstRoute()] },
         ])
         let second = FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/dup") { _ in [AppRoutes.SettingsRoot()] },
+            DeepLinkRoute("/dup") { _ in [SecondRoute()] },
         ])
         let deepLinkRouter = DeepLinkComposition.makeRouter(
             router: router,
             providers: [second, first],
             deepLinkGuard: FakeDeepLinkGuard(),
-            tabResolver: ShellTabResolver()
+            tabResolver: TestResolver()
         )
 
         XCTAssertEqual(deepLinkRouter.open(deepLinkTestURL("app://dup")), .opened)
-        XCTAssertEqual(router.selectedTab, 2, "now SECOND-registered (settings) provider's /dup must win")
+        XCTAssertEqual(router.selectedTab, 1, "now SECOND-registered provider's /dup must win")
     }
 
     // MARK: Existential-typed registration (carried note, Task 4's review)
@@ -59,18 +72,18 @@ final class DeepLinkCompositionTests: XCTestCase {
         // array-literal boxing — proves dynamic dispatch reaches the
         // *overridden* `deepLinks`, not the protocol's default.
         let provider: any RouteProvider = FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/existential-check") { _ in [AppRoutes.SettingsRoot()] },
+            DeepLinkRoute("/existential-check") { _ in [SecondRoute()] },
         ])
-        let router = AppRouter(tabCount: 3, initialTab: 0)
+        let router = AppRouter(tabCount: 2, initialTab: 0)
         let deepLinkRouter = DeepLinkComposition.makeRouter(
             router: router,
             providers: [provider],
             deepLinkGuard: FakeDeepLinkGuard(),
-            tabResolver: ShellTabResolver()
+            tabResolver: TestResolver()
         )
 
         XCTAssertEqual(deepLinkRouter.open(deepLinkTestURL("app://existential-check")), .opened)
-        XCTAssertEqual(router.selectedTab, 2)
+        XCTAssertEqual(router.selectedTab, 1)
     }
 
     // MARK: A provider declaring no deepLinks contributes zero entries

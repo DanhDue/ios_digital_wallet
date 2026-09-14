@@ -42,13 +42,14 @@ final class NavigationFlowTests: XCTestCase {
         let sut = AppComposition(eventBus: bus)
         let recorder = Recorder(bus.on(ShellTabVisibilityChanged.self).map { TabVisibility($0) })
 
-        // Cold start selects tab 2 with no event; move away then back so the
-        // show/hide pair for tab 2 is observable.
+        // Cold start selects settings tab with no event; move away then back so the
+        // show/hide pair for the settings tab is observable.
+        let settingsTab = sut.shellViewModel.config.tabCount - 1
         sut.shellViewModel.dispatch(.selectTab(0))
-        sut.shellViewModel.dispatch(.selectTab(2))
+        sut.shellViewModel.dispatch(.selectTab(settingsTab))
 
-        XCTAssertEqual(sut.router.selectedTab, 2)
-        XCTAssertEqual(recorder.values.last, TabVisibility.make(tab: 2, visible: true))
+        XCTAssertEqual(sut.router.selectedTab, settingsTab)
+        XCTAssertEqual(recorder.values.last, TabVisibility.make(tab: settingsTab, visible: true))
 
         // AppRouter.destination(for: SettingsRoot()) resolves the SettingsFeature provider.
         let settingsProviders = sut.routeProviders.filter { $0.canHandle(AppRoutes.SettingsRoot()) }
@@ -61,16 +62,17 @@ final class NavigationFlowTests: XCTestCase {
 
     func testDeepPushThenTabSwitchThenBackPreservesThePerTabStack() {
         let sut = AppComposition(eventBus: AppEventBus())
+        let settingsTab = sut.shellViewModel.config.tabCount - 1
 
-        sut.router.navigate(to: AppRoutes.SettingsRoot(), inTab: 2)
-        XCTAssertEqual(sut.router.tabPaths[2].count, 1)
+        sut.router.navigate(to: AppRoutes.SettingsRoot(), inTab: settingsTab)
+        XCTAssertEqual(sut.router.tabPaths[settingsTab].count, 1)
 
         sut.router.switchTab(0)
-        sut.router.switchTab(2)
+        sut.router.switchTab(settingsTab)
 
-        XCTAssertEqual(sut.router.tabPaths[2].count, 1, "tab 2 still shows the pushed screen")
+        XCTAssertEqual(sut.router.tabPaths[settingsTab].count, 1, "settings tab still shows the pushed screen")
         XCTAssertEqual(sut.router.tabPaths[0].count, 0, "tab 0 keeps its own (empty) stack")
-        XCTAssertEqual(sut.router.selectedTab, 2)
+        XCTAssertEqual(sut.router.selectedTab, settingsTab)
     }
 
     // MARK: Hosting the composed shell
@@ -78,6 +80,8 @@ final class NavigationFlowTests: XCTestCase {
     #if canImport(UIKit)
         func testHostingTheComposedShellRendersAndDefaultsToSettings() {
             let sut = AppComposition(eventBus: AppEventBus())
+            let expectedTab = sut.shellViewModel.config.initialTab
+            let expectedCount = sut.shellViewModel.config.tabCount
 
             let host = UIHostingController(rootView: RootView(composition: sut))
             host.loadViewIfNeeded()
@@ -86,8 +90,8 @@ final class NavigationFlowTests: XCTestCase {
             RunLoop.main.run(until: Date().addingTimeInterval(0.3))
 
             XCTAssertNotNil(host.view)
-            XCTAssertEqual(sut.router.selectedTab, 2, "Settings is the default-selected tab")
-            XCTAssertEqual(sut.router.tabPaths.count, 3, "three tabs: Home / Scanner / Settings")
+            XCTAssertEqual(sut.router.selectedTab, expectedTab, "Settings is the default-selected tab")
+            XCTAssertEqual(sut.router.tabPaths.count, expectedCount, "number of configured tabs")
         }
     #endif
 

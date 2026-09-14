@@ -63,11 +63,20 @@ case .lean:
         ),
         Module.appTestTarget(
             appName: "iOSDigitalWallet",
-            bundleId: "com.danhdue.iOSDigitalWalletTests"
+            bundleId: "com.danhdue.iOSDigitalWalletTests",
+            sources: activeMode == .lean
+                ? .sourceFilesList(globs: [.glob(
+                    "App/Tests/**",
+                    excluding: ["App/Tests/AppTests/Scanner*", "App/Tests/AppTests/DeepLinkFlowTests.swift"]
+                )])
+                : ["App/Tests/**"]
         ),
         Module.appUITestTarget(
             appName: "iOSDigitalWallet",
-            bundleId: "com.danhdue.iOSDigitalWalletUITests"
+            bundleId: "com.danhdue.iOSDigitalWalletUITests",
+            sources: activeMode == .lean
+                ? .sourceFilesList(globs: [.glob("App/UITests/**", excluding: ["App/UITests/Scanner*"])])
+                : ["App/UITests/**"]
         ),
     ]
     schemes = [

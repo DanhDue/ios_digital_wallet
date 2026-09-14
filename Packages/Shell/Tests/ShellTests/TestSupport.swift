@@ -78,15 +78,29 @@ struct ShellTestEnv {
     let sut: ShellViewModel
     let router: AppRouter
     let bus: AppEventBus
+    let config: ShellConfig
 
-    init(tabCount: Int = 3, initialTab: Int = 2, routerInitialTab: Int? = nil) {
-        router = AppRouter(tabCount: tabCount, initialTab: routerInitialTab ?? initialTab)
+    init(
+        config: ShellConfig = ShellConfig(),
+        routerInitialTab: Int? = nil
+    ) {
+        self.config = config
+        router = AppRouter(tabCount: config.tabCount, initialTab: routerInitialTab ?? config.initialTab)
         bus = AppEventBus()
         sut = ShellViewModel(
-            config: ShellConfig(tabCount: tabCount, initialTab: initialTab),
+            config: config,
             router: router,
             eventBus: bus
         )
+    }
+
+    init(
+        tabCount: Int,
+        initialTab: Int,
+        routerInitialTab: Int? = nil
+    ) {
+        let config = ShellConfig(tabCount: tabCount, initialTab: initialTab)
+        self.init(config: config, routerInitialTab: routerInitialTab)
     }
 }
 
@@ -103,7 +117,7 @@ final class FakeRouteProvider: RouteProvider {
     }
 
     func canHandle(_ route: any AppRoute) -> Bool {
-        route is AppRoutes.SettingsRoot || route is AppRoutes.ScannerRoot
+        route is AppRoutes.SettingsRoot
     }
 
     func destination(for _: any AppRoute) -> AnyView {

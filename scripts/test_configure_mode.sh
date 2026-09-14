@@ -18,15 +18,13 @@ setup_test_repo() {
     mkdir -p "$target"
     # Copy repo tracked files using git archive or rsync/cp
     (cd "$REPO_ROOT" && git archive HEAD) | (cd "$target" && tar -x)
-    # Also copy untracked/generated active mode file and scripts if present
-    if [ -f "$REPO_ROOT/Tuist/ProjectDescriptionHelpers/ActiveMode.swift" ]; then
-        mkdir -p "$target/Tuist/ProjectDescriptionHelpers"
-        cp "$REPO_ROOT/Tuist/ProjectDescriptionHelpers/ActiveMode.swift" "$target/Tuist/ProjectDescriptionHelpers/"
-    fi
-    if [ -f "$REPO_ROOT/scripts/configure_mode.sh" ]; then
-        mkdir -p "$target/scripts"
-        cp "$REPO_ROOT/scripts/configure_mode.sh" "$target/scripts/"
-    fi
+    # Also sync modified and untracked files from working tree
+    (cd "$REPO_ROOT" && git ls-files -m -o --exclude-standard) | while read -r f; do
+        if [ -f "$REPO_ROOT/$f" ]; then
+            mkdir -p "$target/$(dirname "$f")"
+            cp "$REPO_ROOT/$f" "$target/$f"
+        fi
+    done
     # Initialize a dummy git repo so git status works
     (
         cd "$target"
@@ -115,6 +113,12 @@ if ! grep -q 'tabCount: Int = 2, initialTab: Int = 1' "$TARGET_DIR/Packages/Shel
     echo "FAILED: ShellConfig.swift does not have defaults tabCount: 2, initialTab: 1" >&2
     exit 1
 fi
+
+# Assert Packages/Shell/Package.swift exclude
+if ! grep -q 'exclude: \["ScannerTabTests.swift"\]' "$TARGET_DIR/Packages/Shell/Package.swift"; then
+    echo "FAILED: Packages/Shell/Package.swift does not exclude ScannerTabTests.swift in lean mode" >&2
+    exit 1
+fi
 echo "PASS: Lean mode successfully unwires Scanner"
 
 echo "--- Test 5: Idempotency in lean mode ---"
@@ -165,15 +169,30 @@ if ! grep -q 'tabCount: Int = 3, initialTab: Int = 2' "$TARGET_DIR/Packages/Shel
     echo "FAILED: ShellConfig.swift did not restore defaults tabCount: 3, initialTab: 2" >&2
     exit 1
 fi
+
+if ! grep -q 'exclude: \[\]' "$TARGET_DIR/Packages/Shell/Package.swift"; then
+    echo "FAILED: Packages/Shell/Package.swift did not restore exclude: [] in enterprise mode" >&2
+    exit 1
+fi
 echo "PASS: Enterprise mode restores all marker regions and defaults"
 
-echo "--- Test 7: --prune deletes unused feature directories ---"
+echo "--- Test 7: --prune deletes unused feature directories and test files ---"
 [ -d "$TARGET_DIR/Features/Scanner" ] || (echo "FAILED: Features/Scanner already missing" >&2 && exit 1)
 "$CFG" lean --prune --root-dir="$TARGET_DIR" --skip-tuist
 if [ -d "$TARGET_DIR/Features/Scanner" ]; then
     echo "FAILED: Features/Scanner was not pruned" >&2
     exit 1
 fi
-echo "PASS: --prune successfully deleted Features/Scanner"
+for f in \
+    "Packages/Shell/Tests/ShellTests/ScannerTabTests.swift" \
+    "App/Tests/AppTests/ScannerCompositionTests.swift" \
+    "App/Tests/AppTests/ScannerDeepLinkTests.swift" \
+    "App/UITests/ScannerTabUITests.swift"; do
+    if [ -f "$TARGET_DIR/$f" ]; then
+        echo "FAILED: $f was not pruned" >&2
+        exit 1
+    fi
+done
+echo "PASS: --prune successfully deleted Features/Scanner and extracted tests"
 
 echo "=== All configure_mode.sh tests passed! ==="

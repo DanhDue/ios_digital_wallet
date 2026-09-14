@@ -26,7 +26,13 @@ final class PackageManifestTests: XCTestCase {
     func testManifestDeclaresNoFeaturePackageDependency() throws {
         let text = try manifestText()
         for forbidden in ["Settings", "Scanner", "Features"] {
-            XCTAssertFalse(text.contains(forbidden), "Shell must not depend on \(forbidden)")
+            XCTAssertFalse(
+                text.contains(#".package(path: "../\#(forbidden)")"#) ||
+                    text.contains(#".package(path: "../../Features/\#(forbidden)")"#) ||
+                    text.contains(#"product(name: "\#(forbidden)""#) ||
+                    text.contains(#"dependencies: ["\#(forbidden)"]"#),
+                "Shell must not depend on \(forbidden)"
+            )
         }
     }
 }

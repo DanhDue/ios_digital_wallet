@@ -9,10 +9,15 @@ final class ShellViewModelTests: XCTestCase {
     // MARK: Cold start
 
     func testColdStartSelectsConfiguredInitialTabInStateAndRouter() {
-        let env = ShellTestEnv(initialTab: 2, routerInitialTab: 0)
+        let config = ShellConfig()
+        let env = ShellTestEnv(config: config, routerInitialTab: 0)
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
-        XCTAssertEqual(env.router.selectedTab, 2, "the shell syncs the router to ShellConfig.initialTab")
+        XCTAssertEqual(env.sut.uiState.selectedTab, config.initialTab)
+        XCTAssertEqual(
+            env.router.selectedTab,
+            config.initialTab,
+            "the shell syncs the router to ShellConfig.initialTab"
+        )
     }
 
     // MARK: Switch to a different tab
@@ -32,10 +37,10 @@ final class ShellViewModelTests: XCTestCase {
         let env = ShellTestEnv()
         let visibility = env.bus.visibilityRecorder()
 
-        env.sut.dispatch(.selectTab(3))
+        env.sut.dispatch(.selectTab(env.config.tabCount))
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
-        XCTAssertEqual(env.router.selectedTab, 2)
+        XCTAssertEqual(env.sut.uiState.selectedTab, env.config.initialTab)
+        XCTAssertEqual(env.router.selectedTab, env.config.initialTab)
         XCTAssertTrue(visibility.values.isEmpty)
     }
 
@@ -44,7 +49,7 @@ final class ShellViewModelTests: XCTestCase {
 
         env.sut.dispatch(.selectTab(99))
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
+        XCTAssertEqual(env.sut.uiState.selectedTab, env.config.initialTab)
     }
 
     func testNegativeIndexIsIgnored() {
@@ -52,21 +57,22 @@ final class ShellViewModelTests: XCTestCase {
 
         env.sut.dispatch(.selectTab(-1))
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
-        XCTAssertEqual(env.router.selectedTab, 2)
+        XCTAssertEqual(env.sut.uiState.selectedTab, env.config.initialTab)
+        XCTAssertEqual(env.router.selectedTab, env.config.initialTab)
     }
 
     // MARK: Rapid switch
 
     func testThreeRapidDistinctDispatchesEndAtTheLastIndex() {
         let env = ShellTestEnv()
+        let lastIndex = env.config.tabCount - 1
 
-        env.sut.dispatch(.selectTab(0))
-        env.sut.dispatch(.selectTab(1))
-        env.sut.dispatch(.selectTab(2))
+        for tabIndex in 0 ... lastIndex {
+            env.sut.dispatch(.selectTab(tabIndex))
+        }
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
-        XCTAssertEqual(env.router.selectedTab, 2)
+        XCTAssertEqual(env.sut.uiState.selectedTab, lastIndex)
+        XCTAssertEqual(env.router.selectedTab, lastIndex)
     }
 
     // MARK: Re-tap keeps the index
@@ -74,8 +80,8 @@ final class ShellViewModelTests: XCTestCase {
     func testReTappingTheActiveTabDoesNotChangeSelectedTab() {
         let env = ShellTestEnv()
 
-        env.sut.dispatch(.selectTab(2))
+        env.sut.dispatch(.selectTab(env.config.initialTab))
 
-        XCTAssertEqual(env.sut.uiState.selectedTab, 2)
+        XCTAssertEqual(env.sut.uiState.selectedTab, env.config.initialTab)
     }
 }

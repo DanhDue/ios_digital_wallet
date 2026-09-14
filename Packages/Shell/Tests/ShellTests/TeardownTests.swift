@@ -34,9 +34,10 @@ final class TeardownTests: XCTestCase {
         weak var weakSUT: ShellViewModel?
 
         autoreleasepool {
-            let router = AppRouter(tabCount: 3, initialTab: 2)
+            let config = ShellConfig()
+            let router = AppRouter(tabCount: config.tabCount, initialTab: config.initialTab)
             let sut = ShellViewModel(
-                config: ShellConfig(tabCount: 3, initialTab: 2),
+                config: config,
                 router: router,
                 eventBus: AppEventBus()
             )

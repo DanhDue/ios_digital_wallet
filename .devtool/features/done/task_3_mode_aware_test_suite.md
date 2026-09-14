@@ -1,13 +1,13 @@
 ---
 id: "task_3_mode_aware_test_suite"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:15Z"
-modified: "2026-09-13T21:29:15Z"
-completedAt: null
+modified: "2026-09-14T15:06:00Z"
+completedAt: "2026-09-14T15:06:00Z"
 labels: ["testing", "refactor", "architecture"]
 order: "a3"
 ---

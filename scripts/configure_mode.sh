@@ -226,6 +226,20 @@ if shell_cfg.exists():
         text = update_region(text, "shell:config-defaults:begin", "shell:config-defaults:end", set_cfg_enterprise)
     shell_cfg.write_text(text, encoding="utf-8")
 
+# 5. Packages/Shell/Package.swift
+shell_pkg = root_dir / "Packages/Shell/Package.swift"
+if shell_pkg.exists():
+    text = shell_pkg.read_text(encoding="utf-8")
+    if mode == "lean":
+        def set_exclude_lean(b):
+            return '            exclude: ["ScannerTabTests.swift"]'
+        text = update_region(text, "shell:test-excludes:begin", "shell:test-excludes:end", set_exclude_lean)
+    elif mode == "enterprise":
+        def set_exclude_enterprise(b):
+            return '            exclude: []'
+        text = update_region(text, "shell:test-excludes:begin", "shell:test-excludes:end", set_exclude_enterprise)
+    shell_pkg.write_text(text, encoding="utf-8")
+
 PYEOF
 
 # --- Plugin mode handling ---------------------------------------------------
@@ -245,6 +259,16 @@ if [ "$PRUNE" = true ]; then
             rm -rf "$ROOT_DIR/Features/Scanner"
             echo "  pruned Features/Scanner"
         fi
+        for f in \
+            "Packages/Shell/Tests/ShellTests/ScannerTabTests.swift" \
+            "App/Tests/AppTests/ScannerCompositionTests.swift" \
+            "App/Tests/AppTests/ScannerDeepLinkTests.swift" \
+            "App/UITests/ScannerTabUITests.swift"; do
+            if [ -f "$ROOT_DIR/$f" ]; then
+                rm -f "$ROOT_DIR/$f"
+                echo "  pruned $f"
+            fi
+        done
     elif [ "$MODE" = "plugin" ]; then
         rm -rf "$ROOT_DIR/App" "$ROOT_DIR/Packages" "$ROOT_DIR/Features" "$ROOT_DIR/ArchTests"
         echo "  pruned App, Packages, Features, ArchTests"

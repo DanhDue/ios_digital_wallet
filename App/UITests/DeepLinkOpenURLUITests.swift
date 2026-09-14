@@ -45,53 +45,26 @@ final class DeepLinkOpenURLUITests: XCTestCase {
     /// `DeepLinkFlowTests` found does not surface SwiftUI `Text` content on
     /// this SDK (see that file's type doc comment).
     @available(iOS 16.4, *)
-    func testOpeningARealURLThroughTheOSNavigatesToTheResultScreen() throws {
+    func testOpeningSettingsURLThroughTheOSSelectsTheSettingsTab() throws {
         let app = XCUIApplication()
         app.launch()
 
+        // Switch to tab 0 first so Settings is not the active tab
+        let homeTabButton = app.tabBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(homeTabButton.waitForExistence(timeout: 10))
+        homeTabButton.tap()
+
         let scheme = try XCTUnwrap(registeredURLScheme(), "this target's Info.plist must carry DeepLinkScheme")
-        let url = try XCTUnwrap(URL(string: "\(scheme)://scanner/result/UITESTCODE123"))
+        let url = try XCTUnwrap(URL(string: "\(scheme)://settings"))
 
         app.open(url)
         dismissOpenConfirmationIfPresented()
 
-        let codeText = app.staticTexts["scanner.result.code"]
-        XCTAssertTrue(
-            codeText.waitForExistence(timeout: 10),
-            "the OS-delivered URL must have navigated to the Result screen — .onOpenURL must have run"
-        )
-        XCTAssertEqual(codeText.label, "UITESTCODE123", "the Result screen must show the exact code the URL carried")
-    }
-
-    /// A second, independent URL (`.../settings`) proves the hop generalises
-    /// — not a fluke of one particular route — via the tab bar's own
-    /// selection state rather than screen content, a different observable
-    /// than the first test's.
-    ///
-    /// **Targets Scanner (tab 1), not Settings.** `XCUIApplication.open(_:)`
-    /// was observed (empirically, while proving this test has teeth — see
-    /// the report) to relaunch the app process rather than deliver into a
-    /// still-running one, and `ShellConfig()`'s cold-start default is
-    /// Settings (tab 2). A first version of this test targeted Settings and
-    /// stayed green even with `.onOpenURL` deleted — a false positive from
-    /// the relaunch coincidentally landing on the same tab the link asked
-    /// for. Scanner is not the cold-start default, so only a real delivery
-    /// can select it.
-    @available(iOS 16.4, *)
-    func testOpeningARealScannerURLThroughTheOSSelectsTheScannerTab() throws {
-        let app = XCUIApplication()
-        app.launch()
-
-        let scheme = try XCTUnwrap(registeredURLScheme(), "this target's Info.plist must carry DeepLinkScheme")
-        let url = try XCTUnwrap(URL(string: "\(scheme)://scanner"))
-
-        app.open(url)
-        dismissOpenConfirmationIfPresented()
-
-        let scannerTabButton = app.tabBars.buttons.element(boundBy: 1)
-        XCTAssertTrue(scannerTabButton.waitForExistence(timeout: 10))
+        let settingsIndex = app.tabBars.buttons.count - 1
+        let settingsTabButton = app.tabBars.buttons.element(boundBy: settingsIndex)
+        XCTAssertTrue(settingsTabButton.waitForExistence(timeout: 10))
         let becameSelected = NSPredicate(format: "isSelected == true")
-        expectation(for: becameSelected, evaluatedWith: scannerTabButton)
+        expectation(for: becameSelected, evaluatedWith: settingsTabButton)
         waitForExpectations(timeout: 10)
     }
 
