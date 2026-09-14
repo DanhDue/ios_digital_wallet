@@ -2,7 +2,7 @@
 import UIKit
 
 /// Root plugin entry point and composition root for Flutter iOS bindings.
-public final class MyPlugin: NSObject, FlutterPlugin {
+public final class MyPlugin: NSObject, @preconcurrency FlutterPlugin {
     private var messenger: FlutterBinaryMessenger?
 
     public init(messenger: FlutterBinaryMessenger? = nil) {
@@ -36,7 +36,10 @@ public final class MyPlugin: NSObject, FlutterPlugin {
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "getPlatformVersion":
-            result("iOS " + UIDevice.current.systemVersion)
+            let version = MainActor.assumeIsolated {
+                "iOS " + UIDevice.current.systemVersion
+            }
+            result(version)
         default:
             result(FlutterMethodNotImplemented)
         }

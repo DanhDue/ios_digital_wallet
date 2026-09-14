@@ -56,3 +56,26 @@ To switch to the plugin mode:
 ./scripts/configure_mode.sh plugin
 ```
 This automatically invokes `./scripts/bootstrap_devbed.sh` to ensure `Plugin/Vendor/Flutter.xcframework` is bound before configuring the workspace.
+
+## Sample Runner App (`Sample/`)
+
+The Sample runner app (`Sample/Sources/SampleApp.swift` and `Sample/Sources/ContentView.swift`) provides a standalone iOS host application for plugin developers to iterate on SwiftUI views and execute domain use cases directly without needing a running Flutter engine or Flutter host process.
+
+### Features
+- **Direct SwiftUI View Mounting:** Mounts `MyPluginView()` directly into the SwiftUI hierarchy.
+- **Background Task Registration:** Calls `DataSyncTask.register()` in `SampleApp.init` prior to scene creation, with `BGTaskSchedulerPermittedIdentifiers` configured in `Sample/Resources/Info.plist`.
+- **Direct UseCase Execution:** Exercises `SyncDataUseCase` via `PluginContainer.shared.syncDataUseCase()`.
+
+### Building & Running Sample
+When in `plugin` mode:
+```bash
+# Generate workspace
+tuist generate --no-open
+
+# Build Sample app:
+xcodebuild build -workspace PluginDevbed.xcworkspace -scheme Sample -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO
+
+# Run Sample unit tests:
+xcodebuild test -workspace PluginDevbed.xcworkspace -scheme Sample -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO
+```
+

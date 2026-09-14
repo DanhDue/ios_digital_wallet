@@ -1,13 +1,13 @@
 ---
 id: "task_8_scaffold_sample_runner_app"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:30:41Z"
-modified: "2026-09-13T21:30:41Z"
-completedAt: null
+modified: "2026-09-14T15:35:00Z"
+completedAt: "2026-09-14T15:35:00Z"
 labels: ["feature", "testing", "flutter-interop"]
 order: "a8"
 ---

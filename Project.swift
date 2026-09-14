@@ -98,13 +98,22 @@ case .plugin:
             product: .app,
             bundleId: "com.danhdue.Sample",
             deploymentTargets: .iOS(Module.iOSDeploymentTarget),
-            infoPlist: FileManager.default.fileExists(atPath: "Sample/Resources/Info.plist")
-                ? .file(path: "Sample/Resources/Info.plist")
-                : .default,
-            sources: FileManager.default.fileExists(atPath: "Sample/Sources")
-                ? ["Sample/Sources/**"]
-                : [],
+            infoPlist: .file(path: "Sample/Resources/Info.plist"),
+            sources: ["Sample/Sources/**"],
             dependencies: [
+                .external(name: "Plugin"),
+            ]
+        ),
+        .target(
+            name: "SampleTests",
+            destinations: Module.destinations,
+            product: .unitTests,
+            bundleId: "com.danhdue.SampleTests",
+            deploymentTargets: .iOS(Module.iOSDeploymentTarget),
+            infoPlist: .default,
+            sources: ["Sample/Tests/**"],
+            dependencies: [
+                .target(name: "Sample"),
                 .external(name: "Plugin"),
             ]
         ),
@@ -114,6 +123,7 @@ case .plugin:
             name: "Sample",
             shared: true,
             buildAction: .buildAction(targets: ["Sample"]),
+            testAction: .targets(["SampleTests"]),
             runAction: .runAction(executable: "Sample")
         ),
     ]
