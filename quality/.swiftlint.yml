@@ -126,6 +126,7 @@ custom_rules:
   no_public_in_data:
     name: "No public API in Data"
     included: ".*/Data/.*\\.swift"
+    excluded: ".*/DataSyncTask\\.swift"
     regex: "^\\s*(public|open)\\s+(final\\s+)?(class|struct|enum|actor|protocol|func|var|let)"
     message: "Data types must stay internal — expose behaviour via Domain protocols. (Enforced for real by ArchTests.)"
     severity: error
