@@ -31,8 +31,9 @@ setup_test_repo() {
         git init -q
         git config user.name "Test Runner"
         git config user.email "test@example.com"
+        "$target/scripts/configure_mode.sh" enterprise --root-dir="$target" --skip-tuist
         git add -A
-        git commit -qm "Initial commit for test"
+        git commit -qm "Initial enterprise commit for test"
     )
 }
 

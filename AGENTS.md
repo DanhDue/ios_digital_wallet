@@ -116,3 +116,12 @@ it.
    (ArchTests K10.2) — a cross-feature entry point unreachable by URL fails
    CI. See `docs/architecture/DEEPLINK.md` for the URL grammar, the
    parent-chain convention, and the guard/tab-resolver contracts.
+10. **Template Modes (`enterprise`, `lean`, `plugin`)**:
+   - Check the current active mode in `Tuist/ProjectDescriptionHelpers/ActiveMode.swift`.
+   - **Enterprise mode** enforces the full governance suite: `swift test --package-path ArchTests`, `scripts/check_module_boundaries.sh`, SwiftLint, SwiftFormat.
+   - **Lean mode** unwires `Scanner` and intentionally skips `ArchTests` to maximize development velocity. Agents must NOT run `ArchTests` or report its absence/failure in lean mode.
+   - **Plugin mode** focuses exclusively on `Plugin/` and `Sample/`. Host targets and enterprise packages are inactive in `PluginDevbed.xcworkspace`. Verify plugin changes with:
+     `(cd Plugin && xcodebuild build -scheme Plugin -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO)` and
+     `xcodebuild test -workspace PluginDevbed.xcworkspace -scheme Sample -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO`.
+   - To switch modes, use `./scripts/configure_mode.sh <enterprise|lean|plugin>`. See `docs/architecture/TEMPLATE_MODES.md`.
+

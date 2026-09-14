@@ -99,6 +99,13 @@ public enum TemplateMode: String, CaseIterable {
 public let activeMode: TemplateMode = .$MODE
 EOF
 echo "configure_mode: activeMode set to .$MODE"
+export TUIST_TEMPLATE_MODE="$MODE"
+
+# --- Invalidate Tuist/swifterpm build cache so manifest re-evaluates with new activeMode
+rm -rf "$ROOT_DIR/Tuist/.build" "$ROOT_DIR/Tuist/Package.resolved"
+if [ -f "$ROOT_DIR/Tuist/Package.swift" ]; then
+    touch "$ROOT_DIR/Tuist/Package.swift"
+fi
 
 # --- Marker region helper via python3 ---------------------------------------
 python3 - "$ROOT_DIR" "$MODE" << 'PYEOF'
@@ -248,7 +255,7 @@ if [ "$MODE" = "plugin" ]; then
     if [ ! -f "$BOOTSTRAP_SCRIPT" ]; then
         die "Plugin mode is not yet implemented (requires bootstrap_devbed.sh from Task 5)"
     fi
-    "$BOOTSTRAP_SCRIPT"
+    "$BOOTSTRAP_SCRIPT" --root-dir="$ROOT_DIR"
 fi
 
 # --- Handle --prune ---------------------------------------------------------
@@ -281,11 +288,12 @@ if [ "$SKIP_TUIST" = false ]; then
         echo "configure_mode: regenerating Xcode workspace with tuist..."
         (
             cd "$ROOT_DIR"
+            export TUIST_TEMPLATE_MODE="$MODE"
             if which tuist >/dev/null 2>&1; then
-                tuist install --update
+                tuist install
                 tuist generate --no-open
             else
-                mise exec -- tuist install --update
+                mise exec -- tuist install
                 mise exec -- tuist generate --no-open
             fi
         )

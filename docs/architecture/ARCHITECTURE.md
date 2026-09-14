@@ -727,6 +727,8 @@ The pinned toolchain (`tuist`, `swiftlint`, `swiftformat`) is installed via
 - [`NETWORKING.md`](NETWORKING.md) — `Network` package architecture, the decentralised `<Name>Uri` / `<Name>Endpoints` pattern, `BaseResponseObject<T>`.
 - [`REFRESH_TOKEN.md`](REFRESH_TOKEN.md) — the refresh-token subsystem: single-flight coordination, the force-logout ladder, `TokenRefresher` DIP wiring.
 - [`DEEPLINK.md`](DEEPLINK.md) — the deep-link subsystem: the URL grammar, declaring `deepLinks` from a feature, the guard/tab-resolver contracts and their consumer obligations, pending-link replay, and `ArchTests` K10.
+- [`TEMPLATE_MODES.md`](TEMPLATE_MODES.md) — the Tri-Mode architecture (Enterprise, Lean, Plugin), selection tradeoffs, and switching workflows.
+- [`PLUGIN_DEVBED.md`](PLUGIN_DEVBED.md) — Flutter Plugin DevBed architecture, engine binding, standalone xcodebuild loop, and Sample runner app.
 - `ArchTests/Tests/ArchTests/` — the K1–K10 rule bodies (`LayerRulesTests`, `DeclRulesTests`, `HostRulesTests`, `DeepLinkRulesTests`).
 - `quality/.swiftlint.yml`, `quality/.swiftformat` — style configuration.
 

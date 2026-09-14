@@ -59,6 +59,7 @@ the `@main` entry-point file to `<NewAppName>App.swift` and verifies with
 - Requires a **clean git tree** (commit or stash first).
 - `<NewAppName>` must be a valid Swift identifier: `^[A-Za-z][A-Za-z0-9]*$`.
 - `<new.bundle.id>` must be reverse-DNS: `^[a-z0-9]+(\.[a-z0-9]+)+$`.
+- Optional `--mode <enterprise|lean|plugin>` flag configures the initial template mode directly on rename.
 - The **infra / Shell / `*Feature` package names stay fixed** (`Core`,
   `Framework`, `Network`, `AppUIKit`, `Platform`, `Shell`, `SettingsFeature`,
   `ScannerFeature`) — a vendor namespace, so Mason output is stable across
@@ -66,6 +67,20 @@ the `@main` entry-point file to `<NewAppName>App.swift` and verifies with
 - Idempotent: re-running on an already-renamed tree is a clean no-op.
 - `RENAME_SKIP_VERIFY=1 ./scripts/rename_project.sh …` skips the build step for
   a dry run.
+
+### Template modes (`enterprise`, `lean`, `plugin`)
+
+The template supports three operational modes:
+- **`enterprise`** (default): Full multi-package governance, 10 units, swift-syntax AST architecture gate (`ArchTests`), Shell with 3 tabs (`Home`, `Scanner`, `Settings`).
+- **`lean`**: Fast iteration, single-feature MVPs, Scanner unwired, 2 tabs (`Home`, `Settings`), `ArchTests` skipped for rapid build speeds.
+- **`plugin`**: Flutter Plugin DevBed, standalone SwiftUI testing and use case execution with no Flutter engine required (`PluginDevbed.xcworkspace`).
+
+Switch between modes anytime:
+```bash
+./scripts/configure_mode.sh <enterprise|lean|plugin>
+```
+See [`docs/architecture/TEMPLATE_MODES.md`](docs/architecture/TEMPLATE_MODES.md) and [`docs/architecture/PLUGIN_DEVBED.md`](docs/architecture/PLUGIN_DEVBED.md) for details.
+
 
 ### Add a feature
 

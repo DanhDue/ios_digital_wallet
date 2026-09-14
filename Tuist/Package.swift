@@ -17,16 +17,37 @@ import PackageDescription
     }
 
     private let activeMode: TemplateMode = {
-        let modeFile = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .appendingPathComponent("ProjectDescriptionHelpers/ActiveMode.swift")
-        if let content = try? String(contentsOf: modeFile, encoding: .utf8) {
-            if content.contains(".lean") {
+        if let env = ProcessInfo.processInfo.environment["TUIST_TEMPLATE_MODE"] {
+            if env == "lean" {
                 return .lean
             }
-            if content.contains(".plugin") {
+            if env == "plugin" {
                 return .plugin
             }
+            if env == "enterprise" {
+                return .enterprise
+            }
+        }
+        var searchDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        for _ in 0 ..< 5 {
+            let candidate1 = searchDir.appendingPathComponent("Tuist/ProjectDescriptionHelpers/ActiveMode.swift")
+            let candidate2 = searchDir.appendingPathComponent("ProjectDescriptionHelpers/ActiveMode.swift")
+            for candidate in [candidate1, candidate2] {
+                if let content = try? String(contentsOf: candidate, encoding: .utf8) {
+                    if content.contains(".lean") {
+                        return .lean
+                    }
+                    if content.contains(".plugin") {
+                        return .plugin
+                    }
+                    return .enterprise
+                }
+            }
+            let parent = searchDir.deletingLastPathComponent()
+            if parent.path == searchDir.path {
+                break
+            }
+            searchDir = parent
         }
         return .enterprise
     }()

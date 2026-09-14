@@ -122,3 +122,71 @@ jobs:
             -scheme iOSDigitalWallet \
             -destination "$destination" \
             CODE_SIGNING_ALLOWED=NO
+
+  plugin-devbed:
+    name: Plugin DevBed verification
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Install pinned toolchain (tuist)
+        run: mise install
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Configure Plugin mode
+        run: ./scripts/configure_mode.sh plugin
+
+      - name: Build & test Plugin package
+        run: |
+          selection=$(xcrun simctl list devices available -j | jq -r '
+            [
+              .devices
+              | to_entries
+              | map(select(.key | test("\\.iOS-[0-9]+-[0-9]+$")))
+              | sort_by(.key | capture("iOS-(?<maj>[0-9]+)-(?<min>[0-9]+)")
+                              | [(.maj | tonumber), (.min | tonumber)])
+              | reverse[]
+              | .value[]
+              | select(.name | startswith("iPhone"))
+            ][0]
+            | if . == null then empty else "\(.name)\t\(.udid)" end
+          ')
+          if [ -z "$selection" ]; then
+            echo "::error::No available iPhone simulator found on this runner."
+            exit 1
+          fi
+          device_udid="${selection##*$'\t'}"
+          destination="platform=iOS Simulator,id=$device_udid"
+
+          (cd Plugin && xcodebuild build -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
+          (cd Plugin && xcodebuild test -scheme Plugin -destination "$destination" CODE_SIGNING_ALLOWED=NO)
+
+      - name: Build & test Sample runner
+        run: |
+          selection=$(xcrun simctl list devices available -j | jq -r '
+            [
+              .devices
+              | to_entries
+              | map(select(.key | test("\\.iOS-[0-9]+-[0-9]+$")))
+              | sort_by(.key | capture("iOS-(?<maj>[0-9]+)-(?<min>[0-9]+)")
+                              | [(.maj | tonumber), (.min | tonumber)])
+              | reverse[]
+              | .value[]
+              | select(.name | startswith("iPhone"))
+            ][0]
+            | if . == null then empty else "\(.name)\t\(.udid)" end
+          ')
+          device_udid="${selection##*$'\t'}"
+          destination="platform=iOS Simulator,id=$device_udid"
+
+          xcodebuild build -workspace PluginDevbed.xcworkspace -scheme Sample -destination "$destination" CODE_SIGNING_ALLOWED=NO
+          xcodebuild test -workspace PluginDevbed.xcworkspace -scheme Sample -destination "$destination" CODE_SIGNING_ALLOWED=NO
+
