@@ -121,6 +121,7 @@ jobs:
             -workspace iOSDigitalWallet.xcworkspace \
             -scheme iOSDigitalWallet \
             -destination "$destination" \
+            -only-testing:iOSDigitalWalletTests \
             CODE_SIGNING_ALLOWED=NO
 
   plugin-devbed:

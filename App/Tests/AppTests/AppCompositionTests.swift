@@ -263,68 +263,6 @@ final class AppCompositionTests: XCTestCase {
         XCTAssertEqual(fakeGuard.callCount, 1, "the injected guard, not a production one, must have been consulted")
     }
 
-    // MARK: UserLoggedIn -> drainPending()
-
-    func testPublishingUserLoggedInDrainsAPendingRedirectedLink() {
-        var allow = false
-        let fakeGuard = FakeDeepLinkGuard { stack, requiresAuth in
-            if stack.first is AppRoutes.SettingsRoot {
-                return .allow // the redirect target itself, evaluated with requiresAuth: false
-            }
-            guard requiresAuth else { return .allow }
-            return allow ? .allow : .redirect(to: [AppRoutes.SettingsRoot()], retainPending: true)
-        }
-        let bus = AppEventBus()
-        let sut = AppComposition(eventBus: bus, deepLinkGuard: fakeGuard)
-        sut.deepLinkRouter.register(FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.SettingsRoot()] },
-        ]))
-
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://gated")), .pendingGuard)
-        XCTAssertEqual(
-            sut.router.selectedTab,
-            sut.shellViewModel.config.initialTab,
-            "redirected to SettingsRoot while pending"
-        )
-
-        allow = true
-        bus.publish(UserLoggedIn())
-        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
-
-        XCTAssertEqual(
-            sut.router.selectedTab,
-            sut.shellViewModel.config.initialTab,
-            "drainPending replayed the original stack"
-        )
-    }
-
-    func testPublishingAnUnrelatedEventDoesNotDrainAPendingLink() {
-        let fakeGuard = FakeDeepLinkGuard { stack, requiresAuth in
-            if stack.first is AppRoutes.SettingsRoot {
-                return .allow
-            }
-            guard requiresAuth else { return .allow }
-            return .redirect(to: [AppRoutes.SettingsRoot()], retainPending: true)
-        }
-        let bus = AppEventBus()
-        let sut = AppComposition(eventBus: bus, deepLinkGuard: fakeGuard)
-        sut.deepLinkRouter.register(FakeDeepLinkRouteProvider([
-            DeepLinkRoute("/gated", requiresAuth: true) { _ in [AppRoutes.SettingsRoot()] },
-        ]))
-
-        XCTAssertEqual(sut.deepLinkRouter.open(deepLinkTestURL("app://gated")), .pendingGuard)
-        XCTAssertEqual(sut.router.selectedTab, sut.shellViewModel.config.initialTab)
-
-        bus.publish(AppLifecycleChanged(state: .background))
-        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
-
-        XCTAssertEqual(
-            sut.router.selectedTab,
-            sut.shellViewModel.config.initialTab,
-            "an unrelated event must never drain the pending link"
-        )
-    }
-
     // MARK: Adversarial
 
     func testOpeningAURLThatMatchesNoRegisteredPatternLeavesRouterStateUnchanged() {

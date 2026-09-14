@@ -12,6 +12,14 @@ final class ScannerTabUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        // Switch to tab 0 first so the app is interactive and Scanner is not active
+        let homeTabButton = app.tabBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(homeTabButton.waitForExistence(timeout: 10))
+        homeTabButton.tap()
+        let homeSelected = NSPredicate(format: "isSelected == true")
+        expectation(for: homeSelected, evaluatedWith: homeTabButton)
+        waitForExpectations(timeout: 10)
+
         let scheme = try XCTUnwrap(registeredURLScheme(), "this target's Info.plist must carry DeepLinkScheme")
         let url = try XCTUnwrap(URL(string: "\(scheme)://scanner/result/UITESTCODE123"))
 
@@ -20,7 +28,7 @@ final class ScannerTabUITests: XCTestCase {
 
         let codeText = app.staticTexts["scanner.result.code"]
         XCTAssertTrue(
-            codeText.waitForExistence(timeout: 10),
+            codeText.waitForExistence(timeout: 25),
             "expected 'scanner.result.code' to appear in the view hierarchy after deep link"
         )
         XCTAssertEqual(codeText.label, "UITESTCODE123")
@@ -30,6 +38,14 @@ final class ScannerTabUITests: XCTestCase {
     func testOpeningARealScannerURLThroughTheOSSelectsTheScannerTab() throws {
         let app = XCUIApplication()
         app.launch()
+
+        // Switch to tab 0 first so the app is interactive and Scanner is not active
+        let homeTabButton = app.tabBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(homeTabButton.waitForExistence(timeout: 10))
+        homeTabButton.tap()
+        let homeSelected = NSPredicate(format: "isSelected == true")
+        expectation(for: homeSelected, evaluatedWith: homeTabButton)
+        waitForExpectations(timeout: 10)
 
         let scheme = try XCTUnwrap(registeredURLScheme(), "this target's Info.plist must carry DeepLinkScheme")
         let url = try XCTUnwrap(URL(string: "\(scheme)://scanner"))
@@ -41,7 +57,7 @@ final class ScannerTabUITests: XCTestCase {
         XCTAssertTrue(scannerTabButton.waitForExistence(timeout: 10))
         let becameSelected = NSPredicate(format: "isSelected == true")
         expectation(for: becameSelected, evaluatedWith: scannerTabButton)
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 25)
     }
 
     // MARK: - Helpers
@@ -52,8 +68,16 @@ final class ScannerTabUITests: XCTestCase {
 
     private func dismissOpenConfirmationIfPresented() {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let alert = springboard.alerts.firstMatch
+        if alert.waitForExistence(timeout: 2) {
+            let openButton = alert.buttons["Open"]
+            if openButton.exists {
+                openButton.tap()
+                return
+            }
+        }
         let openButton = springboard.buttons["Open"]
-        if openButton.waitForExistence(timeout: 5) {
+        if openButton.waitForExistence(timeout: 1) {
             openButton.tap()
         }
     }

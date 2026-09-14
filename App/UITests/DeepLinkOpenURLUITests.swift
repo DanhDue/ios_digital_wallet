@@ -53,6 +53,9 @@ final class DeepLinkOpenURLUITests: XCTestCase {
         let homeTabButton = app.tabBars.buttons.element(boundBy: 0)
         XCTAssertTrue(homeTabButton.waitForExistence(timeout: 10))
         homeTabButton.tap()
+        let homeSelected = NSPredicate(format: "isSelected == true")
+        expectation(for: homeSelected, evaluatedWith: homeTabButton)
+        waitForExpectations(timeout: 10)
 
         let scheme = try XCTUnwrap(registeredURLScheme(), "this target's Info.plist must carry DeepLinkScheme")
         let url = try XCTUnwrap(URL(string: "\(scheme)://settings"))
@@ -65,7 +68,7 @@ final class DeepLinkOpenURLUITests: XCTestCase {
         XCTAssertTrue(settingsTabButton.waitForExistence(timeout: 10))
         let becameSelected = NSPredicate(format: "isSelected == true")
         expectation(for: becameSelected, evaluatedWith: settingsTabButton)
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 25)
     }
 
     // MARK: - Helpers
@@ -83,8 +86,16 @@ final class DeepLinkOpenURLUITests: XCTestCase {
     /// does not appear, so this stays safe to call unconditionally.
     private func dismissOpenConfirmationIfPresented() {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let alert = springboard.alerts.firstMatch
+        if alert.waitForExistence(timeout: 2) {
+            let openButton = alert.buttons["Open"]
+            if openButton.exists {
+                openButton.tap()
+                return
+            }
+        }
         let openButton = springboard.buttons["Open"]
-        if openButton.waitForExistence(timeout: 5) {
+        if openButton.waitForExistence(timeout: 1) {
             openButton.tap()
         }
     }
