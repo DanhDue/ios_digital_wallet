@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["architecture", "logging", "adapter", "compatibility"]
+labels: ["architecture", "logging", "adapter", "compatibility", "memory-safety"]
 order: "a4"
 ---
 
@@ -17,7 +17,7 @@ order: "a4"
 Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md)
 
 ## Requirement Analysis
-Create a backward-compatibility adapter implementing `Core.Logger` and routing all legacy `debug()`, `info()`, and `error()` invocations into `D3NexusLogger.getLogger("Core")`. Replace `ConsoleLogger.swift` at the Composition Root (`AppComposition.swift`), ensuring 100% of existing call sites across `Packages/Core`, `Packages/Network`, and `Packages/Platform` continue functioning without changes.
+Create a backward-compatibility adapter implementing `Core.Logger` and routing all legacy `debug()`, `info()`, and `error()` invocations into `D3NexusLogger.getLogger("Core")`. Replace `ConsoleLogger.swift` at the Composition Root (`AppComposition.swift`), verifying that the adapter instance deallocates with zero retain cycles when released from containers or caller scopes.
 
 ## Relevant Files & Context Pointers
 - `Packages/Core/Sources/Core/Logging/Logger.swift`
@@ -26,11 +26,13 @@ Create a backward-compatibility adapter implementing `Core.Logger` and routing a
 - `App/Sources/Composition/ConsoleLogger.swift`
 - `App/Tests/AppTests/AppCompositionTests.swift`
 - `Packages/Logging/Tests/LoggingTests/CoreLoggerAdapterTests.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 
 ## Design Rationale
 - `D3NexusCoreLoggerAdapter`: Conforms to `Core.Logger` and `@unchecked Sendable`. Maps `debug(_:file:function:line:)`, `info(_:file:function:line:)`, and `error(_:file:function:line:)` to `D3NexusLogger.getLogger("Core")`.
 - `AppComposition.swift`: Bootstrap `D3NexusLogger` with `LogManagerImpl` and register `D3NexusCoreLoggerAdapter` in the Factory container as the implementation for `Core.Logger`.
 - `ConsoleLogger.swift`: Deprecate or retire in favor of `D3NexusCoreLoggerAdapter`.
+- Memory Safety: `trackForMemoryLeaks` verifies that `D3NexusCoreLoggerAdapter` deallocates cleanly without creating lingering container references.
 Applicable Skills: `code-health-audit`, `architecture-audit`.
 
 ## Impact Analysis & Blast Radius
@@ -53,6 +55,12 @@ Scenario: Delegate Core.Logger debug calls to D3NexusLogger
   Then the underlying logger receives debug message "Cache miss"
   And the metadata captures file "CacheStore.swift", function "get()", and line "42"
 
+[Tier A - Unit]
+Scenario: Assert clean deallocation of D3NexusCoreLoggerAdapter
+  Given an allocated D3NexusCoreLoggerAdapter instance
+  When the test scope terminates
+  Then trackForMemoryLeaks verifies the adapter deallocates completely
+
 [Tier C - Integration]
 Scenario: Resolve Core.Logger from Factory Container and verify telemetry flow
   Given AppComposition bootstrapping D3NexusLogger with PulseAppender
@@ -62,13 +70,13 @@ Scenario: Resolve Core.Logger from Factory Container and verify telemetry flow
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing unit tests in `CoreLoggerAdapterTests.swift` verifying delegation of all three methods.
+- [ ] **RED**: Write failing unit tests in `CoreLoggerAdapterTests.swift` verifying delegation of all three methods and clean deallocation.
 - [ ] **GREEN**: Implement `D3NexusCoreLoggerAdapter.swift` and update `AppComposition.swift`.
 - [ ] **REFACTOR**: Run `swift test --package-path Packages/Logging` and `swift test --package-path Packages/Core`, format code, and verify zero warnings.
 
 ## Definition of Done (DoD)
 - `D3NexusCoreLoggerAdapter` delegates cleanly to `D3NexusLogger`.
-- `AppCompositionTests` pass 100% with no regression on container resolution.
+- `AppCompositionTests` pass 100% with zero memory leaks.
 - Zero broken imports or AST boundary violations.
 
 ## Dependencies & Blockers

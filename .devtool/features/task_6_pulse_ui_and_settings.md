@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["ui", "pulseui", "settings", "developer-tools"]
+labels: ["ui", "pulseui", "settings", "developer-tools", "memory-safety"]
 order: "a6"
 ---
 
@@ -17,7 +17,7 @@ order: "a6"
 Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md)
 
 ## Requirement Analysis
-Integrate `PulseUI` into the host application and provide runtime toggle controls. Implement a Shake Gesture recognizer in the host UI layer to summon the `PulseUI.ConsoleView` sheet at any time. In `Features/Settings`, introduce a Diagnostics / Developer Tools section (active only under `#if DEBUG`) allowing developers to toggle individual module mutes and appender kill-switches, persisted in `UserDefaults`.
+Integrate `PulseUI` into the host application and provide runtime toggle controls. Implement a Shake Gesture recognizer in the host UI layer to summon the `PulseUI.ConsoleView` sheet at any time. In `Features/Settings`, introduce a Diagnostics / Developer Tools section (active only under `#if DEBUG`) allowing developers to toggle individual module mutes and appender kill-switches, persisted in `UserDefaults`, while verifying clean ViewModel and gesture subscriber deallocation without retain cycles.
 
 ## Relevant Files & Context Pointers
 - `App/Sources/App.swift` or main view hierarchy
@@ -25,6 +25,7 @@ Integrate `PulseUI` into the host application and provide runtime toggle control
 - `Features/Settings/Sources/Settings/Presentation/SettingsView.swift`
 - `Features/Settings/Sources/Settings/Presentation/Diagnostics/LoggingDiagnosticsView.swift`
 - `Features/Settings/Tests/SettingsTests/LoggingDiagnosticsViewModelTests.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 
 ## Design Rationale
 - `PulseUI`: Added as a dependency to `App` for `#if DEBUG` builds.
@@ -33,6 +34,7 @@ Integrate `PulseUI` into the host application and provide runtime toggle control
   - Module Toggles: Switches for known modules (`Wallet`, `Network`, `Settings`, `Scanner`, `Core`). Mutating a switch invokes `D3NexusLogger.setModuleEnabled(module, enabled)` and persists the dictionary into `UserDefaults.standard` under key `logging.module_toggles`.
   - Appender Toggles: Switches for `pulse` and `oslog`, persisted under `logging.appender_toggles`.
   - Shortcut buttons: "Open Pulse Console" and "Clear Logs".
+- Memory Safety: `trackForMemoryLeaks` verifies that `LoggingDiagnosticsViewModel` and gesture notification subscriptions deallocate cleanly without strong reference leaks.
 - Compile-time isolation: All debug UI and gesture code is wrapped inside `#if DEBUG` blocks to guarantee zero binary impact in Release mode.
 Applicable Skills: `ios-ui-audit`, `architecture-audit`.
 
@@ -64,6 +66,12 @@ Scenario: Persist and apply module toggle changes from Settings
   Then D3NexusLogger.setModuleEnabled("Wallet", false) is invoked
   And UserDefaults contains "Wallet": false under key "logging.module_toggles"
 
+[Tier A - Unit]
+Scenario: Assert LoggingDiagnosticsViewModel deallocates without memory leaks
+  Given an initialized LoggingDiagnosticsViewModel
+  When the screen dismisses and the view model goes out of scope
+  Then trackForMemoryLeaks verifies the instance deallocates cleanly
+
 [Tier B - Governance]
 Scenario: Verify PulseUI and diagnostics code are stripped in Release configuration
   Given a Release configuration build
@@ -72,13 +80,14 @@ Scenario: Verify PulseUI and diagnostics code are stripped in Release configurat
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing unit tests for `LoggingDiagnosticsViewModelTests.swift` validating toggle mutations and persistence.
+- [ ] **RED**: Write failing unit tests for `LoggingDiagnosticsViewModelTests.swift` validating toggle mutations, persistence, and memory deallocation.
 - [ ] **GREEN**: Implement `ShakeGestureModifier.swift`, `LoggingDiagnosticsView.swift`, and wire into `SettingsView.swift`.
 - [ ] **REFACTOR**: Ensure all debug code is wrapped in `#if DEBUG`, verify SwiftUI body re-evaluation efficiency, format, and run `swift test --package-path Features/Settings`.
 
 ## Definition of Done (DoD)
 - Shake gesture brings up PulseUI console on iOS Simulator / Device in Debug.
 - Module toggles persist across app restarts via `UserDefaults`.
+- Zero memory leaks in view model and notification observers.
 - 100% stripped in Release builds.
 
 ## Dependencies & Blockers

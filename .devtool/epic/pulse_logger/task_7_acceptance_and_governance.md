@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["integration", "acceptance", "archtests", "governance", "tier-c"]
+labels: ["integration", "acceptance", "archtests", "governance", "tier-c", "memory-safety"]
 order: "a7"
 ---
 
@@ -17,7 +17,7 @@ order: "a7"
 Epic Reference: [pulse_logger](pulse_logger.en.md)
 
 ## Requirement Analysis
-Execute the mandatory Tier C System Integration and Architecture Governance acceptance pass. Verify the complete composition root in `App` and `Shell`, confirm AST architecture governance rules (K1–K10) pass via `ArchTests`, ensure module boundaries are untangled (`scripts/check_module_boundaries.sh`), and enforce 100% clean formatting and linting across all packages.
+Execute the mandatory Tier C System Integration, Architecture Governance, and Memory Leak acceptance pass. Verify the complete composition root in `App` and `Shell`, confirm AST architecture governance rules (K1–K10) pass via `ArchTests`, ensure module boundaries are untangled (`scripts/check_module_boundaries.sh`), enforce 100% clean formatting and linting, and assert zero retain cycles across the host application run.
 
 ## Relevant Files & Context Pointers
 - `ArchTests/Tests/ArchTests/**`
@@ -29,22 +29,23 @@ Execute the mandatory Tier C System Integration and Architecture Governance acce
 
 ## Design Rationale
 Per the iOS Super App Governance Standard and `dev-designer` mandatory 3-Tier Testing Standard:
-- **Tier A**: All unit tests in `Packages/Logging`, `Packages/Network`, and `Features/Settings` pass.
+- **Tier A**: All unit tests in `Packages/Logging`, `Packages/Network`, and `Features/Settings` pass with `trackForMemoryLeaks` clean.
 - **Tier B (Governance)**:
   - `swift test --package-path ArchTests`: Confirms `Packages/Logging` does not violate module boundaries, does not import any Feature, and respects `Core` floor (K7).
   - `bash scripts/check_module_boundaries.sh`: Confirms SPM graph contains zero undeclared transitive imports.
   - `swiftlint lint --strict --config quality/.swiftlint.yml`: 0 violations.
   - `swiftformat --config quality/.swiftformat . --lint`: 0 formatting drift.
-- **Tier C (Acceptance)**:
+- **Tier C (Acceptance & Memory Leak Gate)**:
   - Regenerate Xcode project via `tuist generate --no-open`.
   - Execute host app unit and UI tests: `xcodebuild test -workspace iOSDigitalWallet.xcworkspace -scheme iOSDigitalWallet -destination 'platform=iOS Simulator,name=iPhone 16 Pro' CODE_SIGNING_ALLOWED=NO`.
-Applicable Skills: `architecture-audit`, `quality_check`.
+  - Verify memory leak diagnostics with `MallocStackLogging` or `leaks` CLI to confirm zero memory retention cycles.
+Applicable Skills: `architecture-audit`, `quality_check`, `code-health-audit`.
 
 ## Impact Analysis & Blast Radius
 - **Target Files & Symbols**: Entire repository graph.
 - **Downstream Callers**: CI/CD pipeline, PR gates.
 - **Cross-Platform Bridges**: N/A.
-- **Target Test Coverage Threshold**: 100% gate pass, zero warnings or errors.
+- **Target Test Coverage Threshold**: 100% gate pass, zero warnings or memory leaks.
 
 ## BDD Scenarios & Acceptance Criteria
 
@@ -65,25 +66,28 @@ Scenario: Verify module boundaries script succeeds
   Then the script exits with status code 0 and reports no illegal boundaries
 
 [Tier C - Integration]
-Scenario: End-to-end host app build and test pass
+Scenario: End-to-end host app build and test pass with zero memory leaks
   Given the generated iOSDigitalWallet.xcworkspace
   When xcodebuild test is executed against the iOSDigitalWallet scheme
   Then all host composition tests and UI tests pass
   And D3NexusLogger initializes successfully during application launch
+  And memory diagnostics verify zero retain cycles or leaked blocks
 ```
 
 ## Test & Verification Checklist
-- [ ] **Tier A**: Run `swift test --package-path Packages/Logging` (100% pass).
-- [ ] **Tier A**: Run `swift test --package-path Packages/Network` (100% pass).
+- [ ] **Tier A**: Run `swift test --package-path Packages/Logging` (100% pass, no leaks).
+- [ ] **Tier A**: Run `swift test --package-path Packages/Network` (100% pass, no leaks).
 - [ ] **Tier B**: Run `swift test --package-path ArchTests` (100% pass).
 - [ ] **Tier B**: Run `bash scripts/check_module_boundaries.sh` (0 errors).
 - [ ] **Tier B**: Run `swiftlint lint --strict --config quality/.swiftlint.yml` (0 warnings/errors).
 - [ ] **Tier B**: Run `swiftformat --config quality/.swiftformat . --lint` (0 unformatted files).
 - [ ] **Tier C**: Run `tuist generate --no-open` and `xcodebuild test` for host app scheme (100% pass).
+- [ ] **Memory Gate**: Confirm zero memory leaks detected during test teardowns.
 
 ## Definition of Done (DoD)
 - 3-Tier test suite passes 100%.
 - All 4 semantic audit gates report zero blockers.
+- Memory leak assertions pass cleanly.
 - Gate 4 `🟢 LGTM` awarded.
 
 ## Dependencies & Blockers

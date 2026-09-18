@@ -199,3 +199,28 @@ Scenario: Verify PulseUI and shake listener are stripped in Release configuratio
   When the binary symbols are inspected
   Then no references to PulseUI or debug console presentation sheets exist in the production binary
 ```
+
+---
+
+## Use Case 7: Memory Leak & Retain Cycle Verification
+
+### 7.1 Unit Teardown Deallocation
+```gherkin
+[Tier A - Unit]
+Scenario: Assert clean deallocation of LogManagerImpl and Appenders on test teardown
+  Given an allocated LogManagerImpl with registered PulseAppender and OSLogAppender
+  When the test execution block completes and trackForMemoryLeaks is evaluated
+  Then all instances are deallocated with zero retain cycles
+  And XCTAssertNil verifies instances are nil
+```
+
+### 7.2 Zero Circular Retain in Nested Child Loggers
+```gherkin
+[Tier A - Unit]
+Scenario: Verify child loggers spawned by withSpan do not retain parent loggers
+  Given a parent LoggerImpl instance
+  When childLogger = parentLogger.withSpan() is created
+  And parentLogger goes out of scope while childLogger remains in scope
+  Then parentLogger is immediately deallocated from memory
+  And childLogger functions independently with zero memory leak
+```

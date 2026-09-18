@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["architecture", "network", "w3c", "interceptor"]
+labels: ["architecture", "network", "w3c", "interceptor", "memory-safety"]
 order: "a5"
 ---
 
@@ -17,13 +17,14 @@ order: "a5"
 Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md)
 
 ## Requirement Analysis
-Upgrade `LoggingInterceptor` in `Packages/Network` to integrate with `D3NexusLogger`. Automatically inject the standard W3C `traceparent` header (`00-{traceId}-{spanId}-01`) on all outgoing HTTP requests, record response duration and payload sizing metrics, and automatically redact sensitive credentials (`Authorization`, `Cookie`, `X-API-Key`).
+Upgrade `LoggingInterceptor` in `Packages/Network` to integrate with `D3NexusLogger`. Automatically inject the standard W3C `traceparent` header (`00-{traceId}-{spanId}-01`) on all outgoing HTTP requests, record response duration and payload sizing metrics, automatically redact sensitive credentials (`Authorization`, `Cookie`, `X-API-Key`), and verify that asynchronous closures do not introduce retain cycles.
 
 ## Relevant Files & Context Pointers
 - `Packages/Network/Package.swift`
 - `Packages/Network/Sources/Network/Interceptor/LoggingInterceptor.swift`
 - `Packages/Network/Tests/NetworkTests/LoggingInterceptorTests.swift`
 - `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 
 ## Design Rationale
 - `Packages/Network/Package.swift`: Add dependency on `Packages/Logging`.
@@ -32,6 +33,7 @@ Upgrade `LoggingInterceptor` in `Packages/Network` to integrate with `D3NexusLog
   - Constructs `traceparent: 00-\(childLogger.traceId)-\(childLogger.spanId)-01` and sets it on `URLRequest`.
   - On request: Logs HTTP method and URL with redacted headers.
   - On response: Logs HTTP status code, duration (ms), byte size, and error status for 4xx/5xx responses.
+  - Memory Safety: Verifies that child loggers and interceptors deallocate with zero leaks upon request completion.
 Applicable Skills: `security-audit`, `architecture-audit`.
 
 ## Impact Analysis & Blast Radius
@@ -67,17 +69,23 @@ Scenario: Log response timing metrics and error severity on 500 server error
   When LoggingInterceptor handles the response
   Then an error-level log record is emitted
   And metadata includes "statusCode" = "500" and duration information
+
+[Tier A - Unit]
+Scenario: Verify interceptor and child spans deallocate without retain cycles
+  Given an executing LoggingInterceptor asynchronous pipeline
+  When the response completes
+  Then trackForMemoryLeaks verifies zero lingering child logger retain cycles
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Update `LoggingInterceptorTests.swift` with failing unit tests covering `traceparent` generation, header redaction, and response metrics.
+- [ ] **RED**: Update `LoggingInterceptorTests.swift` with failing unit tests covering `traceparent` generation, header redaction, response metrics, and memory deallocation.
 - [ ] **GREEN**: Update `LoggingInterceptor.swift` and `Packages/Network/Package.swift` to pass tests.
 - [ ] **REFACTOR**: Execute `swift test --package-path Packages/Network`, format code, and verify zero linter warnings.
 
 ## Definition of Done (DoD)
 - Outgoing requests carry valid `traceparent` header.
 - Sensitive headers are sanitized in 100% of cases.
-- All unit tests in `Packages/Network` pass.
+- All unit tests in `Packages/Network` pass with zero memory leaks.
 
 ## Dependencies & Blockers
 - Blocked by: [Task 2](task_2_log_manager_and_facade.md), [Task 4](task_4_core_logger_adapter.md).

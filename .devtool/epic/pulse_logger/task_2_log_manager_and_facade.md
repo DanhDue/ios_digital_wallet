@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["architecture", "logging", "dispatch", "facade"]
+labels: ["architecture", "logging", "dispatch", "facade", "memory-safety"]
 order: "a2"
 ---
 
@@ -17,7 +17,7 @@ order: "a2"
 Epic Reference: [pulse_logger](pulse_logger.en.md)
 
 ## Requirement Analysis
-Implement the core dispatch engine (`LogManagerImpl`), the sink interface (`LogAppender`), the per-module logger (`LoggerProtocol` / `LoggerImpl`), and the static entry point (`D3NexusLogger`). This task enforces thread-safe dispatching across registered appenders, honors both module debug mutes and appender kill-switches, and supports automatic parent-child span creation via `withSpan()`.
+Implement the core dispatch engine (`LogManagerImpl`), the sink interface (`LogAppender`), the per-module logger (`LoggerProtocol` / `LoggerImpl`), and the static entry point (`D3NexusLogger`). This task enforces thread-safe dispatching across registered appenders, honors both module debug mutes and appender kill-switches, supports automatic parent-child span creation via `withSpan()`, and verifies zero retain cycles across the logger hierarchy using `trackForMemoryLeaks`.
 
 ## Relevant Files & Context Pointers
 - `Packages/Logging/Sources/Logging/Appender/LogAppender.swift`
@@ -28,6 +28,7 @@ Implement the core dispatch engine (`LogManagerImpl`), the sink interface (`LogA
 - `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
 - `Packages/Logging/Tests/LoggingTests/LogManagerTests.swift`
 - `Packages/Logging/Tests/LoggingTests/LoggerSpanTests.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 
 ## Design Rationale
 Mirroring Flutter's `LogManagerImpl`, `i_log_appender.dart`, and `i_logger.dart`:
@@ -35,7 +36,7 @@ Mirroring Flutter's `LogManagerImpl`, `i_log_appender.dart`, and `i_logger.dart`
 - `LogManager`: Protocol managing appenders, module toggles, and appender toggles.
 - `LogManagerImpl`: Thread-safe coordinator using `os_unfair_lock` or `NSLock` ensuring zero data races under Swift 6 strict concurrency.
 - `LoggerProtocol`: Declares `traceId`, `spanId`, `d/i/w/e/v` methods, and `withSpan() -> any LoggerProtocol`.
-- `LoggerImpl`: Implements `LoggerProtocol`, auto-stamping new spans with parent linkage.
+- `LoggerImpl`: Implements `LoggerProtocol`, auto-stamping new spans with parent linkage while storing only value-type trace IDs (zero strong reference to parent `LoggerImpl`, preventing circular retain cycles).
 - `D3NexusLogger`: Static facade delegating to the injected `LogManager`.
 Applicable Skills: `code-health-audit`, `architecture-audit`.
 
@@ -82,6 +83,14 @@ Scenario: Spawn child span preserving traceId and setting parentSpanId
   And any record emitted by the child logger carries parentSpanId "span_ROOT"
 
 [Tier A - Unit]
+Scenario: Assert child loggers do not retain parent logger instance
+  Given a parent LoggerImpl instance
+  When childLogger = parentLogger.withSpan() is created
+  And parentLogger is released
+  Then trackForMemoryLeaks verifies parentLogger deallocates immediately
+  And childLogger remains valid and operational
+
+[Tier A - Unit]
 Scenario: Thread-safe concurrent logging and toggle mutations
   Given 100 concurrent tasks logging via D3NexusLogger
   When toggles are mutated concurrently across multiple threads
@@ -90,13 +99,13 @@ Scenario: Thread-safe concurrent logging and toggle mutations
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing tests in `LogManagerTests.swift` and `LoggerSpanTests.swift` validating the 8-case truth table and span hierarchy.
+- [ ] **RED**: Write failing tests in `LogManagerTests.swift` and `LoggerSpanTests.swift` validating the 8-case truth table, span hierarchy, and memory deallocation assertions.
 - [ ] **GREEN**: Implement minimal code in `LogAppender.swift`, `LogManagerImpl.swift`, `LoggerImpl.swift`, and `D3NexusLogger.swift`.
 - [ ] **REFACTOR**: Ensure Swift 6 `Sendable` discipline, format (`swiftformat .`), lint (`swiftlint lint --strict`), and execute `swift test --package-path Packages/Logging`.
 
 ## Definition of Done (DoD)
 - 100% of dispatch matrix unit tests pass cleanly.
-- `withSpan()` correctly links parent-child relationships across arbitrary nesting depths.
+- `withSpan()` correctly links parent-child relationships across arbitrary nesting depths with zero memory leaks.
 - Zero memory leaks, zero compiler warnings.
 
 ## Dependencies & Blockers

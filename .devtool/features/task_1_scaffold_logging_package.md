@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["architecture", "logging", "package"]
+labels: ["architecture", "logging", "package", "memory-safety"]
 order: "a1"
 ---
 
@@ -17,7 +17,7 @@ order: "a1"
 Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md)
 
 ## Requirement Analysis
-Create the isolated local SPM package `Packages/Logging` to establish the core data models, W3C correlation identifiers, and trace tree reconstruction logic. This task creates the foundation of the logging system without external SDK dependencies, ensuring pure Swift data structures and deterministic unit test verification.
+Create the isolated local SPM package `Packages/Logging` to establish the core data models, W3C correlation identifiers, trace tree reconstruction logic, and the `trackForMemoryLeaks` test assertion helper. This task creates the foundation of the logging system without external SDK dependencies, ensuring pure Swift data structures, deterministic unit test verification, and automated memory leak prevention.
 
 ## Relevant Files & Context Pointers
 - `Packages/Logging/Package.swift`
@@ -25,6 +25,7 @@ Create the isolated local SPM package `Packages/Logging` to establish the core d
 - `Packages/Logging/Sources/Logging/Model/LogRecord.swift`
 - `Packages/Logging/Sources/Logging/Trace/TraceNode.swift`
 - `Packages/Logging/Sources/Logging/Trace/TraceTree.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 - `Packages/Logging/Tests/LoggingTests/LogRecordTests.swift`
 - `Packages/Logging/Tests/LoggingTests/TraceTreeTests.swift`
 
@@ -33,6 +34,7 @@ Mirroring Flutter's `packages/logger/lib/src/log_record.dart` and `trace_tree.da
 - `LogLevel`: Enum (`verbose`, `debug`, `info`, `warning`, `error`) conforming to `Comparable`, `Sendable`, and `Codable`.
 - `LogRecord`: Immutable struct carrying `module`, `level`, `message`, `timestamp`, `traceId` (32 hex characters), `spanId` (16 hex characters), `parentSpanId`, `errorDescription`, and `metadata`.
 - `buildTraceTree([LogRecord]) -> [TraceNode]`: A pure, side-effect-free function that converts a list of log records into a hierarchical forest of `TraceNode`s based on `parentSpanId -> spanId` matching. It guarantees zero data loss by promoting orphan records to root nodes.
+- `MemoryLeakTestSupport`: Introduces `trackForMemoryLeaks(_ instance: AnyObject)` using `addTeardownBlock { [weak instance] in XCTAssertNil(instance) }` to assert clean deallocation across all test suites.
 Applicable Skills: `code-health-audit`, `architecture-audit`.
 
 ## Impact Analysis & Blast Radius
@@ -41,6 +43,7 @@ Applicable Skills: `code-health-audit`, `architecture-audit`.
   - `LogRecord` struct
   - `TraceNode` class
   - `buildTraceTree` function
+  - `trackForMemoryLeaks` test helper
 - **Downstream Callers**: `LogManager`, `PulseAppender`, `OSLogAppender` (implemented in later tasks).
 - **Cross-Platform Bridges**: N/A.
 - **Target Test Coverage Threshold**: $\ge 95\%$ line coverage on `Packages/Logging/Sources/Logging/Model` and `Trace`.
@@ -86,16 +89,23 @@ Scenario: Handle duplicate spanIds safely
   Given multiple log records emitted with the identical spanId "span_SAME"
   When buildTraceTree is executed
   Then all records are retained in the output tree
+
+[Tier A - Unit]
+Scenario: Assert clean deallocation of TraceNode tree structure
+  Given an allocated TraceNode with nested children
+  When trackForMemoryLeaks is asserted in test teardown
+  Then all TraceNode instances deallocate cleanly with zero retain cycles
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing unit tests in `Packages/Logging/Tests/LoggingTests/LogRecordTests.swift` and `TraceTreeTests.swift` covering all BDD scenarios.
-- [ ] **GREEN**: Implement minimal code in `LogLevel.swift`, `LogRecord.swift`, `TraceNode.swift`, and `TraceTree.swift` to pass tests.
+- [ ] **RED**: Write failing unit tests in `Packages/Logging/Tests/LoggingTests/LogRecordTests.swift` and `TraceTreeTests.swift` covering all BDD scenarios, including `trackForMemoryLeaks`.
+- [ ] **GREEN**: Implement minimal code in `LogLevel.swift`, `LogRecord.swift`, `TraceNode.swift`, `TraceTree.swift`, and `MemoryLeakTestSupport.swift` to pass tests.
 - [ ] **REFACTOR**: Ensure Swift 6 `Sendable` conformance, format (`swiftformat .`), lint (`swiftlint lint --strict`), and verify tests pass with `swift test --package-path Packages/Logging`.
 
 ## Definition of Done (DoD)
 - `Packages/Logging` builds cleanly with Swift 6 compiler.
 - 100% of BDD unit test scenarios pass via `swift test --package-path Packages/Logging`.
+- `trackForMemoryLeaks` helper available and verified.
 - Zero compiler warnings, 100% SwiftLint and SwiftFormat clean.
 
 ## Dependencies & Blockers

@@ -17,7 +17,7 @@ Trong template ứng dụng iOS Super App (`ios_digital_wallet`), hệ thống g
 - Thiếu cơ chế kiểm soát linh hoạt khi chạy (Module Toggles để lọc bớt nhiễu theo tính năng, và Appender kill-switches).
 - Thiếu công cụ xem log và kiểm tra lưu lượng mạng trực tiếp trên thiết bị thực hoặc giả lập.
 
-Tham chiếu từ hệ thống logging đã hoàn thiện bên Flutter (`bloc_digital_wallet/packages/logger`), epic này xây dựng **`Packages/Logging`**, một local SPM package chuẩn mực được xây dựng trên nền tảng **`apple/swift-log`** và **`kean/Pulse`** (`Pulse` core engine + `PulseUI`), tuân thủ chặt chẽ Clean Architecture, các quy tắc kiểm thử AST (`ArchTests`), và cơ chế cách ly tuyệt đối trên bản phát hành (Release).
+Tham chiếu từ hệ thống logging đã hoàn thiện bên Flutter (`bloc_digital_wallet/packages/logger`), epic này xây dựng **`Packages/Logging`**, một local SPM package chuẩn mực được xây dựng trên nền tảng **`apple/swift-log`** và **`kean/Pulse`** (`Pulse` core engine + `PulseUI`), tuân thủ chặt chẽ Clean Architecture, các quy tắc kiểm thử AST (`ArchTests`), cơ chế cách ly tuyệt đối trên bản phát hành (Release), cùng tiêu chuẩn khắt khe về **Kiểm soát & Phòng chống Rò rỉ Bộ nhớ (Memory Leak & Retain Cycle Prevention)**.
 
 ---
 
@@ -30,7 +30,7 @@ Tham chiếu từ hệ thống logging đã hoàn thiện bên Flutter (`bloc_di
    - Duy trì `Packages/Core` làm dependency floor thuần túy (không dependency bên ngoài, tuân thủ quy tắc `ArchTests K7`).
 2. **Ngữ cảnh Phân tán Chuẩn W3C (Distributed Trace Context)**:
    - Tự động sinh `traceId` (32 ký tự hex) và `spanId` (16 ký tự hex).
-   - Hàm `withSpan()` sinh child logger liên kết `parentSpanId = current.spanId`.
+   - Hàm `withSpan()` sinh child logger liên kết `parentSpanId = current.spanId` mà không tạo retain cycle.
    - Hàm thuần túy `buildTraceTree([LogRecord]) -> [TraceNode]` dựng cây thứ bậc.
    - Tự động gắn header `traceparent: 00-{traceId}-{spanId}-01` trong `LoggingInterceptor` của `Packages/Network`.
 3. **Đường Ống Ghi Log Kép (Dual Telemetry Appender Pipeline)**:
@@ -44,11 +44,15 @@ Tham chiếu từ hệ thống logging đã hoàn thiện bên Flutter (`bloc_di
    - Mở nhanh bằng **Thao Tác Lắc Máy (Shake Gesture)** hoặc qua mục trong **`Features/Settings`**.
    - Tìm kiếm, lọc regex, kiểm tra thông số mạng, JSON viewer và xuất lệnh `cURL`.
    - Loại bỏ 100% bằng cờ biên dịch `#if !DEBUG` trên bản Release.
-6. **Tương Thích Ngược Hoàn Toàn**:
+6. **Kiểm Soát Rò Rỉ Bộ Nhớ (Memory Leak & Retain Cycle Guard)**:
+   - Xây dựng helper `trackForMemoryLeaks(_ instance: AnyObject)` trong `TestSupport` để kiểm tra deallocation tự động.
+   - Child loggers chỉ lưu giá trị value-type, tách biệt hoàn toàn với tham chiếu bộ nhớ của logger cha.
+   - Tích hợp chẩn đoán MallocStackLogging / `leaks` tool vào bài kiểm thử nghiệm thu Tier C.
+7. **Tương Thích Ngược Hoàn Toàn**:
    - `D3NexusCoreLoggerAdapter` kế thừa `Core.Logger`, đảm bảo không gây break code tại các call site hiện có trong `Core`, `Network`, và `Platform`.
 
 ### Phạm vi Không Thực Hiện (Non-Goals)
-- Tích hợp FLEX (đã đánh giá và thống nhất loại bỏ khỏi epic).
+- Tích hợp FLEX hoặc MLeaksFinder (đã đánh giá và loại bỏ: MLeaksFinder swizzle UIKit `UIViewController` không thích hợp cho SwiftUI `NavigationStack` / `View`; FLEX kéo theo runtime Objective-C nặng nề).
 - Cầu nối IPC cho background headless (trên iOS native, `BGTaskScheduler` chạy Swift in-process; App Extensions dùng App Group).
 - Tích hợp APM cloud bên thứ ba (Datadog/Sentry sẽ được gắn dưới dạng các `LogAppender` độc lập sau này).
 
@@ -119,6 +123,7 @@ flowchart TD
         UC4["UC-4: Bật/Tắt Trạng Thái Module hoặc Appender"]
         UC5["UC-5: Mở Console Bằng Thao Tác Lắc Thiết Bị"]
         UC6["UC-6: Tái Tạo Cây Phân Cấp Thứ Bậc Trace Tree"]
+        UC7["UC-7: Kiểm Thử Giải Phóng Bộ Nhớ Sạch Sẽ (No Leaks)"]
     end
 
     Developer --> UC1
@@ -128,6 +133,7 @@ flowchart TD
     SystemTimer --> UC3
     UC3 --> BackendSvc
     Developer --> UC6
+    Developer --> UC7
 ```
 
 ### 4.3 Sơ Đồ Tuần Tự Chính (Sequence Diagram)
@@ -147,7 +153,7 @@ sequenceDiagram
 
     Caller->>Logger: d("Người dùng bấm chuyển tiền")
     Caller->>Logger: withSpan()
-    Logger-->>ChildLogger: Trả về child logger (spanId mới, parentSpanId = spanId cũ)
+    Logger-->>ChildLogger: Trả về child logger (spanId mới, parentSpanId = spanId cũ, zero parent strong ref)
     ChildLogger->>NetInterceptor: Thực thi request API
     NetInterceptor->>NetInterceptor: Inject header "traceparent: 00-{traceId}-{spanId}-01"
     NetInterceptor->>Server: HTTP POST /transfer
@@ -184,6 +190,7 @@ sequenceDiagram
   - `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
   - `Packages/Logging/Sources/Logging/Bridge/D3NexusLogHandler.swift`
   - `Packages/Logging/Sources/Logging/Adapter/D3NexusCoreLoggerAdapter.swift`
+  - `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
   - `Packages/Logging/Tests/LoggingTests/**`
 - **Tập Tin Cần Sửa Đổi**:
   - `Tuist/Package.swift` (bổ sung `apple/swift-log`, `kean/Pulse`, `Packages/Logging`)
@@ -196,6 +203,7 @@ sequenceDiagram
 - **Ngưỡng Bao Phủ Kiểm Thử (Coverage Thresholds)**:
   - Logic cốt lõi & điều phối (Dispatch Engine): $\ge 90\%$ line coverage.
   - Trace Tree & W3C Span Generation: $100\%$ line coverage.
+  - Kiểm thử giải phóng bộ nhớ (No Leaks): $100\%$ trên các instance cấp phát.
   - Kiểm thử kiến trúc AST (`ArchTests`): Đạt 100%.
 
 ---
@@ -203,7 +211,7 @@ sequenceDiagram
 ## 5. Kế Hoạch Triển Khai & Kiểm Soát Rủi Ro
 
 1. **Triển Khai Theo Giai Đoạn (Phased Rollout)**:
-   - Giai đoạn 1: Khởi tạo `Packages/Logging` với đầy đủ Unit Tests cô lập.
+   - Giai đoạn 1: Khởi tạo `Packages/Logging` với đầy đủ Unit Tests cô lập và helper `trackForMemoryLeaks`.
    - Giai đoạn 2: Tích hợp `apple/swift-log` và `kean/Pulse`.
    - Giai đoạn 3: Kết nối `D3NexusCoreLoggerAdapter` tương thích ngược tại `App`.
    - Giai đoạn 4: Nâng cấp interceptor trong `Packages/Network` hỗ trợ W3C traceparent.

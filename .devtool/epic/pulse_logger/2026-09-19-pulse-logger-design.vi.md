@@ -18,7 +18,7 @@ Tại repository Flutter (`bloc_digital_wallet`), một kiến trúc logging t�
 
 Trong template iOS Super App (`ios_digital_wallet`), hệ thống logging hiện tại chỉ dừng ở mức protocol `Core.Logger` tối giản chuyển tiếp sang `os.Logger` qua `ConsoleLogger.swift`, chưa có metadata có cấu trúc, chưa có W3C trace propagation, và chưa có công cụ xem log hay kiểm tra network trực tiếp trên thiết bị.
 
-Epic `pulse_logger` xây dựng một hệ sinh thái logging hiện đại, chuẩn mực, hiệu năng cao cho iOS native, chuẩn hóa trên nền tảng **`apple/swift-log`** và **`Pulse`** (`kean/Pulse` + `PulseUI`), tương đồng hoàn toàn với các mẫu thiết kế đã được kiểm chứng ở Flutter.
+Epic `pulse_logger` xây dựng một hệ sinh thái logging hiện đại, chuẩn mực, hiệu năng cao cho iOS native, chuẩn hóa trên nền tảng **`apple/swift-log`** và **`Pulse`** (`kean/Pulse` + `PulseUI`), tương đồng hoàn toàn với các mẫu thiết kế đã được kiểm chứng ở Flutter, đồng thời tích hợp tiêu chuẩn khắt khe về **Kiểm soát & Phòng chống Rò rỉ Bộ nhớ (Memory Leak & Retain Cycle Prevention)**.
 
 ---
 
@@ -31,7 +31,7 @@ Epic `pulse_logger` xây dựng một hệ sinh thái logging hiện đại, chu
    - Giữ nguyên `Packages/Core` làm dependency floor thuần túy (0 dependency SPM bên ngoài, tuân thủ nghiêm ngặt quy tắc `ArchTests K7`).
 2. **W3C Trace Context & Dựng Cây Trace Sequence**:
    - Mỗi log record mang `traceId` (32 ký tự hex) và `spanId` (16 ký tự hex), kèm `parentSpanId` tùy chọn.
-   - Phương thức `withSpan()` trên `LoggerProtocol` tự động sinh span con liên kết quan hệ cha-con.
+   - Phương thức `withSpan()` trên `LoggerProtocol` tự động sinh span con liên kết quan hệ cha-con mà không tạo retain cycle.
    - Hàm thuần túy `buildTraceTree([LogRecord]) -> [TraceNode]` tái cấu trúc luồng gọi thứ bậc.
    - Tự động gắn header `traceparent` vào các request mạng (`Packages/Network`).
 3. **Cơ chế Dual Appender Telemetry**:
@@ -45,11 +45,15 @@ Epic `pulse_logger` xây dựng một hệ sinh thái logging hiện đại, chu
    - Kích hoạt tức thì bằng thao tác **Lắc Thiết Bị (Shake Gesture)** hoặc qua menu trong **`Features/Settings`**.
    - Hỗ trợ tìm kiếm log, lọc regex, xem metadata có cấu trúc, phân tích request/response và xuất lệnh `cURL`.
    - Cách ly tuyệt đối sau block `#if DEBUG`, loại bỏ 100% khi build Release.
-6. **Tương thích Ngược Hoàn Toàn**:
+6. **Kiểm Soát Phòng Ngừa Rò Rỉ Bộ Nhớ (Memory Leak & Retain Cycle Guard)**:
+   - Xây dựng helper `trackForMemoryLeaks(_ instance: AnyObject)` trong `TestSupport` để kiểm tra deallocation tự động sau mỗi unit test.
+   - Đảm bảo các span con sinh bởi `withSpan()` không giữ strong reference tới logger cha, triệt tiêu khả năng tạo retain cycle.
+   - Tích hợp chẩn đoán MallocStackLogging / `leaks` tool vào cổng nghiệm thu Tier C.
+7. **Tương thích Ngược Hoàn Toàn**:
    - `D3NexusCoreLoggerAdapter` hiện thực `Core.Logger`, giúp toàn bộ code hiện hữu tại `Core`, `Network`, `Platform` tiếp tục chạy ổn định không cần sửa đổi.
 
 ### Phạm vi Không thực hiện (Non-Goals)
-- Tích hợp công cụ FLEX (đã được thống nhất loại bỏ khỏi phạm vi epic này).
+- Tích hợp FLEX hoặc MLeaksFinder (đã đánh giá và loại bỏ: MLeaksFinder swizzle UIKit `UIViewController` không phù hợp với kiến trúc SwiftUI `NavigationStack` / `View`; FLEX kéo theo Objective-C runtime phức tạp).
 - Headless IPC bridge riêng biệt (trên iOS native, `BGTaskScheduler` chạy trực tiếp Swift trong tiến trình; App Extensions dùng chung App Group).
 - Backend crash reporting từ xa (các SDK như Datadog/Sentry sẽ được bổ sung như các `LogAppender` trong tương lai mà không ảnh hưởng core).
 
@@ -79,6 +83,7 @@ graph TD
     Features["Features (Settings, Scanner, etc.)"] --> Core
     Features --> Logging
     Features --> Platform
+    Settings -.->|#if DEBUG only| Logging
 ```
 
 ### 3.2 Trách nhiệm Từng Package
@@ -331,7 +336,40 @@ public struct LoggingInterceptor: Interceptor {
 
 ---
 
-## 5. An toàn & Bảo mật Dữ liệu Nhạy cảm (PII Redaction)
+## 5. Kiến Trúc Phòng Ngừa Rò Rỉ Bộ Nhớ (Memory Leak Prevention)
+
+### 5.1 Kiểm thử Deallocation Tự động (Shift-Left Assertions)
+Nhằm ngăn chặn các retain cycle âm thầm sinh ra từ closures hoặc chuỗi span logger, helper `trackForMemoryLeaks` được tích hợp vào `TestSupport`:
+
+```swift
+import XCTest
+
+public extension XCTestCase {
+    func trackForMemoryLeaks(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
+        addTeardownBlock { [weak instance] in
+            XCTAssertNil(
+                instance,
+                "⚠️ Phát hiện Memory Leak: \(String(describing: instance)) không được giải phóng sau khi test kết thúc!",
+                file: file,
+                line: line
+            )
+        }
+    }
+}
+```
+Mọi unit test khởi tạo `LogManagerImpl`, `LoggerImpl`, `PulseAppender`, `OSLogAppender`, và `D3NexusCoreLoggerAdapter` đều thực thi assertion này.
+
+### 5.2 An Toàn Bộ Nhớ Trong Quan Hệ Span Cha-Con
+- Khi gọi `logger.withSpan()`, child logger nắm giữ bản copy giá trị `traceId` và sinh `spanId` mới, gán `parentSpanId` dưới dạng giá trị thuần túy (`String`).
+- **Không giữ bất kỳ strong reference nào tới instance `LoggerImpl` cha**. Điều này triệt tiêu hoàn toàn nguy cơ tạo chu kỳ tham chiếu vòng (circular retain cycle).
+
+### 5.3 Diagnostic Profiling & CI Leak Gate
+- Trên môi trường test local và CI, scheme bật `MallocStackLogging = Live Allocations Only`.
+- Các bài kiểm thử tích hợp Tier C xác nhận giải phóng bộ nhớ sạch sẽ, không tạo khối object bị cô lập trên heap.
+
+---
+
+## 6. An toàn & Bảo mật Dữ liệu Nhạy cảm (PII Redaction)
 
 Ứng dụng Ví điện tử đòi hỏi tuân thủ nghiêm ngặt các quy chuẩn bảo mật:
 1. **Mặt nạ Header (Header Masking)**: Các trường `Authorization`, `Cookie`, `X-API-Key`, `Session-Token` tự động chuyển thành `[REDACTED]`.
@@ -340,22 +378,22 @@ public struct LoggingInterceptor: Interceptor {
 
 ---
 
-## 6. Chiến lược Kiểm thử 3 Tầng
+## 7. Chiến lược Kiểm thử 3 Tầng
 
 | Tầng | Phạm vi | Target | Kịch bản kiểm thử trọng tâm |
 | :--- | :--- | :--- | :--- |
-| **Tier 1** | Unit Tests | `Packages/Logging/Tests` | • Ma trận điều phối 8 trường hợp (Module Toggle × Appender Toggle × `respectsModuleToggle`).<br>• Tạo W3C traceId/spanId, liên kết span cha-con chính xác.<br>• Thuật toán `buildTraceTree` phân cấp và xử lý span mồ côi.<br>• Khả năng che giấu dữ liệu PII/token. |
-| **Tier 2** | Component / Integration | `Packages/Network/Tests`, `App/Tests` | • Tự động gắn header `traceparent` trong network interceptor.<br>• `D3NexusCoreLoggerAdapter` ủy quyền chính xác sang `D3NexusLogger`. |
-| **Tier 3** | Architecture Governance | `ArchTests` | • Kiểm tra AST (luật K1-K10): `Packages/Logging` không import feature.<br>• Đạt chuẩn SwiftLint và SwiftFormat 100%. |
+| **Tier 1** | Unit Tests | `Packages/Logging/Tests` | • Ma trận điều phối 8 trường hợp (Module Toggle × Appender Toggle × `respectsModuleToggle`).<br>• Tạo W3C traceId/spanId, liên kết span cha-con chính xác.<br>• Kiểm thử giải phóng bộ nhớ sạch sẽ (`trackForMemoryLeaks`) trên mọi instance và child spans.<br>• Thuật toán `buildTraceTree` phân cấp và xử lý span mồ côi.<br>• Khả năng che giấu dữ liệu PII/token. |
+| **Tier 2** | Component / Integration | `Packages/Network/Tests`, `App/Tests` | • Tự động gắn header `traceparent` trong network interceptor.<br>• `D3NexusCoreLoggerAdapter` ủy quyền chính xác sang `D3NexusLogger`.<br>• Không có retain cycle trong closures bất đồng bộ của interceptor. |
+| **Tier 3** | Architecture Governance | `ArchTests` | • Kiểm tra AST (luật K1-K10): `Packages/Logging` không import feature.<br>• Đạt chuẩn SwiftLint và SwiftFormat 100%.<br>• Kiểm tra rò rỉ bộ nhớ qua Scheme diagnostics. |
 
 ---
 
-## 7. Kế hoạch Triển khai Từng Bước (Rollout Plan)
+## 8. Kế hoạch Triển khai Từng Bước (Rollout Plan)
 
-1. **Task 1**: Khởi tạo cấu trúc `Packages/Logging` (Models, `LogRecord`, `buildTraceTree`, W3C generator, unit tests).
-2. **Task 2**: Triển khai `LogManagerImpl`, logic dispatch, `LoggerProtocol`, facade `D3NexusLogger`, và bộ unit test tương ứng.
-3. **Task 3**: Tích hợp `apple/swift-log` và `kean/Pulse`, hiện thực `PulseAppender`, `OSLogAppender`, và `D3NexusLogHandler`.
+1. **Task 1**: Khởi tạo cấu trúc `Packages/Logging` (Models, `LogRecord`, `buildTraceTree`, W3C generator, helper kiểm tra memory leak, unit tests).
+2. **Task 2**: Triển khai `LogManagerImpl`, logic dispatch, `LoggerProtocol`, `withSpan()` an toàn không retain cycle, facade `D3NexusLogger`, và bộ unit test tương ứng.
+3. **Task 3**: Tích hợp `apple/swift-log` và `kean/Pulse`, hiện thực `PulseAppender`, `OSLogAppender`, và `D3NexusLogHandler` kèm kiểm tra deallocation.
 4. **Task 4**: Hiện thực `D3NexusCoreLoggerAdapter` và cấu hình nối dây tại `AppComposition.swift`.
-5. **Task 5**: Nâng cấp `LoggingInterceptor` trong `Packages/Network` hỗ trợ gắn header W3C `traceparent`.
-6. **Task 6**: Tích hợp Shake Gesture và giao diện Developer Logging trong `Features/Settings` (sheet `PulseUI`, switch toggles).
-7. **Task 7**: Chạy toàn diện Quality Check Gate (Tier 1-3 tests, `ArchTests`, SwiftLint, SwiftFormat).
+5. **Task 5**: Nâng cấp `LoggingInterceptor` trong `Packages/Network` hỗ trợ gắn header W3C `traceparent` và weak-capture trong closure.
+6. **Task 6**: Tích hợp Shake Gesture và giao diện Developer Logging trong `Features/Settings` (sheet `PulseUI`, switch toggles) với cơ chế strip sạch sẽ ở `#if !DEBUG`.
+7. **Task 7**: Chạy toàn diện Quality Check Gate (Tier 1-3 tests, `ArchTests`, SwiftLint, SwiftFormat, và kiểm tra Memory Leak).

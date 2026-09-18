@@ -6,9 +6,9 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T03:32:30+07:00"
+modified: "2026-09-19T04:05:09+07:00"
 completedAt: null
-labels: ["architecture", "logging", "pulse", "swift-log"]
+labels: ["architecture", "logging", "pulse", "swift-log", "memory-safety"]
 order: "a3"
 ---
 
@@ -17,7 +17,7 @@ order: "a3"
 Epic Reference: [pulse_logger](pulse_logger.en.md)
 
 ## Requirement Analysis
-Integrate `apple/swift-log` and `kean/Pulse` into the template's SPM and Tuist dependency graph. Implement the two concrete sinks (`PulseAppender` and `OSLogAppender`) and the `D3NexusLogHandler` bridge so any standard Apple `Logging.Logger` invocation routes through `LogManager`.
+Integrate `apple/swift-log` and `kean/Pulse` into the template's SPM and Tuist dependency graph. Implement the two concrete sinks (`PulseAppender` and `OSLogAppender`) and the `D3NexusLogHandler` bridge so any standard Apple `Logging.Logger` invocation routes through `LogManager`, while verifying that appender instances deallocate with zero memory leaks.
 
 ## Relevant Files & Context Pointers
 - `Tuist/Package.swift`
@@ -27,12 +27,14 @@ Integrate `apple/swift-log` and `kean/Pulse` into the template's SPM and Tuist d
 - `Packages/Logging/Sources/Logging/Bridge/D3NexusLogHandler.swift`
 - `Packages/Logging/Tests/LoggingTests/AppenderTests.swift`
 - `Packages/Logging/Tests/LoggingTests/SwiftLogBridgeTests.swift`
+- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
 
 ## Design Rationale
 - `Tuist/Package.swift` and `Packages/Logging/Package.swift`: Add `.package(url: "https://github.com/apple/swift-log.git", from: "1.6.2")` and `.package(url: "https://github.com/kean/Pulse.git", from: "5.1.4")`.
 - `PulseAppender`: Maps `LogRecord` fields into `Pulse.LoggerStore` entries. Configured with `respectsModuleToggle = true` so local developer mutes keep `PulseUI` clean.
 - `OSLogAppender`: Uses `os.Logger(subsystem:category:)`. Configured with `respectsModuleToggle = false` so system diagnostics are preserved.
 - `D3NexusLogHandler`: Conforms to `Logging.LogHandler`, translating Apple Logging events into `LogRecord` and dispatching via `LogManager`.
+- Memory Safety: `trackForMemoryLeaks` verifies both appenders deallocate cleanly without hanging onto the underlying stores.
 Applicable Skills: `code-health-audit`, `architecture-audit`.
 
 ## Impact Analysis & Blast Radius
@@ -70,16 +72,22 @@ Scenario: Forward Apple swift-log call via D3NexusLogHandler to LogManager
   And an injected mock LogManager
   When Apple standard Logging.Logger("Auth").info("Token refreshed") is executed
   Then LogManager receives a LogRecord with level .info, module "Auth", and message "Token refreshed"
+
+[Tier A - Unit]
+Scenario: Assert clean deallocation of appender instances
+  Given allocated instances of PulseAppender and OSLogAppender
+  When the test execution scope finishes
+  Then trackForMemoryLeaks verifies both appenders deallocate with zero leaks
 ```
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing tests in `AppenderTests.swift` and `SwiftLogBridgeTests.swift` testing `PulseAppender`, `OSLogAppender`, and `D3NexusLogHandler`.
+- [ ] **RED**: Write failing tests in `AppenderTests.swift` and `SwiftLogBridgeTests.swift` testing `PulseAppender`, `OSLogAppender`, `D3NexusLogHandler`, and deallocation assertions.
 - [ ] **GREEN**: Implement minimal code in `PulseAppender.swift`, `OSLogAppender.swift`, and `D3NexusLogHandler.swift`.
 - [ ] **REFACTOR**: Verify `tuist install` fetches packages cleanly, run `swift test --package-path Packages/Logging`, and verify SwiftLint cleanliness.
 
 ## Definition of Done (DoD)
 - `Packages/Logging` builds cleanly with `apple/swift-log` and `kean/Pulse`.
-- Unit tests verify mapping, formatting, and `D3NexusLogHandler` bridge.
+- Unit tests verify mapping, formatting, `D3NexusLogHandler` bridge, and clean deallocation.
 - Zero AST rule violations.
 
 ## Dependencies & Blockers

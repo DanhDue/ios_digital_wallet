@@ -17,7 +17,7 @@ In the native iOS Super App template (`ios_digital_wallet`), logging is currentl
 - Flexible runtime controls (independent Module Toggles for developer noise suppression, and Appender kill-switches).
 - In-app visual log and network telemetry inspection on devices/simulators.
 
-Referencing the mature logging architecture established in the Flutter counterpart (`bloc_digital_wallet/packages/logger`), this epic establishes **`Packages/Logging`**, a governed local SPM package built upon **`apple/swift-log`** and **`kean/Pulse`** (`Pulse` core engine + `PulseUI`), fully adhering to Clean Architecture, AST governance rules (`ArchTests`), and strict compile-time release isolation.
+Referencing the mature logging architecture established in the Flutter counterpart (`bloc_digital_wallet/packages/logger`), this epic establishes **`Packages/Logging`**, a governed local SPM package built upon **`apple/swift-log`** and **`kean/Pulse`** (`Pulse` core engine + `PulseUI`), fully adhering to Clean Architecture, AST governance rules (`ArchTests`), strict compile-time release isolation, and rigorous **Memory Leak & Retain Cycle Prevention**.
 
 ---
 
@@ -28,9 +28,9 @@ Referencing the mature logging architecture established in the Flutter counterpa
    - Provide core logging primitives (`LogRecord`, `LogAppender`, `LogManager`, `LoggerProtocol`, `D3NexusLogger`) in an isolated local SPM package.
    - Standardize on `apple/swift-log` (`LoggingSystem.bootstrap`).
    - Preserve `Packages/Core` as the zero-dependency floor (`ArchTests` rule K7).
-2. **W3C Distributed Trace Context**:
+2. **W3C Distributed Trace Context & Hierarchy**:
    - Automatic generation of 32-hex `traceId` and 16-hex `spanId`.
-   - `withSpan()` creates child loggers linking `parentSpanId = current.spanId`.
+   - `withSpan()` creates child loggers linking `parentSpanId = current.spanId` with zero retain cycles.
    - Pure, side-effect-free `buildTraceTree([LogRecord]) -> [TraceNode]` function.
    - Automatic injection of `traceparent: 00-{traceId}-{spanId}-01` in `Packages/Network`'s `LoggingInterceptor`.
 3. **Dual Telemetry Appender Pipeline**:
@@ -44,11 +44,15 @@ Referencing the mature logging architecture established in the Flutter counterpa
    - Activated via **Device Shake Gesture** or an entry in **`Features/Settings`**.
    - Search, regex filtering, network timing/JSON inspection, and cURL export.
    - 100% compiled out in `#if !DEBUG` builds.
-6. **Backward Compatibility**:
+6. **Memory Leak & Retain Cycle Guard (Shift-Left & Runtime)**:
+   - Provide `trackForMemoryLeaks(_ instance: AnyObject)` test helper in `TestSupport` for teardown deallocation assertions.
+   - Child loggers hold only value-type trace IDs, completely decoupled from parent logger memory references.
+   - Integrate MallocStackLogging / `leaks` verification into Tier C acceptance testing.
+7. **Backward Compatibility**:
    - `D3NexusCoreLoggerAdapter` implements `Core.Logger`, ensuring zero breaking changes to existing call sites in `Core`, `Network`, and `Platform`.
 
 ### Non-Goals
-- FLEX integration (evaluated and explicitly removed from scope).
+- FLEX or MLeaksFinder integration (evaluated and rejected: MLeaksFinder swizzle UIKit `UIViewController` which is incompatible with pure SwiftUI `NavigationStack` / `View` architectures; FLEX brings heavy Obj-C runtime baggage).
 - Headless background IPC bridge (native iOS executes `BGTaskScheduler` directly in Swift in-process).
 - Third-party cloud APM SDKs (Datadog/Sentry will be added as pluggable `LogAppender`s later).
 
@@ -119,6 +123,7 @@ flowchart TD
         UC4["UC-4: Toggle Module or Appender Status"]
         UC5["UC-5: Open In-App Console via Shake Gesture"]
         UC6["UC-6: Reconstruct Hierarchical Trace Tree"]
+        UC7["UC-7: Assert Zero Memory Leaks on Teardown"]
     end
 
     Developer --> UC1
@@ -128,6 +133,7 @@ flowchart TD
     SystemTimer --> UC3
     UC3 --> BackendSvc
     Developer --> UC6
+    Developer --> UC7
 ```
 
 ### 4.3 Primary Sequence Diagram (Logging & Network Interception)
@@ -147,7 +153,7 @@ sequenceDiagram
 
     Caller->>Logger: d("User initiates transaction")
     Caller->>Logger: withSpan()
-    Logger-->>ChildLogger: Return child (new spanId, parentSpanId = current.spanId)
+    Logger-->>ChildLogger: Return child (new spanId, parentSpanId = current.spanId, no parent strong ref)
     ChildLogger->>NetInterceptor: Execute API request
     NetInterceptor->>NetInterceptor: Inject header "traceparent: 00-{traceId}-{spanId}-01"
     NetInterceptor->>Server: HTTP POST /transfer
@@ -184,6 +190,7 @@ sequenceDiagram
   - `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
   - `Packages/Logging/Sources/Logging/Bridge/D3NexusLogHandler.swift`
   - `Packages/Logging/Sources/Logging/Adapter/D3NexusCoreLoggerAdapter.swift`
+  - `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
   - `Packages/Logging/Tests/LoggingTests/**`
 - **Target Files to Modify**:
   - `Tuist/Package.swift` (add `apple/swift-log`, `kean/Pulse`, `Packages/Logging`)
@@ -196,6 +203,7 @@ sequenceDiagram
 - **Target Test Coverage Thresholds**:
   - Core domain & dispatch logic: $\ge 90\%$ line coverage.
   - Trace tree & W3C span generation: $100\%$ line coverage.
+  - Memory leak deallocation test coverage: $100\%$ on allocated logger instances.
   - AST architecture governance (`ArchTests`): $100\%$ pass.
 
 ---
@@ -203,7 +211,7 @@ sequenceDiagram
 ## 5. Rollout Strategy & Mitigation
 
 1. **Phased Rollout**:
-   - Phase 1: Build `Packages/Logging` with isolated Unit Tests.
+   - Phase 1: Build `Packages/Logging` with isolated Unit Tests and `trackForMemoryLeaks` helper.
    - Phase 2: Wire `apple/swift-log` and `kean/Pulse`.
    - Phase 3: Connect backward-compatible `D3NexusCoreLoggerAdapter` in `App`.
    - Phase 4: Upgrade `Packages/Network` interceptor with W3C header propagation.
