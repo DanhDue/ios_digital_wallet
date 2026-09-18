@@ -6,112 +6,126 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T04:05:09+07:00"
+modified: "2026-09-19T04:47:44+07:00"
 completedAt: null
-labels: ["architecture", "logging", "dispatch", "facade", "memory-safety"]
+labels: ["architecture", "logging", "concurrency", "memory-safety"]
 order: "a2"
 ---
 
 # Task 2: LogManager Dispatch Engine, LoggerProtocol & Facade
 
-Epic Reference: [pulse_logger](pulse_logger.en.md)
+Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-2, UC-4
 
 ## Requirement Analysis
-Implement the core dispatch engine (`LogManagerImpl`), the sink interface (`LogAppender`), the per-module logger (`LoggerProtocol` / `LoggerImpl`), and the static entry point (`D3NexusLogger`). This task enforces thread-safe dispatching across registered appenders, honors both module debug mutes and appender kill-switches, supports automatic parent-child span creation via `withSpan()`, and verifies zero retain cycles across the logger hierarchy using `trackForMemoryLeaks`.
+
+Implement the dispatch core: the `LogAppender` / `LogManager` contracts, a thread-safe
+`LogManagerImpl` enforcing the module × appender toggle matrix, `LoggerProtocol` with leak-free
+`withSpan()`, and the `D3NexusLogger` facade. Toggle state persists to `UserDefaults` under
+`logging.module_toggles` and `logging.appender_toggles`.
+
+Two corrections from the source spec apply here:
+
+1. Methods are **`debug` / `info` / `warning` / `error` / `verbose`**, not `d` / `i` / `w` / `e` / `v`.
+   `quality/.swiftlint.yml` excludes only `[id, to, x, y, t]` from `identifier_name`, CI runs
+   `swiftlint --strict`, and the repo already resolved this exact conflict once — see the doc comment
+   in `Packages/Core/Sources/Core/Logging/Logger.swift`. The full names also make Task 6's
+   `Core.Logger` adapter a 1:1 mapping (HLD D2).
+2. `D3NexusLogger.getLogger` returns a **`NoOpLogger`** when uninitialised instead of calling
+   `fatalError`. The spec put that `fatalError` behind a default argument, which is evaluated at
+   every call site — a change in composition order would crash production (HLD D8).
 
 ## Relevant Files & Context Pointers
-- `Packages/Logging/Sources/Logging/Appender/LogAppender.swift`
-- `Packages/Logging/Sources/Logging/Manager/LogManager.swift`
-- `Packages/Logging/Sources/Logging/Manager/LogManagerImpl.swift`
-- `Packages/Logging/Sources/Logging/Logger/LoggerProtocol.swift`
-- `Packages/Logging/Sources/Logging/Logger/LoggerImpl.swift`
-- `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
-- `Packages/Logging/Tests/LoggingTests/LogManagerTests.swift`
-- `Packages/Logging/Tests/LoggingTests/LoggerSpanTests.swift`
-- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
+
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/LogAppender.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/{DispatchMatrixTests,SpanTests,ToggleStoreTests,FacadeTests}.swift` — create
+- Read for conventions: `Packages/Core/Sources/Core/Logging/Logger.swift`,
+  `Packages/Network/Sources/Network/Interceptor/RefreshCoordinator.swift` (existing concurrency style)
 
 ## Design Rationale
-Mirroring Flutter's `LogManagerImpl`, `i_log_appender.dart`, and `i_logger.dart`:
-- `LogAppender`: Protocol declaring `id: String`, `respectsModuleToggle: Bool`, and `append(_ record: LogRecord)`.
-- `LogManager`: Protocol managing appenders, module toggles, and appender toggles.
-- `LogManagerImpl`: Thread-safe coordinator using `os_unfair_lock` or `NSLock` ensuring zero data races under Swift 6 strict concurrency.
-- `LoggerProtocol`: Declares `traceId`, `spanId`, `d/i/w/e/v` methods, and `withSpan() -> any LoggerProtocol`.
-- `LoggerImpl`: Implements `LoggerProtocol`, auto-stamping new spans with parent linkage while storing only value-type trace IDs (zero strong reference to parent `LoggerImpl`, preventing circular retain cycles).
-- `D3NexusLogger`: Static facade delegating to the injected `LogManager`.
-Applicable Skills: `code-health-audit`, `architecture-audit`.
+
+- **`LogAppender`**: `Sendable`, exposing `id`, `respectsModuleToggle`, `append(_:)`. The
+  `respectsModuleToggle` flag is what lets a developer mute a noisy module in the in-app console
+  without blinding system telemetry — `OSLogAppender` sets it `false`, debug appenders `true`.
+- **`LogManagerImpl` concurrency**: the source spec declared `LogManager: Sendable` while giving it
+  mutating operations (`registerAppender`, `setModuleEnabled`), and guarded the facade with
+  `NSLock` on every `getLogger`. Under Swift 6 that combination needs stating explicitly. Use
+  `OSAllocatedUnfairLock` (available at the iOS 16 floor) around a single state struct holding
+  appenders and both toggle maps, and document the isolation contract in the type's doc comment.
+  `getLogger` must not contend on the hot path — resolve toggles at `log(_:)` time, not at logger
+  construction.
+- **`withSpan()`**: returns a new `LoggerImpl` carrying the parent's `traceId`, a fresh `spanId`,
+  and `parentSpanId` **as a `String` value**. It holds no reference to the parent, so a parent can
+  deallocate while its children are still live (HLD Goal 7).
+- **Dispatch order**: appender kill-switch is checked before the module toggle — a disabled appender
+  receives nothing regardless of module state. This is the truth table in UC-4.1 and it is the
+  single most test-worthy branch in the package.
+- **`ToggleStore`**: injectable `UserDefaults` suite so tests never touch `.standard`. Unknown
+  modules default to enabled; malformed persisted data falls back to defaults rather than trapping.
+
+Applicable skills: `architecture-audit`, `code-health-audit`, `test-driven-development`.
 
 ## Impact Analysis & Blast Radius
-- **Target Files & Symbols**:
-  - `LogAppender` protocol
-  - `LogManager` protocol & `LogManagerImpl` class
-  - `LoggerProtocol` protocol & `LoggerImpl` class
-  - `D3NexusLogger` static enum facade
-- **Downstream Callers**: All app modules, features, network interceptors.
-- **Cross-Platform Bridges**: N/A.
-- **Target Test Coverage Threshold**: $\ge 90\%$ line coverage on dispatch engine and span generation.
+
+- **Target symbols**: `LogAppender`, `LogManager`, `LogManagerImpl`, `ToggleStore`, `LoggerProtocol`,
+  `LoggerImpl`, `NoOpLogger`, `D3NexusLogger`.
+- **Downstream callers**: none in the app yet; Tasks 4, 5, 6, 7, 8 all build on these contracts, so
+  **this task freezes the public API** for the rest of the epic (parallel-execution Rule 1).
+- **Cross-platform bridges**: none.
+- **Coverage thresholds**: `Manager/**` and `Logger/**` ≥ 90% line; the 8-row dispatch matrix must be
+  covered exhaustively, not representatively.
 
 ## BDD Scenarios & Acceptance Criteria
 
 ### BDD SCENARIOS
 
-```gherkin
-[Tier A - Unit]
-Scenario Outline: Verify dispatch matrix across Module Toggle and Appender Toggle combinations
-  Given a mock appender with id <AppenderId> and respectsModuleToggle <RespectsToggle>
-  And the appender kill-switch for <AppenderId> is <AppenderEnabled>
-  And the module toggle for "Wallet" is <ModuleEnabled>
-  When a log record for module "Wallet" is dispatched
-  Then the appender receive count is <ExpectedDispatched>
+Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task implements:
 
-  Examples:
-    | AppenderId | RespectsToggle | AppenderEnabled | ModuleEnabled | ExpectedDispatched |
-    | "pulse"    | true           | true            | true          | 1                  |
-    | "pulse"    | true           | true            | false         | 0                  |
-    | "pulse"    | true           | false           | true          | 0                  |
-    | "pulse"    | true           | false           | false         | 0                  |
-    | "oslog"    | false          | true            | true          | 1                  |
-    | "oslog"    | false          | true            | false         | 1                  |
-    | "oslog"    | false          | false           | true          | 0                  |
-    | "oslog"    | false          | false           | false         | 0                  |
-
-[Tier A - Unit]
-Scenario: Spawn child span preserving traceId and setting parentSpanId
-  Given a root logger with traceId "trace_ABC" and spanId "span_ROOT"
-  When withSpan() is called on the root logger
-  Then the returned child logger has traceId "trace_ABC"
-  And the child logger has a new unique spanId
-  And any record emitted by the child logger carries parentSpanId "span_ROOT"
-
-[Tier A - Unit]
-Scenario: Assert child loggers do not retain parent logger instance
-  Given a parent LoggerImpl instance
-  When childLogger = parentLogger.withSpan() is created
-  And parentLogger is released
-  Then trackForMemoryLeaks verifies parentLogger deallocates immediately
-  And childLogger remains valid and operational
-
-[Tier A - Unit]
-Scenario: Thread-safe concurrent logging and toggle mutations
-  Given 100 concurrent tasks logging via D3NexusLogger
-  When toggles are mutated concurrently across multiple threads
-  Then zero race condition crashes occur
-  And internal lock preserves state integrity
-```
+- **UC-1.1** — structured record with hex-valid identifiers; all five severities mapping to the
+  correct `LogLevel`.
+- **UC-1.3** — a failing appender does not starve the appenders registered after it.
+- **UC-2.1 / 2.2** — child preserves `traceId`, gets a distinct `spanId`, links `parentSpanId`;
+  three-level lineage.
+- **UC-2.3** — releasing the parent deallocates it immediately while the child keeps working.
+- **UC-2.4** — 500 concurrent `withSpan()` calls produce 500 distinct span identifiers.
+- **UC-4.1** — the full 8-row dispatch truth table.
+- **UC-4.2** — toggles survive a store rebuild; unknown module defaults to enabled; corrupted
+  persisted data falls back to defaults without crashing.
+- **UC-4.3** — 100 concurrent logs while another task flips the module toggle: no race, no
+  corruption, deterministic final persisted value.
+- **Cross-cutting** — `getLogger` before initialisation returns `NoOpLogger` and does not terminate
+  the process.
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing tests in `LogManagerTests.swift` and `LoggerSpanTests.swift` validating the 8-case truth table, span hierarchy, and memory deallocation assertions.
-- [ ] **GREEN**: Implement minimal code in `LogAppender.swift`, `LogManagerImpl.swift`, `LoggerImpl.swift`, and `D3NexusLogger.swift`.
-- [ ] **REFACTOR**: Ensure Swift 6 `Sendable` discipline, format (`swiftformat .`), lint (`swiftlint lint --strict`), and execute `swift test --package-path Packages/Logging`.
+
+- [ ] **RED** — write `DispatchMatrixTests` (all 8 rows as a parameterised suite), `SpanTests`,
+      `ToggleStoreTests`, `FacadeTests`. Confirm failures are for the right reason.
+- [ ] **GREEN** — minimal `LogManagerImpl`, `LoggerImpl`, `NoOpLogger`, `ToggleStore`, facade.
+- [ ] **REFACTOR** — run the concurrency tests under Thread Sanitizer
+      (`swift test --package-path Packages/D3NexusLogging --sanitize=thread`); `swiftformat`;
+      `swiftlint --strict`.
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green, including
+      `trackForMemoryLeaks` on `LogManagerImpl`, `LoggerImpl` and every child span created in tests.
 
 ## Definition of Done (DoD)
-- 100% of dispatch matrix unit tests pass cleanly.
-- `withSpan()` correctly links parent-child relationships across arbitrary nesting depths with zero memory leaks.
-- Zero memory leaks, zero compiler warnings.
+
+- All 8 dispatch-matrix rows pass as distinct assertions.
+- Thread Sanitizer reports zero data races on the concurrency scenarios.
+- No child logger keeps a parent alive; `trackForMemoryLeaks` green on every allocated instance.
+- `getLogger` before `initialize` returns a no-op and does not trap in a Release-like configuration.
+- `Manager/**` and `Logger/**` ≥ 90% line coverage.
+- Public API frozen and documented — later tasks may add appenders, never change these signatures.
+- SwiftLint and SwiftFormat clean.
 
 ## Dependencies & Blockers
+
 - Blocked by: [Task 1](task_1_scaffold_logging_package.md).
-- Blocks: [Task 3](task_3_swift_log_and_pulse_appenders.md), [Task 4](task_4_core_logger_adapter.md).
+- Blocks: [Task 4](task_4_oslog_appender.md), [Task 5](task_5_swift_log_bridge.md).
 
 ## References & Rollback
-- References: Flutter `packages/logger/lib/src/log_manager_impl.dart`.
-- Rollback: Revert changes to `Packages/Logging/Sources/Logging/Manager` and `Logger`.
+
+- HLD deviations D2, D8 — [pulse_logger.en.md](pulse_logger.en.md) §3
+- `OSAllocatedUnfairLock` — <https://developer.apple.com/documentation/os/osallocatedunfairlock>
+- Rollback: revert this task's files; Task 1's foundation stands alone and still compiles.

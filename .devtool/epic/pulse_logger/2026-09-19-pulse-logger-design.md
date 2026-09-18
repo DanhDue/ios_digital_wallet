@@ -6,6 +6,17 @@
 - **Author/Collaborators:** Antigravity AI Assistant & Engineering Lead
 - **Status:** Approved (Stage 1 Gate 1 Inception)
 
+> [!IMPORTANT]
+> **Stage 2 audit (2026-09-19): the Swift code samples below are superseded.**
+> The scope and architecture approved at Gate 1 stand unchanged. Several illustrative snippets,
+> however, were written against APIs and assumptions that do not exist in this repository: the
+> module name collides with `apple/swift-log`, the interceptor protocol shown is not the one
+> `Packages/Network` declares, the `spanId` generator does not emit hex, and `buildTraceTree` can
+> construct a cycle. Each is corrected, with evidence, in
+> **[`pulse_logger.en.md`](pulse_logger.en.md) §3 — Deviations from the Source Spec**.
+> Read that section before implementing anything from this document.
+
+
 ---
 
 ## 1. Context & Motivation

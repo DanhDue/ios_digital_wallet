@@ -6,6 +6,16 @@
 - **Tác giả / Phối hợp:** Antigravity AI Assistant & Engineering Lead
 - **Trạng thái:** Đã duyệt (Stage 1 Gate 1 Inception)
 
+> [!IMPORTANT]
+> **Rà soát Stage 2 (2026-09-19): các đoạn code Swift bên dưới đã bị thay thế.**
+> Phạm vi và kiến trúc được duyệt ở Gate 1 vẫn giữ nguyên. Tuy nhiên một số snippet minh hoạ được
+> viết dựa trên API và giả định không tồn tại trong repo này: tên module đụng với `apple/swift-log`,
+> protocol interceptor được vẽ không phải protocol mà `Packages/Network` khai báo, bộ sinh `spanId`
+> không tạo ra hex, và `buildTraceTree` có thể dựng thành cycle. Từng điểm đã được hiệu chỉnh kèm
+> bằng chứng trong **[`pulse_logger.vi.md`](pulse_logger.vi.md) §3 — Sai lệch so với Spec gốc**.
+> Hãy đọc mục đó trước khi hiện thực bất cứ thứ gì từ tài liệu này.
+
+
 ---
 
 ## 1. Bối cảnh & Động lực

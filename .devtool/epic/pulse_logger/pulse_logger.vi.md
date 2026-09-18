@@ -1,236 +1,374 @@
-# Tài liệu Thiết kế Tổng thể (HLD) — Pulse Logger cho iOS
+# Thiết kế Tổng thể Epic (HLD) — Pulse Logger cho iOS
 
-## 1. Thông tin Chung (Meta Data)
+## 1. Thông tin chung
 - **Tên Epic:** `pulse_logger`
-- **Trạng thái:** Đang lập kế hoạch (Planning)
-- **Phiên bản Mục tiêu:** v1.1.0
+- **Trạng thái:** Planning — đã qua Gate 2 (chốt task breakdown ngày 2026-09-19)
+- **Bản phát hành đích:** v1.1.0
 - **Nền tảng:** iOS Native (Swift 6, iOS 16+)
-- **Tài liệu Đặc tả Gốc (Tiếng Anh):** [2026-09-19-pulse-logger-design.md](2026-09-19-pulse-logger-design.md)
-- **Tài liệu Đặc tả Gốc (Tiếng Việt):** [2026-09-19-pulse-logger-design.vi.md](2026-09-19-pulse-logger-design.vi.md)
+- **Template Mode:** `enterprise` (xem `Tuist/ProjectDescriptionHelpers/ActiveMode.swift`)
+- **Spec gốc:** [2026-09-19-pulse-logger-design.md](2026-09-19-pulse-logger-design.md)
+- **Spec gốc (Tiếng Việt):** [2026-09-19-pulse-logger-design.vi.md](2026-09-19-pulse-logger-design.vi.md)
+- **Hợp đồng BDD:** [bdd_scenarios.md](bdd_scenarios.md)
+
+> **Tài liệu này thay thế các đoạn code mẫu trong spec gốc.** Spec được duyệt ở Gate 1 cho *phạm vi
+> và kiến trúc*. Bước rà soát Stage 2 đối chiếu với codebase thật cho thấy một số snippet Swift minh
+> hoạ trong spec dựa trên API và giả định **không tồn tại** trong repo này. §3 ghi lại từng sai lệch
+> kèm lý do. **Khi hai tài liệu mâu thuẫn, tài liệu này là chuẩn.**
 
 ---
 
-## 2. Bối cảnh (Background)
-Trong template ứng dụng iOS Super App (`ios_digital_wallet`), hệ thống ghi log hiện tại mới dừng lại ở mức giao diện `Core.Logger` tối giản và ủy quyền sang `os.Logger` qua `ConsoleLogger.swift`. Giải pháp này bộc lộ nhiều hạn chế:
-- Thiếu siêu dữ liệu có cấu trúc (structured metadata) và khả năng truy vết tương quan giữa các tác vụ bất đồng bộ.
-- Chưa hỗ trợ W3C Trace Context (`traceId`, `spanId`, `parentSpanId`) xuyên suốt các tầng kiến trúc và ranh giới mạng.
-- Thiếu cơ chế kiểm soát linh hoạt khi chạy (Module Toggles để lọc bớt nhiễu theo tính năng, và Appender kill-switches).
-- Thiếu công cụ xem log và kiểm tra lưu lượng mạng trực tiếp trên thiết bị thực hoặc giả lập.
+## 2. Bối cảnh
 
-Tham chiếu từ hệ thống logging đã hoàn thiện bên Flutter (`bloc_digital_wallet/packages/logger`), epic này xây dựng **`Packages/Logging`**, một local SPM package chuẩn mực được xây dựng trên nền tảng **`apple/swift-log`** và **`kean/Pulse`** (`Pulse` core engine + `PulseUI`), tuân thủ chặt chẽ Clean Architecture, các quy tắc kiểm thử AST (`ArchTests`), cơ chế cách ly tuyệt đối trên bản phát hành (Release), cùng tiêu chuẩn khắt khe về **Kiểm soát & Phòng chống Rò rỉ Bộ nhớ (Memory Leak & Retain Cycle Prevention)**.
+Trong template iOS Super App (`ios_digital_wallet`), logging hiện chỉ gói gọn trong protocol ba
+phương thức `Core.Logger` ([Logger.swift](../../../Packages/Core/Sources/Core/Logging/Logger.swift))
+chuyển tiếp sang `os.Logger` qua `App/Sources/Composition/ConsoleLogger.swift`. Nó thiếu:
 
----
+- metadata có cấu trúc và khả năng tương quan (correlation) xuyên các thao tác bất đồng bộ;
+- lan truyền W3C Trace Context (`traceId` / `spanId` / `parentSpanId`) qua các tầng và qua biên mạng;
+- cơ chế điều khiển lúc chạy (tắt tiếng theo module cho lập trình viên, kill-switch theo appender);
+- công cụ xem log và telemetry mạng ngay trong app trên máy thật hoặc simulator;
+- bất kỳ seam nào để che dữ liệu nhạy cảm — điều đáng lưu ý vì template này là nền cho một ví fintech.
 
-## 3. Mục tiêu (Goals) & Phạm vi Không Thực Hiện (Non-Goals)
-
-### Mục tiêu Cốt lõi
-1. **Package Hạ Tầng Chuyên Biệt (`Packages/Logging`)**:
-   - Cung cấp các abstractions cốt lõi (`LogRecord`, `LogAppender`, `LogManager`, `LoggerProtocol`, `D3NexusLogger`) trong package SPM cục bộ riêng biệt.
-   - Chuẩn hóa trên thư viện `apple/swift-log` (`LoggingSystem.bootstrap`).
-   - Duy trì `Packages/Core` làm dependency floor thuần túy (không dependency bên ngoài, tuân thủ quy tắc `ArchTests K7`).
-2. **Ngữ cảnh Phân tán Chuẩn W3C (Distributed Trace Context)**:
-   - Tự động sinh `traceId` (32 ký tự hex) và `spanId` (16 ký tự hex).
-   - Hàm `withSpan()` sinh child logger liên kết `parentSpanId = current.spanId` mà không tạo retain cycle.
-   - Hàm thuần túy `buildTraceTree([LogRecord]) -> [TraceNode]` dựng cây thứ bậc.
-   - Tự động gắn header `traceparent: 00-{traceId}-{spanId}-01` trong `LoggingInterceptor` của `Packages/Network`.
-3. **Đường Ống Ghi Log Kép (Dual Telemetry Appender Pipeline)**:
-   - **`PulseAppender`**: Thu thập log có cấu trúc vào `Pulse.LoggerStore` phục vụ xem trực tiếp trên app (`PulseUI`) và truyền không dây sang **Pulse Pro (macOS)**.
-   - **`OSLogAppender`**: Apple Unified Logging (`os.Logger`) tối ưu cho Console.app, Xcode Console và thu thập `sysdiagnose`.
-4. **Kiểm Soát Tắt/Bật Độc Lập**:
-   - Module Toggle: Mute log cho từng module đối với appender debug mà không làm mất log telemetry hệ thống.
-   - Appender Toggle: Kill-switch ngắt hoàn toàn từng backend.
-   - Lưu trữ bền vững qua `UserDefaults` (`logging.module_toggles`, `logging.appender_toggles`).
-5. **Giao Diện Debug Console Trong Ứng Dụng**:
-   - Mở nhanh bằng **Thao Tác Lắc Máy (Shake Gesture)** hoặc qua mục trong **`Features/Settings`**.
-   - Tìm kiếm, lọc regex, kiểm tra thông số mạng, JSON viewer và xuất lệnh `cURL`.
-   - Loại bỏ 100% bằng cờ biên dịch `#if !DEBUG` trên bản Release.
-6. **Kiểm Soát Rò Rỉ Bộ Nhớ (Memory Leak & Retain Cycle Guard)**:
-   - Xây dựng helper `trackForMemoryLeaks(_ instance: AnyObject)` trong `TestSupport` để kiểm tra deallocation tự động.
-   - Child loggers chỉ lưu giá trị value-type, tách biệt hoàn toàn với tham chiếu bộ nhớ của logger cha.
-   - Tích hợp chẩn đoán MallocStackLogging / `leaks` tool vào bài kiểm thử nghiệm thu Tier C.
-7. **Tương Thích Ngược Hoàn Toàn**:
-   - `D3NexusCoreLoggerAdapter` kế thừa `Core.Logger`, đảm bảo không gây break code tại các call site hiện có trong `Core`, `Network`, và `Platform`.
-
-### Phạm vi Không Thực Hiện (Non-Goals)
-- Tích hợp FLEX hoặc MLeaksFinder (đã đánh giá và loại bỏ: MLeaksFinder swizzle UIKit `UIViewController` không thích hợp cho SwiftUI `NavigationStack` / `View`; FLEX kéo theo runtime Objective-C nặng nề).
-- Cầu nối IPC cho background headless (trên iOS native, `BGTaskScheduler` chạy Swift in-process; App Extensions dùng App Group).
-- Tích hợp APM cloud bên thứ ba (Datadog/Sentry sẽ được gắn dưới dạng các `LogAppender` độc lập sau này).
+Tham chiếu kiến trúc logging đã được kiểm chứng ở phía Flutter (`bloc_digital_wallet/packages/logger`),
+epic này thiết lập **`Packages/D3NexusLogging`**: một local SPM package được quản trị chặt, xây trên
+**`apple/swift-log`**, với **`kean/Pulse`** được đấu nối tại composition root, tuân thủ Clean
+Architecture, các luật quản trị AST trong `ArchTests`, cách ly Release ở mức biên dịch, và phòng
+ngừa rò rỉ bộ nhớ một cách tường minh.
 
 ---
 
-## 4. Kiến Trúc & Thiết Kế Kỹ Thuật
+## 3. Sai lệch so với Spec gốc (các quyết định Gate 2)
 
-### 4.1 Sơ Đồ Kiến Trúc Tổng Thể
+Mỗi dòng là một hiệu chỉnh về *chi tiết hiện thực*, không phải về phạm vi đã duyệt. Tất cả đã được
+Engineering Lead xác nhận tại checkpoint Gate 2.
+
+| # | Spec gốc nói | Thực tế trong repo | Quyết định |
+|---|---|---|---|
+| **D1** | Package tên `Packages/Logging`, module `Logging` | `apple/swift-log` ship library product **và module** đều tên `Logging`. Một local target trùng tên mà lại depend vào nó là lỗi duplicate-module của SwiftPM, và mọi `import Logging` ở phía consumer trở thành nhập nhằng. | Đổi tên package và module thành **`D3NexusLogging`**, khớp với `D3NexusLogger` / `D3NexusLogHandler` mà spec vốn đã dùng. **Giữ** swift-log. |
+| **D2** | `LoggerProtocol` phơi ra `d` / `i` / `w` / `e` / `v` | `quality/.swiftlint.yml` có `identifier_name.excluded` là `[id, to, x, y, t]`; CI chạy `swiftlint --strict`. Repo đã vướng đúng luật này một lần — xem doc comment trong `Packages/Core/Sources/Core/Logging/Logger.swift`. | Đặt tên **`debug` / `info` / `warning` / `error` / `verbose`**, đồng thời giúp `D3NexusCoreLoggerAdapter` ánh xạ 1:1 sang `Core.Logger`. |
+| **D3** | `protocol Interceptor { intercept(request:) ; intercept(response:data:) }` | Protocol thật là `RequestInterceptor` với `adapt(_:) async -> URLRequest`, `didReceive(_ response: HTTPURLResponse)` và `retry(_:dueTo:)`. **`didReceive` là đồng bộ, không nhận `Data`, không có thông tin thời gian.** | Việc chèn header chuyển sang `TraceContextInterceptor` mới, viết theo đúng chữ ký thật (Task 7). Thời lượng / kích thước / body phản hồi chuyển xuống tầng `URLSession` (D5, Task 8) — chuỗi interceptor về mặt cấu trúc không thể cung cấp những dữ liệu đó. |
+| **D4** | `Packages/Network` phụ thuộc `Packages/Logging` | `docs/architecture/ARCHITECTURE.md` §3 tuyên bố Layer 3 là "sibling modules, **no intra-layer edge**" và toàn đồ thị là "a one-way DAG"; `Packages/Network/Package.swift` ghi "Depends on `Core` **only**". | Dùng seam tối giản **`Core.TraceContextProviding`**, đúng theo tiền lệ `Core.AuthEventSink` đã có (Source Spec Changelog #8). `Network` vẫn là leaf chỉ phụ thuộc `Core` và **không phải sửa luật quản trị nào**. |
+| **D5** | `PulseAppender` nằm bên trong package logging | Mọi local package hiện có chỉ dùng path dependency. CI chạy `for dir in Packages/* Features/*; do swift test --package-path "$dir"` trên **macOS host**, nên một remote dependency Pulse sẽ phải resolve cho chính package đó và mọi consumer phía dưới, ở mỗi lần build standalone. | **Pulse chỉ nằm trong `App/`**, nơi nó vốn đã là external qua Tuist. `Packages/D3NexusLogging` giữ đúng một remote dependency (swift-log, một leaf thuần Swift). Điều này cũng tôn trọng Non-Goal 3 — appender vẫn cắm-rút được. |
+| **D6** | `spanId` lấy từ `String(UUID().uuidString.prefix(16))` | `uuidString` có dạng `XXXXXXXX-XXXX-…`; 16 ký tự đầu chứa dấu `-` ở vị trí 8 và 13, nên giá trị này fail chính regex `^[0-9a-f]{16}$` của spec. | Sinh ID từ byte ngẫu nhiên: `String(format: "%016llx", UInt64.random(in: .min ... .max))` và tương đương 128-bit cho `traceId`. |
+| **D7** | `buildTraceTree` trả về rừng `final class TraceNode` với `var children`, gắn `@unchecked Sendable` | Hai record có `spanId`/`parentSpanId` trỏ lẫn nhau tạo thành cycle: duyệt cây không bao giờ dừng và đồ thị class bị leak — mâu thuẫn với chính Goal 6 của epic này. | `TraceNode` trở thành **value type**, dựng từ dưới lên, có phát hiện cycle và giới hạn độ sâu. Lớp rủi ro leak bị loại bỏ bằng thiết kế thay vì bằng assertion. |
+| **D8** | `D3NexusLogger.getLogger` gọi `fatalError` khi chưa khởi tạo, qua default argument | Default argument được đánh giá tại **mọi** call site; một thay đổi thứ tự composition sẽ làm crash app ở production. | Fallback về **`NoOpLogger`**, kèm `assertionFailure` trong DEBUG để lỗi dùng sai vẫn ồn ào lúc phát triển. |
+
+### 3.1 Những hạng mục spec khẳng định nhưng không task nào sở hữu
+
+Phát hiện trong quá trình rà soát Stage 2, nay đã có chủ sở hữu rõ ràng.
+
+| Lỗ hổng | Spec khẳng định ở đâu | Chủ sở hữu mới |
+|---|---|---|
+| Che PII (mask `Authorization` / `Cookie` / `X-API-Key`, mẫu PAN / CVV / PIN / OTP) | §6 Security & PII Redaction | **Task 3** |
+| Ngưỡng line coverage (≥85% domain, 100% security) | §7 Testing Strategy, và Gate 4 | **Task 10** — CI hiện chạy `swift test` không kèm `--enable-code-coverage` và không có script ngưỡng nào, nên các con số này vốn không đo được. |
+| Bằng chứng cách ly Release ("không còn tham chiếu PulseUI trong binary production") | BDD 6.2 | **Task 9** |
+| Danh sách sibling của `ArchTests` K7 | — | **Task 6** — `HostRulesTests.coreSiblings` là hard-code; thiếu tên mới thì `Core` có thể import package logging mà không bị phát hiện. |
+| Đấu nối cho template mode `lean` | — | **Task 6** — `Tuist/Package.swift` và `Project.swift` mỗi file đều mang một danh sách dependency *thứ hai*, viết tay, dành cho `lean`. |
+| Mason brick `ios_mvi_feature` | — | **Task 6** — brick inject `Core.Logger`, nên mọi feature sinh mới về sau đều kế thừa seam cũ. |
+
+---
+
+## 4. Mục tiêu & Ngoài phạm vi
+
+### Mục tiêu
+1. **Package hạ tầng riêng (`Packages/D3NexusLogging`)** — `LogRecord`, `LogAppender`, `LogManager`,
+   `LoggerProtocol`, `D3NexusLogger`; chuẩn hoá trên `apple/swift-log` (`LoggingSystem.bootstrap`);
+   giữ `Packages/Core` là tầng đáy zero-dependency (K7).
+2. **W3C distributed trace context & phân cấp** — `traceId` 32 hex, `spanId` 16 hex; `withSpan()`
+   liên kết `parentSpanId` mà không tạo retain cycle; hàm thuần, an toàn với cycle
+   `buildTraceTree([LogRecord]) -> [TraceNode]`; chèn `traceparent: 00-{traceId}-{spanId}-01` cho
+   request đi ra.
+3. **Pipeline hai appender** — `OSLogAppender` (Apple Unified Logging: Console.app, Xcode,
+   `sysdiagnose`) nằm trong package; `PulseAppender` cùng cơ chế capture `URLSession` của Pulse đặt
+   tại composition root, phục vụ soi log trong app và stream không dây tới Pulse Pro.
+4. **Quản lý toggle độc lập** — tắt tiếng theo module chỉ ảnh hưởng appender debug, kill-switch theo
+   appender, lưu trong `UserDefaults` dưới khoá `logging.module_toggles` / `logging.appender_toggles`.
+5. **Console dành cho lập trình viên trong app** — kích hoạt bằng lắc máy hoặc một mục trong
+   `Features/Settings`; tìm kiếm, lọc regex, xem thời gian/JSON của request, xuất cURL; bị biên dịch
+   loại bỏ 100% dưới `#if !DEBUG`.
+6. **Che PII như một thành phần hạng nhất** — áp dụng ngay tại biên `LogManagerImpl` để mọi appender
+   đều kế thừa, và áp lên đường capture `URLSession` của Pulse vốn ghi lại toàn bộ body.
+7. **Phòng ngừa rò rỉ bộ nhớ & retain cycle** — helper `trackForMemoryLeaks` ở teardown; child logger
+   chỉ giữ trace ID dạng value; kiểm chứng bằng `leaks` / MallocStackLogging ở Tier C.
+8. **Tương thích ngược** — `D3NexusCoreLoggerAdapter` hiện thực `Core.Logger`, nên 22 call site hiện
+   hữu (§5.4) tiếp tục chạy mà không cần sửa.
+
+### Ngoài phạm vi
+- FLEX hay MLeaksFinder (đã đánh giá và loại: MLeaksFinder swizzle `UIViewController` của UIKit, không
+  tương thích với kiến trúc SwiftUI thuần `NavigationStack` này; FLEX kéo theo gánh nặng Obj-C runtime).
+- Cầu IPC chạy nền headless (iOS native chạy `BGTaskScheduler` in-process).
+- SDK APM đám mây bên thứ ba — Datadog / Sentry sẽ đến sau dưới dạng `LogAppender` cắm-rút, và D5 giữ
+  cho việc đó rẻ.
+- Thay đổi template mode `plugin`: `PluginDevbed.xcworkspace` ngoài phạm vi và không bị đụng tới.
+
+---
+
+## 5. Kiến trúc & Thiết kế kỹ thuật
+
+### 5.1 Kiến trúc tổng thể
 
 ```mermaid
 graph TD
-    subgraph Host["App Layer (Composition Root)"]
+    subgraph Host["Layer 1 · App (Composition Root)"]
         App["App / AppComposition"]
+        PulseApp["PulseAppender (#if DEBUG)"]
+        PulseSession["URLSession có Pulse instrument"]
+        TraceBind["D3NexusTraceContextProvider"]
         PulseUI["PulseUI ConsoleView (#if DEBUG)"]
     end
 
-    subgraph Packages["SPM Local Packages"]
-        Shell["Packages/Shell"]
-        Logging["Packages/Logging"]
-        Network["Packages/Network"]
-        Platform["Packages/Platform"]
-        Core["Packages/Core (Floor)"]
-    end
-
-    subgraph Features["Feature Modules"]
+    subgraph L2["Layer 2 · Features"]
         Settings["Features/Settings"]
         Scanner["Features/Scanner"]
     end
 
-    subgraph External["External Dependencies"]
-        SwiftLog["apple/swift-log"]
-        PulseCore["kean/Pulse (Core)"]
+    subgraph L3["Layer 3 · Hạ tầng dùng chung (không có cạnh nội tầng)"]
+        Shell["Packages/Shell"]
+        Logging["Packages/D3NexusLogging"]
+        Network["Packages/Network"]
+        Platform["Packages/Platform"]
+        UIKitPkg["Packages/AppUIKit"]
     end
 
-    App --> Shell
-    App --> Logging
-    App --> Network
-    App --> Platform
-    App --> Core
-    App -.->|#if DEBUG only| PulseUI
+    subgraph L4["Layer 4 · Nền móng"]
+        Core["Packages/Core<br/>Logger · TraceContextProviding · AuthEventSink"]
+    end
+
+    subgraph Ext["Phụ thuộc ngoài"]
+        SwiftLog["apple/swift-log"]
+        PulseCore["kean/Pulse + PulseUI"]
+    end
+
+    App --> Shell & Logging & Network & Platform & Core
+    App --> Settings & Scanner
+    App -.->|#if DEBUG| PulseApp
+    App --> PulseSession
+    App --> TraceBind
+    App -.->|#if DEBUG| PulseUI
+    PulseApp --> PulseCore
+    PulseSession --> PulseCore
+    PulseUI --> PulseCore
 
     Logging --> Core
     Logging --> SwiftLog
-    Logging --> PulseCore
-
     Network --> Core
-    Network --> Logging
-
     Platform --> Core
-    Features --> Core
-    Features --> Logging
-    Features --> Platform
-    Settings -.->|#if DEBUG only| Logging
+    UIKitPkg --> Core
+    Shell --> Platform & UIKitPkg
+
+    Settings --> Platform & Network & UIKitPkg & Logging
+    Scanner --> Platform & UIKitPkg
+
+    TraceBind -.->|hiện thực seam của Core<br/>dựa trên D3NexusLogging| Core
 ```
 
-### 4.2 Biểu Đồ Ca Sử Dụng (Use Cases)
+**Bất biến được giữ nguyên:** mọi mũi tên liền vẫn chảy xuống tầng thấp hơn. `Network` không phát sinh
+cạnh sang sibling Layer 3 — nó lấy trace context qua `Core.TraceContextProviding`, được bind tại
+composition root, đúng như cách nó lấy sự kiện logout qua `Core.AuthEventSink`.
+
+### 5.2 Use Case
 
 ```mermaid
 flowchart TD
-    Developer((Developer / QA))
-    SystemTimer((System Timer / Network))
+    Developer((Lập trình viên / QA))
+    HTTPStack((Tầng mạng))
     BackendSvc((Backend APM))
+    SecAuditor((Người rà soát bảo mật))
 
-    subgraph UseCases["Các Ca Sử Dụng Chính"]
-        UC1["UC-1: Ghi Log Có Cấu Trúc kèm W3C Trace"]
-        UC2["UC-2: Tạo Child Span qua withSpan()"]
-        UC3["UC-3: Gắn header traceparent vào Request HTTP"]
-        UC4["UC-4: Bật/Tắt Trạng Thái Module hoặc Appender"]
-        UC5["UC-5: Mở Console Bằng Thao Tác Lắc Thiết Bị"]
-        UC6["UC-6: Tái Tạo Cây Phân Cấp Thứ Bậc Trace Tree"]
-        UC7["UC-7: Kiểm Thử Giải Phóng Bộ Nhớ Sạch Sẽ (No Leaks)"]
+    subgraph UseCases["Use Case của Pulse Logger"]
+        UC1["UC-1: Phát log có cấu trúc kèm W3C trace"]
+        UC2["UC-2: Sinh child span qua withSpan()"]
+        UC3["UC-3: Chèn traceparent vào HTTP request"]
+        UC4["UC-4: Bật/tắt module hoặc appender"]
+        UC5["UC-5: Mở console trong app bằng lắc máy"]
+        UC6["UC-6: Dựng lại cây trace phân cấp"]
+        UC7["UC-7: Khẳng định không rò rỉ bộ nhớ khi teardown"]
+        UC8["UC-8: Che secret và PII trước khi lưu"]
+        UC9["UC-9: Thu thập thời gian, body và cURL của request"]
     end
 
-    Developer --> UC1
-    Developer --> UC2
-    Developer --> UC4
-    Developer --> UC5
-    SystemTimer --> UC3
-    UC3 --> BackendSvc
-    Developer --> UC6
-    Developer --> UC7
+    Developer --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7
+    HTTPStack --> UC3 --> BackendSvc
+    HTTPStack --> UC9
+    SecAuditor --> UC8
+    UC9 --> UC8
 ```
 
-### 4.3 Sơ Đồ Tuần Tự Chính (Sequence Diagram)
+### 5.3 Sequence chính — ghi log, chèn trace và thu thập mạng
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Caller as Feature ViewModel / UseCase
-    participant Logger as D3NexusLogger ("Wallet")
-    participant ChildLogger as Child Logger (withSpan)
-    participant NetInterceptor as LoggingInterceptor (Packages/Network)
+    participant Logger as D3NexusLogger ("Settings")
+    participant Child as Child logger (withSpan)
+    participant Provider as D3NexusTraceContextProvider (App)
+    participant TraceIC as TraceContextInterceptor (Network)
+    participant Session as URLSession có Pulse instrument (App)
     participant LogMgr as LogManagerImpl
-    participant PulseApp as PulseAppender
+    participant Redactor as Redactor
     participant OSLogApp as OSLogAppender
-    participant PulseStore as Pulse.LoggerStore
-    participant Server as Backend API Server
+    participant PulseApp as PulseAppender (#if DEBUG)
+    participant Server as Backend API
 
-    Caller->>Logger: d("Người dùng bấm chuyển tiền")
+    Caller->>Logger: debug("User opened settings")
     Caller->>Logger: withSpan()
-    Logger-->>ChildLogger: Trả về child logger (spanId mới, parentSpanId = spanId cũ, zero parent strong ref)
-    ChildLogger->>NetInterceptor: Thực thi request API
-    NetInterceptor->>NetInterceptor: Inject header "traceparent: 00-{traceId}-{spanId}-01"
-    NetInterceptor->>Server: HTTP POST /transfer
-    Server-->>NetInterceptor: HTTP 200 OK (50ms)
-    NetInterceptor->>ChildLogger: i("Chuyển tiền thành công")
-    ChildLogger->>LogMgr: log(LogRecord)
-    
-    LogMgr->>LogMgr: Kiểm tra Appender toggles ("pulse": true, "oslog": true)
-    LogMgr->>LogMgr: Kiểm tra Module toggle ("Wallet": true)
-    
-    par Dispatch Song Song
-        LogMgr->>PulseApp: append(LogRecord)
-        PulseApp->>PulseStore: Lưu trữ sự kiện có cấu trúc
+    Logger-->>Child: child (cùng traceId, spanId mới,<br/>parentSpanId dạng String — không giữ ref cha)
+
+    Child->>TraceIC: request đi qua APIClient
+    TraceIC->>Provider: makeTraceparent()
+    Provider-->>TraceIC: "00-{traceId}-{spanId}-01"
+    TraceIC->>TraceIC: adapt(_:) gắn header vào URLRequest
+    TraceIC->>Session: gửi đi
+    Session->>Server: HTTP POST /settings
+    Server-->>Session: 200 OK (50ms, 1.2 KB)
+    Session->>PulseApp: URLSessionProxyDelegate thu<br/>thời gian + header + body
+    PulseApp->>Redactor: redact(headers, body)
+    Note over TraceIC: didReceive(_:) là sync và không có body —<br/>chỉ status, đúng theo thiết kế (D3)
+
+    Child->>LogMgr: log(LogRecord)
+    LogMgr->>Redactor: redact(record)
+    Redactor-->>LogMgr: record đã làm sạch
+    LogMgr->>LogMgr: appender bị kill? module bị mute?
+
+    par Phân phối
+        LogMgr->>OSLogApp: append (respectsModuleToggle = false)
     and
-        LogMgr->>OSLogApp: append(LogRecord)
-        OSLogApp->>OSLogApp: os.Logger.info("[traceId][spanId] Chuyển tiền thành công")
+        LogMgr->>PulseApp: append (respectsModuleToggle = true)
     end
 ```
 
-### 4.4 Phân Tích Tác Động Shift-Left (Check 1)
-- **Tập Tin Sẽ Tạo Mới**:
-  - `Packages/Logging/Package.swift`
-  - `Packages/Logging/Sources/Logging/Model/LogLevel.swift`
-  - `Packages/Logging/Sources/Logging/Model/LogRecord.swift`
-  - `Packages/Logging/Sources/Logging/Trace/TraceNode.swift`
-  - `Packages/Logging/Sources/Logging/Trace/TraceTree.swift`
-  - `Packages/Logging/Sources/Logging/Appender/LogAppender.swift`
-  - `Packages/Logging/Sources/Logging/Appender/PulseAppender.swift`
-  - `Packages/Logging/Sources/Logging/Appender/OSLogAppender.swift`
-  - `Packages/Logging/Sources/Logging/Manager/LogManager.swift`
-  - `Packages/Logging/Sources/Logging/Manager/LogManagerImpl.swift`
-  - `Packages/Logging/Sources/Logging/Logger/LoggerProtocol.swift`
-  - `Packages/Logging/Sources/Logging/Logger/LoggerImpl.swift`
-  - `Packages/Logging/Sources/Logging/Facade/D3NexusLogger.swift`
-  - `Packages/Logging/Sources/Logging/Bridge/D3NexusLogHandler.swift`
-  - `Packages/Logging/Sources/Logging/Adapter/D3NexusCoreLoggerAdapter.swift`
-  - `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
-  - `Packages/Logging/Tests/LoggingTests/**`
-- **Tập Tin Cần Sửa Đổi**:
-  - `Tuist/Package.swift` (bổ sung `apple/swift-log`, `kean/Pulse`, `Packages/Logging`)
-  - `Project.swift` (khai báo dependency `.external(name: "Logging")`)
-  - `Packages/Network/Package.swift` (phụ thuộc vào `Logging`)
-  - `Packages/Network/Sources/Network/Interceptor/LoggingInterceptor.swift` (gắn W3C headers)
-  - `App/Sources/Composition/AppComposition.swift` (khởi tạo `D3NexusLogger`, thay thế `ConsoleLogger`)
-  - `Features/Settings/Sources/Settings/Presentation/SettingsView.swift` (thêm section chẩn đoán dưới `#if DEBUG`)
-- **Tác Động Tới Các Module Khác**: Toàn bộ các lớp hiện dùng `Core.Logger` tiếp tục hoạt động thông qua `D3NexusCoreLoggerAdapter`.
-- **Ngưỡng Bao Phủ Kiểm Thử (Coverage Thresholds)**:
-  - Logic cốt lõi & điều phối (Dispatch Engine): $\ge 90\%$ line coverage.
-  - Trace Tree & W3C Span Generation: $100\%$ line coverage.
-  - Kiểm thử giải phóng bộ nhớ (No Leaks): $100\%$ trên các instance cấp phát.
-  - Kiểm thử kiến trúc AST (`ArchTests`): Đạt 100%.
+### 5.4 Check 1 — Phân tích tác động Shift-Left
+
+Chạy ngày 2026-09-19 đối chiếu `develop`:
+
+```bash
+python3 skills/impact-analysis/resources/scripts/check_code_impact.py \
+  --files Packages/Network/Sources/Network/Interceptor/LoggingInterceptor.swift \
+          App/Sources/Composition/AppComposition.swift \
+          App/Sources/Composition/ConsoleLogger.swift \
+          App/Sources/Composition/NetworkComposition.swift \
+          Packages/Network/Package.swift Tuist/Package.swift Project.swift \
+          Features/Settings/Sources/Settings/Presentation/SettingsView.swift \
+  --symbols Logger ConsoleLogger LoggingInterceptor RequestInterceptor \
+  --base-ref develop
+```
+
+- **Xung đột upstream:** 🟢 sạch, không có commit chưa merge so với `develop`.
+- **Bán kính ảnh hưởng:** **22 file gọi phía dưới** trải khắp `Core`, `Network`, `Platform`,
+  `Settings`, `App` — và đặc biệt là `bricks/ios_mvi_feature/__brick__/`, tức Mason template.
+  `Core.Logger` len lỏi qua `CacheStore`, `SecureCacheStore`, `SafeExecution`, `DeepLinkRouter`,
+  `APIClient` và mọi repository sinh ra từ brick. Đây chính là lý do `D3NexusCoreLoggerAdapter`
+  (Mục tiêu 8) không phải tuỳ chọn: thiếu nó, epic sẽ phải đụng cả 22 file.
+- **Cầu nối đa nền tảng:** không có — repo này không dùng `MethodChannel`.
+- **Lưới an toàn coverage:** script báo 0% trên các file liệt kê vì heuristic ghép cặp của nó tìm
+  `<Name>Tests.swift` kề bên. `Packages/Network/Tests/NetworkTests/LoggingInterceptorTests.swift`
+  **có tồn tại**; các file composition root thì đúng là không có unit test đi kèm. Task 10 lắp đặt
+  cơ chế đo thật thay vì dựa vào heuristic này.
+
+### 5.5 File tạo mới và sửa đổi
+
+**Tạo mới**
+```
+Packages/D3NexusLogging/Package.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Model/{LogLevel,LogRecord}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/{TraceIdentifier,TraceNode,TraceTree}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/{Redactor,RedactionRule}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/{LogAppender,OSLogAppender}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/D3NexusLogHandler.swift
+Packages/D3NexusLogging/Tests/D3NexusLoggingTests/**
+Packages/Core/Sources/Core/Logging/TraceContextProviding.swift
+Packages/Network/Sources/Network/Interceptor/TraceContextInterceptor.swift
+App/Sources/Composition/LoggingComposition.swift
+App/Sources/Composition/D3NexusTraceContextProvider.swift
+App/Sources/Composition/PulseAppender.swift              (#if DEBUG)
+App/Sources/UI/ShakeGestureModifier.swift                (#if DEBUG)
+Features/Settings/Sources/Settings/Presentation/Diagnostics/**   (#if DEBUG)
+scripts/check_coverage_thresholds.sh
+```
+
+**Sửa đổi**
+```
+Tuist/Package.swift          — vùng marker (enterprise) VÀ mảng lean viết tay
+Project.swift                — danh sách dependency của target cho enterprise VÀ lean
+Workspace.swift              — kiểm tra việc bao gồm package
+ArchTests/Tests/ArchTests/HostRulesTests.swift  — thêm "D3NexusLogging" vào coreSiblings
+App/Sources/Composition/AppComposition.swift    — ConsoleLogger -> D3NexusCoreLoggerAdapter
+App/Sources/Composition/NetworkComposition.swift — nhận URLSession đã instrument
+Features/Settings/Sources/Settings/Presentation/SettingsView.swift  (mục #if DEBUG)
+bricks/ios_mvi_feature/__brick__/**             — feature sinh mới dùng seam mới
+docs/architecture/ARCHITECTURE.md               — bản đồ module + đồ thị Layer 3
+.github/workflows/ci.yml                        — bổ sung đo coverage
+```
+
+**Xoá**: `App/Sources/Composition/ConsoleLogger.swift` (được thay thế; giữ lại tới khi Task 6 chứng
+minh adapter hoạt động, để rollback chỉ là một file).
+
+### 5.6 Ngưỡng coverage (Gate 4)
+
+| Khu vực | Ngưỡng |
+|---|---|
+| `Redaction/**` (nhạy cảm bảo mật) | **100%** line |
+| `Trace/**` — sinh ID, dựng cây | **100%** line |
+| `Manager/**`, `Logger/**` — dispatch, toggle, span | ≥ 90% line |
+| `Appender/**`, `Bridge/**` | ≥ 85% line |
+| ViewModel của Diagnostics (state UI) | ≥ 80% line |
+| `ArchTests` K1–K10 | 100% pass |
 
 ---
 
-## 5. Kế Hoạch Triển Khai & Kiểm Soát Rủi Ro
+## 6. Chiến lược triển khai & Giảm thiểu rủi ro
 
-1. **Triển Khai Theo Giai Đoạn (Phased Rollout)**:
-   - Giai đoạn 1: Khởi tạo `Packages/Logging` với đầy đủ Unit Tests cô lập và helper `trackForMemoryLeaks`.
-   - Giai đoạn 2: Tích hợp `apple/swift-log` và `kean/Pulse`.
-   - Giai đoạn 3: Kết nối `D3NexusCoreLoggerAdapter` tương thích ngược tại `App`.
-   - Giai đoạn 4: Nâng cấp interceptor trong `Packages/Network` hỗ trợ W3C traceparent.
-   - Giai đoạn 5: Tích hợp `PulseUI` và giao diện cấu hình trong Settings.
-2. **Kế Hoạch Dự Phòng (Fallback Plan)**:
-   - Nếu storage của `Pulse` gặp sự cố, `OSLogAppender` vẫn tiếp tục hoạt động độc lập không bị ảnh hưởng.
-   - Nếu một module gây spam log, dev có thể tắt module đó tức thì trong Settings mà không cần build lại app.
-   - Nếu cần rollback toàn bộ, chỉ cần revert `AppComposition.swift` về `ConsoleLogger`.
+1. **Giai đoạn 1 (Task 1–5)** — dựng `Packages/D3NexusLogging` độc lập: model, dispatch, redaction,
+   `OSLogAppender`, cầu swift-log. Chưa có gì trong app thay đổi; cổng duy nhất là
+   `swift test --package-path Packages/D3NexusLogging`.
+2. **Giai đoạn 2 (Task 6)** — đấu package vào cả ba template mode và thay composition root bằng
+   `D3NexusCoreLoggerAdapter`. Đây là thời điểm đầu tiên hành vi app thay đổi.
+3. **Giai đoạn 3 (Task 7)** — seam trace trong `Core` và interceptor trong `Network`.
+4. **Giai đoạn 4 (Task 8)** — Pulse tại composition root: appender + `URLSession` đã instrument.
+5. **Giai đoạn 5 (Task 9–10)** — console PulseUI, mục Diagnostics trong Settings, nghiệm thu và quản trị.
+
+**Giảm thiểu & phương án lùi**
+- Nếu bộ lưu trữ của Pulse gặp sự cố, `OSLogAppender` không bị ảnh hưởng — nó nằm ở package khác và
+  hoàn toàn không phụ thuộc Pulse.
+- Một module quá ồn được tắt tiếng lúc chạy từ Settings; không cần phát hành lại.
+- Lùi toàn bộ epic chỉ là hoàn nguyên `AppComposition.swift` về `ConsoleLogger`: package trở thành
+  code chết chứ không phải một thay đổi phá vỡ, vì mọi call site vẫn nói chuyện qua `Core.Logger`.
+- Lùi riêng phần Pulse chỉ là xoá appender và phần instrument session ở tầng App — chính D5 khiến
+  việc này là revert hai file thay vì một thay đổi đồ thị package.
 
 ---
 
-## 6. Danh Mục Công Việc Kanban (Tasks Breakdown)
+## 7. Phân rã công việc Kanban
 
-Toàn bộ epic được chia thành 7 task cụ thể tuân thủ BDD & TDD:
+| # | Task | Bị chặn bởi |
+|---|---|---|
+| 1 | [Dựng package, data model & cây trace an toàn cycle](task_1_scaffold_logging_package.md) | — |
+| 2 | [Engine dispatch LogManager, LoggerProtocol & facade](task_2_log_manager_and_facade.md) | 1 |
+| 3 | [Redactor — che secret & mẫu PII](task_3_redactor_pii_masking.md) | 1 |
+| 4 | [OSLogAppender & lưu trạng thái toggle](task_4_oslog_appender.md) | 2, 3 |
+| 5 | [Cầu swift-log — D3NexusLogHandler](task_5_swift_log_bridge.md) | 2 |
+| 6 | [Đấu đồ thị qua các template mode, adapter Core.Logger & Mason brick](task_6_graph_wiring_and_core_adapter.md) | 4, 5 |
+| 7 | [Seam Core.TraceContextProviding & TraceContextInterceptor](task_7_trace_context_seam_and_interceptor.md) | 6 |
+| 8 | [Pulse appender & thu thập qua URLSession đã instrument](task_8_pulse_appender_and_session_capture.md) | 6, 7 |
+| 9 | [Console PulseUI, cử chỉ lắc & Diagnostics trong Settings](task_9_pulse_ui_and_settings.md) | 8 |
+| 10 | [Nghiệm thu Tier C, quản trị & công cụ đo coverage](task_10_acceptance_and_governance.md) | 9 |
 
-- [Task 1: Khởi Tạo Package, Mô Hình Dữ Liệu & Trace Tree (`task_1_scaffold_logging_package.md`)](task_1_scaffold_logging_package.md)
-- [Task 2: Động Cơ Điều Phối LogManager, LoggerProtocol & Facade (`task_2_log_manager_and_facade.md`)](task_2_log_manager_and_facade.md)
-- [Task 3: Tích Hợp SwiftLog, Pulse & Dual Appenders (`task_3_swift_log_and_pulse_appenders.md`)](task_3_swift_log_and_pulse_appenders.md)
-- [Task 4: Adapter Tương Thích Ngược Core.Logger (`task_4_core_logger_adapter.md`)](task_4_core_logger_adapter.md)
-- [Task 5: Gắn Header W3C Traceparent trong Network Interceptor (`task_5_network_trace_interceptor.md`)](task_5_network_trace_interceptor.md)
-- [Task 6: Màn Hình Debug PulseUI & Quản Lý Toggles trong Settings (`task_6_pulse_ui_and_settings.md`)](task_6_pulse_ui_and_settings.md)
-- [Task 7: Kiểm Thử Nghiệm Thu Hệ Thống Tier C & Governance (`task_7_acceptance_and_governance.md`)](task_7_acceptance_and_governance.md)
+```mermaid
+flowchart LR
+    T1[1 Scaffold] --> T2[2 Manager]
+    T1 --> T3[3 Redactor]
+    T2 --> T4[4 OSLogAppender]
+    T3 --> T4
+    T2 --> T5[5 swift-log bridge]
+    T4 --> T6[6 Graph + adapter]
+    T5 --> T6
+    T6 --> T7[7 Trace seam]
+    T6 --> T8[8 Pulse capture]
+    T7 --> T8
+    T8 --> T9[9 PulseUI + Settings]
+    T9 --> T10[10 Acceptance]
+```

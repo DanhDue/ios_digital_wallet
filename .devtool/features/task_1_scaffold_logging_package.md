@@ -6,112 +6,124 @@ assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T04:05:09+07:00"
+modified: "2026-09-19T04:47:44+07:00"
 completedAt: null
 labels: ["architecture", "logging", "package", "memory-safety"]
 order: "a1"
 ---
 
-# Task 1: Package Scaffolding, Data Models & Trace Tree
+# Task 1: Package Scaffolding, Data Models & Cycle-Safe Trace Tree
 
-Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md)
+Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md) · BDD: [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md) UC-1, UC-6
 
 ## Requirement Analysis
-Create the isolated local SPM package `Packages/Logging` to establish the core data models, W3C correlation identifiers, trace tree reconstruction logic, and the `trackForMemoryLeaks` test assertion helper. This task creates the foundation of the logging system without external SDK dependencies, ensuring pure Swift data structures, deterministic unit test verification, and automated memory leak prevention.
+
+Create the local SPM package `Packages/D3NexusLogging` and its pure foundation: log levels, the
+immutable `LogRecord`, W3C-correct identifier generation, and a trace-tree builder that cannot
+recurse forever or leak. **Zero remote dependencies at this task** — swift-log arrives in Task 5,
+Pulse never enters this package at all (HLD D5).
+
+The package name is `D3NexusLogging`, not `Logging`: `apple/swift-log` ships its module under the
+name `Logging`, so a local target of that name would be a SwiftPM duplicate-module error and would
+make every consumer's `import Logging` ambiguous (HLD D1).
 
 ## Relevant Files & Context Pointers
-- `Packages/Logging/Package.swift`
-- `Packages/Logging/Sources/Logging/Model/LogLevel.swift`
-- `Packages/Logging/Sources/Logging/Model/LogRecord.swift`
-- `Packages/Logging/Sources/Logging/Trace/TraceNode.swift`
-- `Packages/Logging/Sources/Logging/Trace/TraceTree.swift`
-- `Packages/Logging/Tests/LoggingTests/TestSupport/MemoryLeakTestSupport.swift`
-- `Packages/Logging/Tests/LoggingTests/LogRecordTests.swift`
-- `Packages/Logging/Tests/LoggingTests/TraceTreeTests.swift`
+
+- `Packages/D3NexusLogging/Package.swift` — **create**
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Model/LogLevel.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Model/LogRecord.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceIdentifier.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceNode.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceTree.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/TestSupport/MemoryLeakTestSupport.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/{LogRecordTests,TraceIdentifierTests,TraceTreeTests}.swift` — create
+- Read for conventions: `Packages/Core/Package.swift` (manifest style, the `.macOS(.v13)` host-test
+  rationale), `Packages/Network/Tests/NetworkTests/TestSupport.swift`
 
 ## Design Rationale
-Mirroring Flutter's `packages/logger/lib/src/log_record.dart` and `trace_tree.dart`:
-- `LogLevel`: Enum (`verbose`, `debug`, `info`, `warning`, `error`) conforming to `Comparable`, `Sendable`, and `Codable`.
-- `LogRecord`: Immutable struct carrying `module`, `level`, `message`, `timestamp`, `traceId` (32 hex characters), `spanId` (16 hex characters), `parentSpanId`, `errorDescription`, and `metadata`.
-- `buildTraceTree([LogRecord]) -> [TraceNode]`: A pure, side-effect-free function that converts a list of log records into a hierarchical forest of `TraceNode`s based on `parentSpanId -> spanId` matching. It guarantees zero data loss by promoting orphan records to root nodes.
-- `MemoryLeakTestSupport`: Introduces `trackForMemoryLeaks(_ instance: AnyObject)` using `addTeardownBlock { [weak instance] in XCTAssertNil(instance) }` to assert clean deallocation across all test suites.
-Applicable Skills: `code-health-audit`, `architecture-audit`.
+
+- **Manifest**: `platforms: [.iOS(.v16), .macOS(.v13)]`. The macOS floor is **not optional** — CI
+  runs `for dir in Packages/* Features/*; do swift test --package-path "$dir"` on a macOS host
+  (`.github/workflows/ci.yml`), so the package must build for the host toolchain exactly as `Core`
+  and `Network` already do.
+- **`LogLevel`**: `Int`-backed enum, `Comparable` / `Sendable` / `Codable`, ordered
+  `verbose < debug < info < warning < error`.
+- **`LogRecord`**: immutable `struct`, `Sendable` / `Equatable` / `Codable`, carrying `module`,
+  `level`, `message`, `timestamp`, `traceId`, `spanId`, `parentSpanId`, `errorDescription`,
+  `metadata`.
+- **`TraceIdentifier`**: generates a 32-hex `traceId` and a 16-hex `spanId` from random bytes —
+  `String(format: "%016llx", UInt64.random(in: .min ... .max))` and the 128-bit equivalent. The
+  spec's `String(UUID().uuidString.prefix(16))` is **wrong**: `uuidString` embeds `-` at index 8
+  and 13, so the value fails the spec's own `^[0-9a-f]{16}$` regex (HLD D6).
+- **`TraceNode` as a value type**: the spec modelled it as a `final class` with `var children`
+  marked `@unchecked Sendable`. Two records that reference each other's spans would then build a
+  cycle — infinite traversal *and* a permanent leak, contradicting Goal 7 of this epic. A `struct`
+  built bottom-up removes the whole failure class by construction (HLD D7).
+- **`buildTraceTree`** stays a pure, side-effect-free function: parent resolution by `spanId`, a
+  visited set for cycle detection, a depth cap for pathological chains, orphans promoted to roots,
+  and a guarantee that the node count out equals the record count in.
+
+Applicable skills: `code-health-audit`, `architecture-audit`, `test-driven-development`.
 
 ## Impact Analysis & Blast Radius
-- **Target Files & Symbols**:
-  - `LogLevel` enum
-  - `LogRecord` struct
-  - `TraceNode` class
-  - `buildTraceTree` function
-  - `trackForMemoryLeaks` test helper
-- **Downstream Callers**: `LogManager`, `PulseAppender`, `OSLogAppender` (implemented in later tasks).
-- **Cross-Platform Bridges**: N/A.
-- **Target Test Coverage Threshold**: $\ge 95\%$ line coverage on `Packages/Logging/Sources/Logging/Model` and `Trace`.
+
+- **Target symbols**: `LogLevel`, `LogRecord`, `TraceIdentifier`, `TraceNode`, `buildTraceTree`,
+  `trackForMemoryLeaks`.
+- **Downstream callers**: none yet — this task adds a package nothing imports. Blast radius is
+  intentionally zero, which is why it is first.
+- **Cross-platform bridges**: none.
+- **Coverage thresholds**: `Trace/**` **100%** line (identifier format and the cycle guard are the
+  two places a silent defect would survive to production); `Model/**` ≥ 90%.
 
 ## BDD Scenarios & Acceptance Criteria
 
 ### BDD SCENARIOS
 
-```gherkin
-[Tier A - Unit]
-Scenario: Create immutable LogRecord with valid W3C identifiers
-  Given a valid module name "Wallet" and level .info
-  When a LogRecord is instantiated with traceId "4bf92f3577b34da6a3ce929d0e0e4736", spanId "00f067aa0ba902b7", and message "Balance loaded"
-  Then the LogRecord properties match the provided inputs
-  And the parentSpanId is nil
-  And the timestamp is set to the current date
+Authoritative copies live in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md). This task implements:
 
-[Tier A - Unit]
-Scenario: Reconstruct hierarchical tree from ordered parent-child records
-  Given a list of 3 log records with sequential parent-child relationships:
-    | ID | SpanId | ParentSpanId | Message |
-    | 1  | span_A | nil          | Root operation |
-    | 2  | span_B | span_A       | Child operation 1 |
-    | 3  | span_C | span_B       | Grandchild operation |
-  When buildTraceTree is executed with this list
-  Then the result contains exactly 1 root TraceNode corresponding to ID 1
-  And root node ID 1 contains 1 child corresponding to ID 2
-  And child node ID 2 contains 1 child corresponding to ID 3
-
-[Tier A - Unit]
-Scenario: Handle orphan records gracefully without dropping data
-  Given a list of 2 log records:
-    | ID | SpanId | ParentSpanId | Message |
-    | 1  | span_X | span_MISSING | Orphan step |
-    | 2  | span_Y | nil          | Normal root |
-  When buildTraceTree is executed with this list
-  Then the result contains 2 root TraceNodes
-  And the orphan record is retained as a root node
-  And zero records are lost
-
-[Tier A - Unit]
-Scenario: Handle duplicate spanIds safely
-  Given multiple log records emitted with the identical spanId "span_SAME"
-  When buildTraceTree is executed
-  Then all records are retained in the output tree
-
-[Tier A - Unit]
-Scenario: Assert clean deallocation of TraceNode tree structure
-  Given an allocated TraceNode with nested children
-  When trackForMemoryLeaks is asserted in test teardown
-  Then all TraceNode instances deallocate cleanly with zero retain cycles
-```
+- **UC-1.2** — empty message/metadata; 64 KB message; `Error` captured as `errorDescription`;
+  10000 generated spanIds all matching `^[0-9a-f]{16}$` and all distinct.
+- **UC-6.1** — three-level tree from ordered records.
+- **UC-6.2** — out-of-order input yielding an identical tree; orphan promoted to root with zero
+  records dropped; empty input; five records sharing one `spanId` all retained.
+- **UC-6.3** — **the cycle guard**: a two-record cycle terminates within the test timeout with each
+  record appearing exactly once and no node reachable from itself; a self-parented record becomes a
+  childless root; a 10000-deep chain completes without stack overflow.
+- **UC-7.1** (partial) — a nested `TraceNode` structure leaves nothing retained at teardown.
 
 ## Test & Verification Checklist
-- [ ] **RED**: Write failing unit tests in `Packages/Logging/Tests/LoggingTests/LogRecordTests.swift` and `TraceTreeTests.swift` covering all BDD scenarios, including `trackForMemoryLeaks`.
-- [ ] **GREEN**: Implement minimal code in `LogLevel.swift`, `LogRecord.swift`, `TraceNode.swift`, `TraceTree.swift`, and `MemoryLeakTestSupport.swift` to pass tests.
-- [ ] **REFACTOR**: Ensure Swift 6 `Sendable` conformance, format (`swiftformat .`), lint (`swiftlint lint --strict`), and verify tests pass with `swift test --package-path Packages/Logging`.
+
+- [ ] **RED** — write `LogRecordTests`, `TraceIdentifierTests`, `TraceTreeTests` covering every
+      scenario above. Confirm each fails for the right reason. The cycle test must be written
+      **before** the algorithm, and must be shown to hang or crash against the source spec's
+      class-based implementation.
+- [ ] **GREEN** — minimal implementation of `LogLevel`, `LogRecord`, `TraceIdentifier`, `TraceNode`,
+      `TraceTree`, `MemoryLeakTestSupport`.
+- [ ] **REFACTOR** — full `Sendable` conformance with no `@unchecked` anywhere in this task;
+      `swiftformat --config quality/.swiftformat .`;
+      `swiftlint lint --strict --config quality/.swiftlint.yml`.
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` passes;
+      `swift build --package-path Packages/D3NexusLogging` succeeds standalone and offline.
+
+**TDD note**: the deep-chain and cycle tests are the point of this task. A green suite without them
+does not satisfy the DoD.
 
 ## Definition of Done (DoD)
-- `Packages/Logging` builds cleanly with Swift 6 compiler.
-- 100% of BDD unit test scenarios pass via `swift test --package-path Packages/Logging`.
-- `trackForMemoryLeaks` helper available and verified.
-- Zero compiler warnings, 100% SwiftLint and SwiftFormat clean.
+
+- `Packages/D3NexusLogging` builds under Swift 6 with zero warnings and **zero remote dependencies**.
+- Every listed BDD scenario passes.
+- `Trace/**` reaches 100% line coverage; `Model/**` ≥ 90%.
+- No `@unchecked Sendable` in this task's code.
+- `trackForMemoryLeaks` available to every later task.
+- SwiftLint and SwiftFormat clean; `git status` clean apart from the intended files.
 
 ## Dependencies & Blockers
-- Blocked by: None.
-- Blocks: [Task 2](task_2_log_manager_and_facade.md).
+
+- Blocked by: none.
+- Blocks: [Task 2](task_2_log_manager_and_facade.md), [Task 3](task_3_redactor_pii_masking.md).
 
 ## References & Rollback
-- References: W3C Trace Context Specification (<https://www.w3.org/TR/trace-context/>).
-- Rollback: Delete directory `Packages/Logging`.
+
+- W3C Trace Context — <https://www.w3.org/TR/trace-context/>
+- HLD deviations D1, D6, D7 — [pulse_logger.en.md](../epic/pulse_logger/pulse_logger.en.md) §3
+- Rollback: delete `Packages/D3NexusLogging/`. Nothing else references it yet.
