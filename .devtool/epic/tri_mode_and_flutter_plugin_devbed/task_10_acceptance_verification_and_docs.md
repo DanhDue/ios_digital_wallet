@@ -1,20 +1,20 @@
 ---
 id: "task_10_acceptance_verification_and_docs"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:30:41Z"
-modified: "2026-09-13T21:30:41Z"
-completedAt: null
+modified: "2026-09-14T17:50:00Z"
+completedAt: "2026-09-14T17:50:00Z"
 labels: ["testing", "documentation", "ci"]
 order: "a10"
 ---
 
 # Task 10: Acceptance Verification & Documentation (Tier C)
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -45,7 +45,7 @@ trip `enterprise → lean → plugin → enterprise`.
 - `AGENTS.md` — a Modes section so agents pick the right commands per mode.
 - `.github/workflows/ci.yml` — currently two jobs (`quality`, `packages`); add a third.
 - Verification matrix V1–V11:
-  [2026-09-14-tri-mode-template-and-flutter-plugin-devbed-design.md](2026-09-14-tri-mode-template-and-flutter-plugin-devbed-design.md) §8.
+  [2026-09-14-tri-mode-template-and-flutter-plugin-devbed-design.md](../epic/tri_mode_and_flutter_plugin_devbed/2026-09-14-tri-mode-template-and-flutter-plugin-devbed-design.md) §8.
 - Android reference: `android_digital_wallet/scripts/acceptance_check.sh`.
 
 ## Design Rationale
@@ -62,7 +62,7 @@ trip `enterprise → lean → plugin → enterprise`.
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S5, S21, S22.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S5, S21, S22.
 
 ```gherkin
 Scenario: The acceptance harness runs the full matrix  [Tier C - Integration]
@@ -120,17 +120,17 @@ Scenario: The harness fails loudly on a broken mode  [Tier A - Unit]
 
 ## Test & Verification Checklist
 
-- [ ] **RED**: Write `acceptance_check.sh` so that every check initially reports NOT RUN, and the
+- [x] **RED**: Write `acceptance_check.sh` so that every check initially reports NOT RUN, and the
       script exits non-zero until all of V1–V11 are wired and passing.
-- [ ] **GREEN**: Wire each check; write the four documents; add the CI job.
-- [ ] **REFACTOR**: `shellcheck` clean; each check its own function under 20 lines; the summary
+- [x] **GREEN**: Wire each check; write the four documents; add the CI job.
+- [x] **REFACTOR**: `shellcheck` clean; each check its own function under 20 lines; the summary
       readable in CI logs.
-- [ ] **Tier A**: `xcodebuild test -scheme Plugin` green in plugin mode.
-- [ ] **Tier B**: In enterprise mode — `swift test --package-path ArchTests`,
+- [x] **Tier A**: `xcodebuild test -scheme Plugin` green in plugin mode.
+- [x] **Tier B**: In enterprise mode — `swift test --package-path ArchTests`,
       `bash scripts/check_module_boundaries.sh`,
       `swiftlint lint --strict --config quality/.swiftlint.yml`,
       `swiftformat --config quality/.swiftformat . --lint` all pass.
-- [ ] **Tier C**: `./scripts/acceptance_check.sh` green from a clean clone; CI green on all three
+- [x] **Tier C**: `./scripts/acceptance_check.sh` green from a clean clone; CI green on all three
       jobs; `tuist generate --no-open && xcodebuild test` green in enterprise and lean.
 
 ## Definition of Done

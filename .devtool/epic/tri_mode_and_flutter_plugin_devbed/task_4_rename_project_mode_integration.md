@@ -14,7 +14,7 @@ order: "a4"
 
 # Task 4: Integrate --mode into scripts/rename_project.sh
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -63,7 +63,7 @@ Under `--dry-run` the script prints `WOULD CONFIGURE MODE: <mode>` and changes n
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S17–S19.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S17–S19.
 
 ```gherkin
 Scenario: Renaming with --mode lean renames and configures  [Tier C - Integration]

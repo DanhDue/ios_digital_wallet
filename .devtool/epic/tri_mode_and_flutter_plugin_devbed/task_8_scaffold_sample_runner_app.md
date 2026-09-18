@@ -1,20 +1,20 @@
 ---
 id: "task_8_scaffold_sample_runner_app"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:30:41Z"
-modified: "2026-09-13T21:30:41Z"
-completedAt: null
+modified: "2026-09-14T15:35:00Z"
+completedAt: "2026-09-14T15:35:00Z"
 labels: ["feature", "testing", "flutter-interop"]
 order: "a8"
 ---
 
 # Task 8: Scaffold the Sample Runner App
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -59,7 +59,7 @@ The Sample app:
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S16.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S16.
 
 ```gherkin
 Scenario: The Sample app builds in plugin mode  [Tier C - Integration]

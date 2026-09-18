@@ -1,20 +1,20 @@
 ---
 id: "task_5_bootstrap_devbed_flutter_binding"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:54Z"
-modified: "2026-09-13T21:29:54Z"
-completedAt: null
+modified: "2026-09-14T15:18:00Z"
+completedAt: "2026-09-14T15:18:00Z"
 labels: ["tooling", "automation", "architecture", "flutter-interop"]
 order: "a5"
 ---
 
 # Task 5: Bootstrap the Flutter Engine Binding
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -70,7 +70,7 @@ Finally, complete `configure_mode.sh`'s `plugin` branch (stubbed in Task 2) to c
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S9–S11.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S9–S11.
 
 ```gherkin
 Scenario: Bootstrap resolves the engine via fvm  [Tier A - Unit]
@@ -131,14 +131,14 @@ Scenario: configure_mode.sh plugin triggers bootstrap  [Tier C - Integration]
 
 ## Test & Verification Checklist
 
-- [ ] **RED**: Write the bootstrap scenarios as shell assertions first (fake SDK roots under a
+- [x] **RED**: Write the bootstrap scenarios as shell assertions first (fake SDK roots under a
       temp dir for the negative cases). Confirm they fail before implementation.
-- [ ] **GREEN**: Implement `bootstrap_devbed.sh`; add `Plugin/Vendor/` to `.gitignore`; replace
+- [x] **GREEN**: Implement `bootstrap_devbed.sh`; add `Plugin/Vendor/` to `.gitignore`; replace
       the `plugin`-branch stub in `configure_mode.sh`.
-- [ ] **REFACTOR**: `shellcheck` clean; resolution logic in one function under 20 lines.
-- [ ] **Tier B**: `swiftlint --strict` and `swiftformat --lint` stay clean (the script adds no
+- [x] **REFACTOR**: `shellcheck` clean; resolution logic in one function under 20 lines.
+- [x] **Tier B**: `swiftlint --strict` and `swiftformat --lint` stay clean (the script adds no
       Swift, but `Plugin/Package.swift` must be formatted).
-- [ ] **Tier C**: `./scripts/configure_mode.sh plugin` then the documented `xcodebuild -scheme
+- [x] **Tier C**: `./scripts/configure_mode.sh plugin` then the documented `xcodebuild -scheme
       Plugin -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO` succeeds on a
       skeleton source importing Flutter.
 

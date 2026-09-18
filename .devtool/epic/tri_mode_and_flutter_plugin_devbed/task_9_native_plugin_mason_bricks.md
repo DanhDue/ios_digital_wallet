@@ -1,20 +1,20 @@
 ---
 id: "task_9_native_plugin_mason_bricks"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:30:41Z"
-modified: "2026-09-13T21:30:41Z"
-completedAt: null
+modified: "2026-09-14T17:25:00Z"
+completedAt: "2026-09-14T17:25:00Z"
 labels: ["tooling", "automation", "scaffolding"]
 order: "a9"
 ---
 
 # Task 9: Mason Bricks ios_native_plugin & ios_add_native_ui
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -58,7 +58,7 @@ actual home.
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S20.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S20.
 
 ```gherkin
 Scenario: The brick emits a with-UI plugin  [Tier C - Integration]

@@ -1,20 +1,20 @@
 ---
 id: "task_6_scaffold_plugin_clean_architecture"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "tri_mode_and_flutter_plugin_devbed"
 dueDate: null
 created: "2026-09-13T21:29:54Z"
-modified: "2026-09-13T21:29:54Z"
-completedAt: null
+modified: "2026-09-14T15:25:00Z"
+completedAt: "2026-09-14T15:25:00Z"
 labels: ["architecture", "feature", "flutter-interop"]
 order: "a6"
 ---
 
 # Task 6: Scaffold the Plugin Clean Architecture Package
 
-Epic: [tri_mode_and_flutter_plugin_devbed](tri_mode_and_flutter_plugin_devbed.en.md)
+Epic: [tri_mode_and_flutter_plugin_devbed](../epic/tri_mode_and_flutter_plugin_devbed/tri_mode_and_flutter_plugin_devbed.en.md)
 
 ## Requirement Analysis
 
@@ -71,7 +71,7 @@ authority; record the reason in the package header.
 
 ### BDD SCENARIOS
 
-Canonical source: [bdd_scenarios.md](bdd_scenarios.md) S12, S15.
+Canonical source: [bdd_scenarios.md](../epic/tri_mode_and_flutter_plugin_devbed/bdd_scenarios.md) S12, S15.
 
 ```gherkin
 Scenario: The container resolves the default implementation  [Tier A - Unit]
@@ -134,16 +134,16 @@ Scenario: Domain is free of framework imports  [Tier A - Unit]
 
 ## Test & Verification Checklist
 
-- [ ] **RED**: Write `PluginContainerTests`, `MyPluginViewModelTests` and `DataSyncTaskTests` from
+- [x] **RED**: Write `PluginContainerTests`, `MyPluginViewModelTests` and `DataSyncTaskTests` from
       the scenarios above and confirm they fail for the right reasons before any implementation.
-- [ ] **GREEN**: Implement the container, Domain, Data, background task and Presentation layers —
+- [x] **GREEN**: Implement the container, Domain, Data, background task and Presentation layers —
       minimal code to pass, nothing speculative.
-- [ ] **REFACTOR**: `swiftformat --config quality/.swiftformat .`,
+- [x] **REFACTOR**: `swiftformat --config quality/.swiftformat .`,
       `swiftlint lint --strict --config quality/.swiftlint.yml`; keep functions under 20 lines and
       forbid force-unwrap / `try!`.
-- [ ] **Tier A**: `xcodebuild test -scheme Plugin` (the invocation documented in Task 5) green.
-- [ ] **Tier B**: `swiftlint --strict` and `swiftformat --lint` clean across `Plugin/`.
-- [ ] **Tier C**: Deferred to [Task 8](task_8_scaffold_sample_runner_app.md), which mounts this
+- [x] **Tier A**: `xcodebuild test -scheme Plugin` (the invocation documented in Task 5) green.
+- [x] **Tier B**: `swiftlint --strict` and `swiftformat --lint` clean across `Plugin/`.
+- [x] **Tier C**: Deferred to [Task 8](task_8_scaffold_sample_runner_app.md), which mounts this
       package in a runnable app.
 
 ## Definition of Done
