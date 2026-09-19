@@ -1,13 +1,13 @@
 ---
 id: "task_6_graph_wiring_and_core_adapter"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:23:20Z"
+completedAt: "2026-09-19T12:23:20Z"
 labels: ["architecture", "tuist", "governance", "backward-compatibility"]
 order: "a6"
 ---

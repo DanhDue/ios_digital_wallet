@@ -17,6 +17,7 @@ case .enterprise:
                 // tuist:app-deps:begin
                 .external(name: "AppUIKit"),
                 .external(name: "Core"),
+                .external(name: "D3NexusLogging"),
                 .external(name: "Factory"),
                 .external(name: "Framework"),
                 .external(name: "Network"),
@@ -54,6 +55,7 @@ case .lean:
             dependencies: [
                 .external(name: "AppUIKit"),
                 .external(name: "Core"),
+                .external(name: "D3NexusLogging"),
                 .external(name: "Factory"),
                 .external(name: "Framework"),
                 .external(name: "Network"),

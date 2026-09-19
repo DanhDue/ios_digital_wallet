@@ -13,7 +13,7 @@ import XCTest
 /// Both are enforced with an empty baseline and must fail, naming the offending
 /// file, if a violation is injected.
 final class HostRulesTests: XCTestCase {
-    private static let coreSiblings = ["Framework", "Network", "AppUIKit", "Platform"]
+    private static let coreSiblings = ["Framework", "Network", "AppUIKit", "Platform", "D3NexusLogging"]
 
     // MARK: K7 — Core imports no sibling infra package
 

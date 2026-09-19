@@ -78,7 +78,7 @@ struct AppComposition {
         self.router = router
 
         // --- Feature composition (Factory registration) ------------------------
-        let logger = ConsoleLogger()
+        let logger = LoggingComposition.buildCoreLogger()
         let cache = cacheStore ?? UserDefaultsCacheStore(keyPrefix: "app.cache.", logger: logger)
 
         let themeManager = AppThemeManager(cache: cache, eventBus: eventBus)
