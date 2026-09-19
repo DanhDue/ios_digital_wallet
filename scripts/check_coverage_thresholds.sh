@@ -38,6 +38,9 @@ def find_test_artifacts(package_path, test_binary_name):
         if "default.profdata" in files and "codecov" in root:
             found_prof = os.path.join(root, "default.profdata")
     
+    if found_bin and found_prof:
+        if os.path.getmtime(found_bin) > os.path.getmtime(found_prof):
+            return None, None
     return found_bin, found_prof
 
 def run_tests_with_coverage(package_path):
