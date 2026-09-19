@@ -39,6 +39,32 @@
                         .padding(.vertical, AppSpacing.sm)
                     }
 
+                    // Memory safety diagnostics card
+                    SettingsSectionCard(title: "Memory Safety") {
+                        NavigationLink {
+                            LeakDemoView(viewModel: LeakDemoViewModel())
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                                    Text("Leak Sentinel Demo")
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(Color.appTextPrimary)
+                                    Text("Simulate retain cycles and test runtime detection")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.appTextSecondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.appTextSecondary)
+                            }
+                            .padding(.vertical, AppSpacing.sm)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     // Appender kill-switches card
                     SettingsSectionCard(title: "Appenders (Kill-Switches)") {
                         ForEach(LoggingDiagnosticsViewModel.availableAppenders, id: \.self) { appender in

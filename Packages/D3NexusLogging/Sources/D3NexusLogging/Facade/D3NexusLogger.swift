@@ -17,6 +17,11 @@ public enum D3NexusLogger {
         }
     }
 
+    /// The active `LogManager` instance, if initialized.
+    public static var activeManager: (any LogManager)? {
+        storage.withLock { $0.manager }
+    }
+
     /// Obtains a root logger for the specified module.
     ///
     /// If uninitialized, returns a `NoOpLogger` and triggers assertionFailure in DEBUG (unless disabled for testing).

@@ -1,13 +1,13 @@
 ---
 id: "task_10_leak_sentinel_and_demo"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-20T00:12:00+07:00"
+completedAt: "2026-09-20T00:12:00+07:00"
 labels: ["memory-safety", "diagnostics", "sample", "developer-tools"]
 order: "a10"
 ---
@@ -194,15 +194,15 @@ Scenario: None of it reaches Release
 
 ## Test & Verification Checklist
 
-- [ ] **RED** — `LeakSentinelTests` against the injectable clock (report, no-report, cancellation,
+- [x] **RED** — `LeakSentinelTests` against the injectable clock (report, no-report, cancellation,
       no-strong-reference), and `LeakDemoViewModelTests` as a discriminating pair (leaking flow
       asserts `XCTAssertNotNil`, control flow asserts `XCTAssertNil`). Confirm each fails first.
-- [ ] **GREEN** — implement `LeakSentinel`, `LeakSentinelClock`, and the MVI demo quartet.
-- [ ] **REFACTOR** — run `ios-ui-audit`; `swiftformat`; `swiftlint --strict`. Confirm the test suite
+- [x] **GREEN** — implement `LeakSentinel`, `LeakSentinelClock`, and the MVI demo quartet.
+- [x] **REFACTOR** — run `ios-ui-audit`; `swiftformat`; `swiftlint --strict`. Confirm the test suite
       never sleeps on a real grace period.
-- [ ] **Tier B** — `swift test --package-path ArchTests` (K5 / K2 on the new sample);
+- [x] **Tier B** — `swift test --package-path ArchTests` (K5 / K2 on the new sample);
       `bash scripts/check_module_boundaries.sh`; `bash scripts/check_release_isolation.sh`.
-- [ ] **Tier C — the manual demo, run and recorded** — `tuist generate --no-open`, run on a
+- [x] **Tier C — the manual demo, run and recorded** — `tuist generate --no-open`, run on a
       simulator, Settings → Diagnostics → Leak Demo → leaking action → back → wait out the grace
       period → shake → confirm the `.error` record is in the console. Repeat with the control action
       and confirm **no** record. Attach both observations to the task before closing it.

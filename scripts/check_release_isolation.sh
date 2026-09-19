@@ -53,6 +53,9 @@ PROHIBITED_SYMBOLS=(
   "deviceDidShakeNotification"
   "LoggingDiagnosticsView"
   "LoggingDiagnosticsViewModel"
+  "LeakSentinel"
+  "LeakDemoView"
+  "LeakDemoViewModel"
 )
 
 VIOLATIONS=0
