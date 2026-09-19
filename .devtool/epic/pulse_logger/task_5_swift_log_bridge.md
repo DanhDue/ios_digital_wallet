@@ -12,13 +12,13 @@ labels: ["logging", "swift-log", "interoperability"]
 order: "a5"
 ---
 
-# Task 5: swift-log Bridge — `D3NexusLogHandler`
+# Task 5: swift-log Bridge — `AppLogHandler`
 
 Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1
 
 ## Requirement Analysis
 
-Add `apple/swift-log` to `Packages/D3NexusLogging` and implement `D3NexusLogHandler`, a
+Add `apple/swift-log` to `Packages/AppLogging` and implement `AppLogHandler`, a
 `Logging.LogHandler` that translates any standard swift-log event into a `LogRecord` and dispatches
 it through `LogManager`. Provide the `LoggingSystem.bootstrap` entry point the composition root will
 call in Task 6.
@@ -26,19 +26,19 @@ call in Task 6.
 **Why this task is isolated**: it introduces the package's only remote dependency. Keeping it in its
 own commit means the dependency can be reverted without unwinding the dispatch engine.
 
-**Why the package is named `D3NexusLogging`**: swift-log's library product and module are both called
+**Why the package is named `AppLogging`**: swift-log's library product and module are both called
 `Logging`. A local target of the same name depending on it is a SwiftPM duplicate-module error, and
 every consumer's `import Logging` would be ambiguous. The rename performed in Task 1 is what makes
 this task compile at all (HLD D1).
 
 ## Relevant Files & Context Pointers
 
-- `Packages/D3NexusLogging/Package.swift` — **modify**: add
+- `Packages/AppLogging/Package.swift` — **modify**: add
   `.package(url: "https://github.com/apple/swift-log.git", from: "1.6.2")` and the
   `.product(name: "Logging", package: "swift-log")` target dependency
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/D3NexusLogHandler.swift` — create
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/LoggingSystemBootstrap.swift` — create
-- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/SwiftLogBridgeTests.swift` — create
+- `Packages/AppLogging/Sources/AppLogging/Bridge/AppLogHandler.swift` — create
+- `Packages/AppLogging/Sources/AppLogging/Bridge/LoggingSystemBootstrap.swift` — create
+- `Packages/AppLogging/Tests/AppLoggingTests/SwiftLogBridgeTests.swift` — create
 
 ## Design Rationale
 
@@ -66,7 +66,7 @@ Applicable skills: `architecture-audit`, `code-health-audit`.
 
 ## Impact Analysis & Blast Radius
 
-- **Target symbols**: `D3NexusLogHandler`, the bootstrap function, `Package.swift` dependencies.
+- **Target symbols**: `AppLogHandler`, the bootstrap function, `Package.swift` dependencies.
 - **Downstream callers**: Task 6 (composition root calls bootstrap).
 - **New external dependency**: `apple/swift-log` — pure Swift, no transitive dependencies, supports
   the `.macOS(.v13)` host floor the CI package loop requires.
@@ -83,7 +83,7 @@ mapping through the bridge, plus:
 ```gherkin
 [Tier A - Unit]
 Scenario Outline: swift-log levels collapse onto LogLevel as documented
-  Given a D3NexusLogHandler bound to a spy LogManager
+  Given a AppLogHandler bound to a spy LogManager
   When a swift-log event at <SwiftLogLevel> is emitted
   Then the dispatched LogRecord level is <LogLevel>
 
@@ -130,8 +130,8 @@ Scenario: The label becomes the record module and per-handler metadata is preser
 - [ ] **GREEN** — implement the handler and the bootstrap entry point.
 - [ ] **REFACTOR** — `swiftformat`; `swiftlint --strict`; confirm the package still builds for the
       macOS host.
-- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green;
-      `swift build --package-path Packages/D3NexusLogging` resolves swift-log at the pinned version.
+- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green;
+      `swift build --package-path Packages/AppLogging` resolves swift-log at the pinned version.
 
 **TDD note**: `LoggingSystem.bootstrap` is process-global. Test the handler directly; do not call
 bootstrap from a unit test.

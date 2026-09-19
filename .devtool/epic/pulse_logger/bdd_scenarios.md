@@ -9,7 +9,7 @@ Cases, the architecture diagram and the sequence diagram. Written adversarially,
 independently of any implementation. Where the source spec's code samples conflict, §3 of the HLD
 (Deviations) governs.
 
-**Naming note:** the package and module are `D3NexusLogging`; logger methods are
+**Naming note:** the package and module are `AppLogging`; logger methods are
 `debug` / `info` / `warning` / `error` / `verbose` (HLD D1, D2).
 
 ---
@@ -20,7 +20,7 @@ independently of any implementation. Where the source spec's code samples confli
 ```gherkin
 [Tier A - Unit]
 Scenario: Emit a structured record with auto-generated W3C identifiers
-  Given a D3NexusLogger obtained for module "Settings"
+  Given a AppLogger obtained for module "Settings"
   When the caller invokes debug("Transaction initiated", metadata: ["amount": "100.00"])
   Then a LogRecord is dispatched with level .debug, module "Settings" and the given message
   And traceId matches "^[0-9a-f]{32}$"
@@ -182,7 +182,7 @@ Scenario: Network reaches trace context only through the Core seam
   Given the SPM manifest at Packages/Network/Package.swift
   When its dependency list is inspected
   Then it declares Core and nothing else
-  And no file under Packages/Network/Sources imports D3NexusLogging
+  And no file under Packages/Network/Sources imports AppLogging
   # Enforces HLD D4: the Layer 3 one-way DAG stays intact.
 ```
 
@@ -550,7 +550,7 @@ Scenario: Removing the instrumentation leaves the network stack fully functional
 ```gherkin
 [Tier A - Unit]
 Scenario: Requesting a logger before initialisation returns a no-op rather than crashing
-  Given D3NexusLogger has not been initialised
+  Given AppLogger has not been initialised
   When getLogger("Settings") is called in a Release-like configuration
   Then a NoOpLogger is returned
   And logging through it is silently discarded
@@ -561,7 +561,7 @@ Scenario: Requesting a logger before initialisation returns a no-op rather than 
 ```gherkin
 [Tier A - Unit]
 Scenario: Core call sites keep working through the compatibility adapter
-  Given a D3NexusCoreLoggerAdapter injected wherever Core.Logger was previously injected
+  Given a CoreLoggerAdapter injected wherever Core.Logger was previously injected
   When debug, info and error are called with file, function and line
   Then each produces a LogRecord at the matching level
   And the originating file, function and line are preserved in metadata
@@ -570,11 +570,11 @@ Scenario: Core call sites keep working through the compatibility adapter
 ```gherkin
 [Tier B - Governance]
 Scenario: The architecture gate accepts the new package
-  Given the full repository graph including Packages/D3NexusLogging
+  Given the full repository graph including Packages/AppLogging
   When swift test --package-path ArchTests is executed
   Then every K1-K10 rule passes
-  And no file under Packages/D3NexusLogging/Sources imports a feature module
-  And HostRulesTests lists D3NexusLogging among the siblings Core may not import
+  And no file under Packages/AppLogging/Sources imports a feature module
+  And HostRulesTests lists AppLogging among the siblings Core may not import
 ```
 
 ```gherkin

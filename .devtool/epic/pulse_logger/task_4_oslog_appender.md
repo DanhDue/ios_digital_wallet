@@ -29,10 +29,10 @@ is unaffected because it does not share a package with it (HLD §6, D5).
 
 ## Relevant Files & Context Pointers
 
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/OSLogAppender.swift` — create
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/ToggleStore.swift` — modify if the
+- `Packages/AppLogging/Sources/AppLogging/Appender/OSLogAppender.swift` — create
+- `Packages/AppLogging/Sources/AppLogging/Manager/ToggleStore.swift` — modify if the
   persistence seam needs widening for the appender id
-- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/OSLogAppenderTests.swift` — create
+- `Packages/AppLogging/Tests/AppLoggingTests/OSLogAppenderTests.swift` — create
 - Read and preserve the behaviour of: `App/Sources/Composition/ConsoleLogger.swift` — the existing
   `os.Logger` wrapper this eventually replaces, including its `@unchecked Sendable` rationale and
   its `privacy: .public` choice
@@ -93,7 +93,7 @@ Scenario: The correlation prefix is present and well formed
 - [ ] **GREEN** — implement `OSLogAppender`.
 - [ ] **REFACTOR** — `swiftformat`; `swiftlint --strict`; confirm no `@unchecked Sendable` beyond the
       documented `os.Logger` case.
-- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green with
+- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green with
       `trackForMemoryLeaks` on the appender.
 
 ## Definition of Done (DoD)

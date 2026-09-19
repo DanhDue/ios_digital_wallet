@@ -24,7 +24,7 @@ it is actually here for: structured log ingestion into `Pulse.LoggerStore`, and 
 
 Two Stage-2 findings shape this task:
 
-1. **Pulse does not belong inside `Packages/D3NexusLogging`.** Every existing local package uses path
+1. **Pulse does not belong inside `Packages/AppLogging`.** Every existing local package uses path
    dependencies only, and CI runs `for dir in Packages/* Features/*; do swift test --package-path
    "$dir"` on a macOS host — a remote Pulse dependency would have to resolve for the package and for
    every downstream consumer on every standalone build. Keeping Pulse in `App/`, where it is already
@@ -47,7 +47,7 @@ Two Stage-2 findings shape this task:
   `NetworkComposition.makeAPIClient(session:)`
 - `App/Tests/AppTests/PulseCaptureTests.swift` — create
 - **Unchanged by design**: everything under `Packages/Network/Sources` and
-  `Packages/D3NexusLogging/Sources`
+  `Packages/AppLogging/Sources`
 - Read first: `App/Sources/Composition/NetworkComposition.swift` (the existing `session:` parameter
   and the `URLProtocol` stubbing convention in `Packages/Network/Tests/NetworkTests/URLProtocolStub.swift`)
 
@@ -107,7 +107,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 - [ ] **REFACTOR** — `swiftformat`; `swiftlint --strict`; confirm `#if DEBUG` boundaries compile in
       both configurations (`xcodebuild -configuration Release` must still build).
 - [ ] **Tier B** — `swift test --package-path ArchTests`; confirm
-      `swift test --package-path Packages/D3NexusLogging` **still resolves without Pulse**, which is
+      `swift test --package-path Packages/AppLogging` **still resolves without Pulse**, which is
       the proof that D5 held.
 - [ ] **Tier C** — `tuist generate --no-open` then `xcodebuild test` on the simulator; repeat for
       `lean` mode.
@@ -117,7 +117,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 
 - Pulse resolved, version pinned in `Tuist/Package.swift`, and its platform support verified against
   `.iOS(.v16)` and the CI macOS host — with the resolved version recorded in the commit body.
-- `Packages/D3NexusLogging` still builds and tests **offline, with no Pulse dependency**.
+- `Packages/AppLogging` still builds and tests **offline, with no Pulse dependency**.
 - `Packages/Network/Sources` unchanged by this task.
 - Captured entries carry duration, byte count, body and cURL export.
 - No raw credential or card number reaches the Pulse store, asserted rather than reviewed.

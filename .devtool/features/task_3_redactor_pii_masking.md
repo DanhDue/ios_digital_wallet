@@ -30,11 +30,11 @@ applies the same component to the network capture path.
 
 ## Relevant Files & Context Pointers
 
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/RedactionRule.swift` — create
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/Redactor.swift` — create
-- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/LogManagerImpl.swift` — **modify**: run
+- `Packages/AppLogging/Sources/AppLogging/Redaction/RedactionRule.swift` — create
+- `Packages/AppLogging/Sources/AppLogging/Redaction/Redactor.swift` — create
+- `Packages/AppLogging/Sources/AppLogging/Manager/LogManagerImpl.swift` — **modify**: run
   every record through the redactor before dispatch
-- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/RedactorTests.swift` — create
+- `Packages/AppLogging/Tests/AppLoggingTests/RedactorTests.swift` — create
 - Read for context: `Packages/Core/Sources/Core/Cache/SecureCacheStore.swift` (the repo's existing
   posture on secret handling)
 
@@ -87,7 +87,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 - [ ] **GREEN** — implement `RedactionRule`, `Redactor`, and the `LogManagerImpl` call site.
 - [ ] **REFACTOR** — hoist regex compilation out of the hot path; `swiftformat`;
       `swiftlint --strict`.
-- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green; coverage report shows
+- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green; coverage report shows
       **100%** on `Redaction/**`; invoke the `security-audit` skill against the diff and resolve
       every finding before closing.
 

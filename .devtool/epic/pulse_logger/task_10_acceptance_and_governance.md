@@ -74,7 +74,7 @@ Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task verifies
 - **UC-7.2** — a host-app session under `MallocStackLogging` shows zero leaked logging objects after
   a flow that logs and performs a request.
 - **Cross-cutting** — `ArchTests` K1–K10 all pass with the new package present, `HostRulesTests`
-  lists `D3NexusLogging` among the forbidden `Core` siblings, and both `enterprise` and `lean`
+  lists `AppLogging` among the forbidden `Core` siblings, and both `enterprise` and `lean`
   generate and build while `plugin` is unaffected.
 
 Plus, specific to this task:
@@ -100,7 +100,7 @@ Scenario: Check 2 confirms the predicted blast radius held
 ## Test & Verification Checklist
 
 - [ ] **Tier A** — every package suite green:
-      `swift test --package-path Packages/D3NexusLogging`,
+      `swift test --package-path Packages/AppLogging`,
       `Packages/Core`, `Packages/Network`, `Features/Settings`, with `trackForMemoryLeaks` clean.
 - [ ] **Coverage** — build `scripts/check_coverage_thresholds.sh`, prove it fires on an injected
       gap, revert the injection, and confirm every HLD §5.6 threshold is met.
