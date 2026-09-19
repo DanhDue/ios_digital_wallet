@@ -1,13 +1,13 @@
 ---
 id: "task_8_pulse_appender_and_session_capture"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:57:03Z"
+completedAt: "2026-09-19T12:57:03Z"
 labels: ["pulse", "telemetry", "network", "security"]
 order: "a8"
 ---

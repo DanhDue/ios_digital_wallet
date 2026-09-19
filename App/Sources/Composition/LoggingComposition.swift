@@ -19,6 +19,10 @@ public enum LoggingComposition {
         let osLogAppender = OSLogAppender(subsystem: subsystem)
         manager.registerAppender(osLogAppender)
 
+        #if DEBUG
+            manager.registerAppender(PulseAppender(store: .shared))
+        #endif
+
         D3NexusLogger.initialize(manager: manager)
 
         let shouldBootstrap = lock.withLock { hasBootstrapped in

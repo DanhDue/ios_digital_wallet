@@ -7,7 +7,17 @@ import PackageDescription
     import ProjectDescriptionHelpers
 
     let packageSettings = PackageSettings(
-        productTypes: [:]
+        productTypes: [
+            "Network": .staticLibrary,
+        ],
+        targetSettings: [
+            "Pulse": [
+                "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
+            ],
+            "PulseUI": [
+                "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
+            ],
+        ]
     )
 #else
     private enum TemplateMode: String {
@@ -59,6 +69,7 @@ private var packageDependencies: [PackageDescription.Package.Dependency] {
         [
             // tuist:packages:begin
             .package(url: "https://github.com/hmlongco/Factory.git", exact: "2.4.3"),
+            .package(url: "https://github.com/kean/Pulse.git", exact: "5.1.4"),
             .package(path: "../Features/Scanner"),
             .package(path: "../Features/Settings"),
             .package(path: "../Packages/AppUIKit"),
@@ -73,6 +84,7 @@ private var packageDependencies: [PackageDescription.Package.Dependency] {
     case .lean:
         [
             .package(url: "https://github.com/hmlongco/Factory.git", exact: "2.4.3"),
+            .package(url: "https://github.com/kean/Pulse.git", exact: "5.1.4"),
             .package(path: "../Features/Settings"),
             .package(path: "../Packages/AppUIKit"),
             .package(path: "../Packages/Core"),

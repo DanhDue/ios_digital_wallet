@@ -22,6 +22,8 @@ case .enterprise:
                 .external(name: "Framework"),
                 .external(name: "Network"),
                 .external(name: "Platform"),
+                .external(name: "Pulse"),
+                .external(name: "PulseUI"),
                 .external(name: "Scanner"),
                 .external(name: "Settings"),
                 .external(name: "Shell"),
@@ -60,6 +62,8 @@ case .lean:
                 .external(name: "Framework"),
                 .external(name: "Network"),
                 .external(name: "Platform"),
+                .external(name: "Pulse"),
+                .external(name: "PulseUI"),
                 .external(name: "Settings"),
                 .external(name: "Shell"),
             ]

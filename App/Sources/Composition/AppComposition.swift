@@ -143,8 +143,10 @@ struct AppComposition {
     ) -> (sessionManager: any SessionManaging, apiClient: any APIClient) {
         let sessionManager = SessionManager(secureCacheStore: secureCacheStore)
         let traceContextProvider = D3NexusTraceContextProvider()
+        let session = PulseSessionFactory.makeURLSession()
         let apiClient = NetworkComposition.makeAPIClient(
             eventBus: eventBus,
+            session: session,
             logger: logger,
             traceContextProvider: traceContextProvider,
             sessionManager: sessionManager,
