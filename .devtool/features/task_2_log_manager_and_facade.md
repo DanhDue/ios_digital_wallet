@@ -1,13 +1,13 @@
 ---
 id: "task_2_log_manager_and_facade"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:06:50Z"
+completedAt: "2026-09-19T12:06:50Z"
 labels: ["architecture", "logging", "concurrency", "memory-safety"]
 order: "a2"
 ---
