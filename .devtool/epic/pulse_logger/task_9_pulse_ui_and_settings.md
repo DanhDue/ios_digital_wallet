@@ -33,7 +33,7 @@ a claim.
 - `Features/Settings/Sources/Settings/Presentation/Diagnostics/LoggingDiagnosticsView.swift` — create
 - `Features/Settings/Sources/Settings/Presentation/Diagnostics/LoggingDiagnosticsViewModel.swift` — create
 - `Features/Settings/Sources/Settings/Presentation/SettingsView.swift` — modify: add the section
-- `Features/Settings/Package.swift` — modify: add the `AppLogging` dependency
+- `Features/Settings/Package.swift` — modify: add the `D3NexusLogging` dependency
 - `Features/Settings/Tests/SettingsTests/LoggingDiagnosticsViewModelTests.swift` — create
 - `scripts/check_release_isolation.sh` — create
 - Read for conventions: `Features/Settings/Sources/Settings/Presentation/Components/SettingsSectionCard.swift`,
@@ -47,7 +47,7 @@ a claim.
 - **Shake detection via `UIDevice.deviceDidShakeNotification`** through a `ViewModifier`. The
   observer must be torn down with the view — UC-5.2's "repeated shakes do not stack sheets" is the
   behavioural symptom of getting that wrong, and `trackForMemoryLeaks` covers the structural side.
-- **`Features/Settings` gains a `AppLogging` dependency.** This is a Feature → Layer 3 edge,
+- **`Features/Settings` gains a `D3NexusLogging` dependency.** This is a Feature → Layer 3 edge,
   which the architecture permits; it is *not* a cross-feature import, so K1 is unaffected. Confirm
   with `check_module_boundaries.sh` regardless.
 - **Release isolation is scripted, not asserted.** `scripts/check_release_isolation.sh` builds the
@@ -99,7 +99,7 @@ Scenario: The diagnostics view model deallocates with its notification observer
 ```gherkin
 [Tier B - Governance]
 Scenario: Settings gains an infrastructure dependency without a cross-feature edge
-  Given Features/Settings now depends on AppLogging
+  Given Features/Settings now depends on D3NexusLogging
   When bash scripts/check_module_boundaries.sh runs
   And swift test --package-path ArchTests runs
   Then both pass

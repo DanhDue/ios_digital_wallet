@@ -30,11 +30,11 @@ applies the same component to the network capture path.
 
 ## Relevant Files & Context Pointers
 
-- `Packages/AppLogging/Sources/AppLogging/Redaction/RedactionRule.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Redaction/Redactor.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Manager/LogManagerImpl.swift` — **modify**: run
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/RedactionRule.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/Redactor.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/LogManagerImpl.swift` — **modify**: run
   every record through the redactor before dispatch
-- `Packages/AppLogging/Tests/AppLoggingTests/RedactorTests.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/RedactorTests.swift` — create
 - Read for context: `Packages/Core/Sources/Core/Cache/SecureCacheStore.swift` (the repo's existing
   posture on secret handling)
 
@@ -51,6 +51,12 @@ applies the same component to the network capture path.
 - **Applied at the manager, not at each appender.** Putting it in `LogManagerImpl.log(_:)` makes
   "a new appender leaks secrets" structurally impossible rather than a review item. UC-8.2's final
   scenario asserts exactly this with two spy appenders.
+- **Rules are injected, not hard-coded (extraction constraint E3).** This package ships to other
+  teams, and a shared SDK cannot assume every consumer is a fintech app. `Redactor` takes a
+  `[RedactionRule]` from its caller and exposes a `.default` set — the four headers plus the
+  PAN / CVV / PIN / OTP patterns this template needs. The default set carries the full 100% coverage
+  obligation; the injection seam is what makes the component reusable rather than template-specific.
+  `LogManagerImpl` uses `.default` unless the composition root overrides it (HLD §3.2).
 - **Deterministic and pure.** `Redactor` is a value type with no I/O, so it is trivially testable to
   100% and safe to call from any isolation domain.
 - **Compiled `NSRegularExpression` instances**, built once at construction — a per-record compile on
@@ -87,7 +93,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 - [ ] **GREEN** — implement `RedactionRule`, `Redactor`, and the `LogManagerImpl` call site.
 - [ ] **REFACTOR** — hoist regex compilation out of the hot path; `swiftformat`;
       `swiftlint --strict`.
-- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green; coverage report shows
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green; coverage report shows
       **100%** on `Redaction/**`; invoke the `security-audit` skill against the diff and resolve
       every finding before closing.
 

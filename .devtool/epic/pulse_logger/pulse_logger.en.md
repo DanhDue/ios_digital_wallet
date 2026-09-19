@@ -31,7 +31,7 @@ forwarding to `os.Logger` via `App/Sources/Composition/ConsoleLogger.swift`. It 
 - any PII redaction seam — relevant because this template is the base for a fintech wallet.
 
 Referencing the logging architecture already validated in the Flutter counterpart
-(`bloc_digital_wallet/packages/logger`), this epic establishes **`Packages/AppLogging`**: a
+(`bloc_digital_wallet/packages/logger`), this epic establishes **`Packages/D3NexusLogging`**: a
 governed local SPM package built on **`apple/swift-log`**, with **`kean/Pulse`** wired at the
 composition root, adhering to Clean Architecture, the AST governance rules in `ArchTests`, strict
 compile-time release isolation, and explicit memory-leak prevention.
@@ -45,36 +45,43 @@ the engineering lead at the Gate 2 checkpoint.
 
 | # | Source spec said | Reality in this repo | Decision |
 |---|---|---|---|
-| **D1** | Package named `Packages/Logging`, module `Logging`, types prefixed `D3Nexus*` | `apple/swift-log` ships its library product **and module** as `Logging`. A local target of the same name that depends on it is a SwiftPM duplicate-module error, and every consumer's `import Logging` becomes ambiguous. | Package and module renamed **`AppLogging`**, matching the existing `AppUIKit` convention; the facade becomes `AppLogger`, the bridge `AppLogHandler`, the compatibility shim `CoreLoggerAdapter`. swift-log is **kept**. See D1.1 for why `Logger` was not chosen. |
-| **D2** | `LoggerProtocol` exposes `d` / `i` / `w` / `e` / `v` | `quality/.swiftlint.yml` `identifier_name.excluded` is `[id, to, x, y, t]`; CI runs `swiftlint --strict`. The repo already hit this once — see the doc comment in `Packages/Core/Sources/Core/Logging/Logger.swift`. | Methods are **`debug` / `info` / `warning` / `error` / `verbose`**, which also makes `CoreLoggerAdapter` a 1:1 mapping onto `Core.Logger`. |
+| **D1** | Package named `Packages/Logging`, module `Logging` | `apple/swift-log` ships its library product **and module** as `Logging`. A local target of the same name that depends on it is a SwiftPM duplicate-module error, and every consumer's `import Logging` becomes ambiguous. | Package and module named **`D3NexusLogging`**, keeping the `D3Nexus*` type names the spec already used. This package is intended for **extraction into a distributable SDK** (§3.2), so a vendor-distinctive name is correct rather than incidental. swift-log is **kept**. See D1.1. |
+| **D2** | `LoggerProtocol` exposes `d` / `i` / `w` / `e` / `v` | `quality/.swiftlint.yml` `identifier_name.excluded` is `[id, to, x, y, t]`; CI runs `swiftlint --strict`. The repo already hit this once — see the doc comment in `Packages/Core/Sources/Core/Logging/Logger.swift`. | Methods are **`debug` / `info` / `warning` / `error` / `verbose`**, which also makes `D3NexusCoreLoggerAdapter` a 1:1 mapping onto `Core.Logger`. |
 | **D3** | `protocol Interceptor { intercept(request:) ; intercept(response:data:) }` | The real protocol is `RequestInterceptor` with `adapt(_:) async -> URLRequest`, `didReceive(_ response: HTTPURLResponse)` and `retry(_:dueTo:)`. **`didReceive` is synchronous, receives no `Data` and no timing.** | Header injection moves to a new `TraceContextInterceptor` written against the real signature (Task 7). Response duration / byte size / body capture move to the `URLSession` layer (D5, Task 8) — the interceptor chain structurally cannot provide them. |
 | **D4** | `Packages/Network` depends on `Packages/Logging` | `docs/architecture/ARCHITECTURE.md` §3 declares Layer 3 to be "sibling modules, **no intra-layer edge**" and the whole graph "a one-way DAG"; `Packages/Network/Package.swift` documents "Depends on `Core` **only**". | A minimal **`Core.TraceContextProviding`** seam, mirroring the existing `Core.AuthEventSink` precedent (Source Spec Changelog #8). `Network` stays a `Core`-only leaf and **no governance rule is amended**. |
-| **D5** | `PulseAppender` lives inside the logging package | Every existing local package has path dependencies only. CI runs `for dir in Packages/* Features/*; do swift test --package-path "$dir"` on the **macOS host**, so a remote Pulse dependency would have to resolve for the package and every downstream consumer, on every standalone build. | **Pulse lives in `App/` only**, where it is already an external via Tuist. `Packages/AppLogging` keeps exactly one remote dependency (swift-log, a pure-Swift leaf). This also honours Non-Goal 3 — appenders stay pluggable. |
+| **D5** | `PulseAppender` lives inside the logging package | A remote dependency in a local package is not itself unusual — `Packages/Platform` already depends on `Factory`. The objection is specific to Pulse: it is a heavyweight dependency (storage, network capture, and a whole SwiftUI console), CI runs `for dir in Packages/* Features/*; do swift test --package-path "$dir"` on the **macOS host**, and **an extracted SDK (§3.2) must not force Pulse onto every consumer that only wants structured logging**. | **Pulse lives in `App/` only**, where it is already an external via Tuist. `Packages/D3NexusLogging` keeps exactly one remote dependency (swift-log, a pure-Swift leaf). This honours Non-Goal 3 — appenders stay pluggable — and is a precondition for extraction. |
 | **D6** | `spanId` from `String(UUID().uuidString.prefix(16))` | `uuidString` is `XXXXXXXX-XXXX-…`; the first 16 characters contain `-` at index 8 and 13, so the value fails the spec's own `^[0-9a-f]{16}$` regex. | IDs are generated from random bytes: `String(format: "%016llx", UInt64.random(in: .min ... .max))` and the 128-bit equivalent for `traceId`. |
 | **D7** | `buildTraceTree` returns a forest of `final class TraceNode` with `var children`, marked `@unchecked Sendable` | Two records whose `spanId`/`parentSpanId` reference each other produce a cycle: traversal never terminates and the class graph leaks — contradicting Goal 6 of this very epic. | `TraceNode` becomes a **value type** built bottom-up, with explicit cycle detection and a depth cap. The leak class is removed by construction rather than asserted away. |
-| **D8** | `AppLogger.getLogger` calls `fatalError` when uninitialised, via a default argument | A default argument is evaluated at every call site; a change in composition order crashes the app in production. | Falls back to a **`NoOpLogger`**, with `assertionFailure` in DEBUG so misuse is still loud during development. |
+| **D8** | `D3NexusLogger.getLogger` calls `fatalError` when uninitialised, via a default argument | A default argument is evaluated at every call site; a change in composition order crashes the app in production. | Falls back to a **`NoOpLogger`**, with `assertionFailure` in DEBUG so misuse is still loud during development. |
 
-#### D1.1 — why not `Logger` or `logger`
+#### D1.1 — the naming decision, and why `Logger` / `logger` / `AppLogging` were rejected
 
-`Logger` is already a **type name in active use**: `Packages/Core/Sources/Core/Logging/Logger.swift`
-declares `public protocol Logger`, and it is referenced *unqualified* in 19 places —
-`Core/Cache/CacheStore.swift`, `Core/Cache/SecureCacheStore.swift`, `Core/SafeExecution.swift`,
-`Network/APIClient.swift`, `Settings/SettingsContainer.swift`,
-`Settings/Data/Repository/SettingsRepositoryImpl.swift`, several `TestSupport.swift` files, and
-**`bricks/ios_mvi_feature/__brick__/`**.
+Three candidates were evaluated and discarded before `D3NexusLogging` was confirmed.
 
-Task 9 gives `Features/Settings` a dependency on this package. A *module* named `Logger` visible in
-that package would make every unqualified `Logger` ambiguous against the module name, forcing
-`Core.Logger` qualification. Because the Mason brick emits `private struct SilentLogger: Logger`,
-every feature generated from the template afterwards would inherit the same ambiguity — permanently.
+**`Logging`** — unavailable. `apple/swift-log` owns that module name (D1).
 
-The repo also already qualifies `Core.Logger` / `os.Logger` in 18 places because `os.Logger` exists;
-a module named `Logger` would be the third thing called `Logger` in the same codebase. Lowercase
-`logger` carries the identical collision and would additionally be the only non-UpperCamelCase
-module among `Core`, `Framework`, `Network`, `Platform`, `AppUIKit`, `Shell`, `Settings`, `Scanner`.
+**`Logger` / `logger`** — unavailable for an unrelated reason. `Packages/Core/Sources/Core/Logging/Logger.swift`
+declares `public protocol Logger`, referenced *unqualified* in 19 places: `Core/Cache/CacheStore.swift`,
+`Core/Cache/SecureCacheStore.swift`, `Core/SafeExecution.swift`, `Network/APIClient.swift`,
+`Settings/SettingsContainer.swift`, `Settings/Data/Repository/SettingsRepositoryImpl.swift`, several
+`TestSupport.swift` files, and **`bricks/ios_mvi_feature/__brick__/`**. Task 9 gives `Features/Settings`
+a dependency on this package; a module named `Logger` visible there makes every unqualified `Logger`
+ambiguous against the module name. Because the Mason brick emits `private struct SilentLogger: Logger`,
+every feature generated from the template afterwards inherits that ambiguity permanently. The repo
+already qualifies `Core.Logger` / `os.Logger` in 18 places because `os.Logger` exists; a module named
+`Logger` would be the third `Logger` in one codebase. Lowercase `logger` carries the identical
+collision and would be the only non-UpperCamelCase module among `Core`, `Framework`, `Network`,
+`Platform`, `AppUIKit`, `Shell`, `Settings`, `Scanner`.
 
-`AppLogging` collides with none of them and mirrors `AppUIKit`, the prefix convention this repo
-already uses for an App-scoped shared package.
+**`AppLogging`** — technically clean and a good fit for the repo's `AppUIKit` / `AppRouter` / `AppError`
+convention, but **wrong given the extraction decision in §3.2**. The `App` prefix means "app-scoped
+shared infrastructure". Once the package ships to other repositories and teams, "App" names nothing:
+the consumer's app is not this app. A vendor-distinctive prefix is the standard practice for a
+distributed library — `FirebaseCore`, `AlamofireImage` — and is what `D3NexusLogging` is.
+
+**Consequence.** If the extraction intent is ever withdrawn, `AppLogging` becomes the better name
+again and the rename is mechanical. The reverse — stripping vendor branding out of a library already
+published to other teams — is not.
 
 ### 3.1 Items the source spec asserted but assigned to no task
 
@@ -91,12 +98,32 @@ These were found unowned during the Stage-2 audit and now have explicit owners.
 
 ---
 
+### 3.2 Extraction readiness — this package will leave the template
+
+**Decision (2026-09-19):** `Packages/D3NexusLogging` is built here but is intended to be **extracted
+into a distributable SDK** consumed by other repositories and teams. That is what settles the naming
+in D1.1, and it adds four constraints the source spec did not contemplate.
+
+| # | Constraint | Consequence |
+|---|---|---|
+| **E1** | **Zero dependency on template-specific packages.** The package must not depend on `Packages/Core`. | Nothing in its file inventory (§5.5) needs `Core` — the record, trace, redaction, manager, logger and bridge types are all self-contained. The `Logging → Core` edge shown in the source spec is removed: the package is a leaf on `apple/swift-log` alone. `Core.Logger` compatibility lives in `App/` (`D3NexusCoreLoggerAdapter`), not in the package. |
+| **E2** | **No host-app assumptions in the public API.** | `OSLogAppender` takes its `subsystem` as an **injected parameter with no default derived from this app's bundle identifier**. A consumer's subsystem is not ours. Task 4. |
+| **E3** | **Redaction rules are configuration, not hard-coded policy.** | A shared SDK cannot assume every consumer is a fintech app. `Redactor` ships sensible defaults (the header set, and the PAN / CVV / PIN / OTP patterns this template needs) but accepts a caller-supplied `[RedactionRule]`. The default set stays fully covered; the injection seam is what makes the package reusable. Task 3. |
+| **E4** | **The public API is a versioned contract.** | Task 2 already freezes the API for the epic's duration; extraction raises that to semantic versioning. Every `public` symbol needs a doc comment, and the package must be consumable as `.package(url:)` — during development this repo consumes it by path, which is the normal pre-extraction arrangement. Task 10 verifies the package builds and tests **standalone with no path dependency on this repository**. |
+
+**Not in scope for this epic:** creating the separate repository, publishing a tag, or setting up its
+release pipeline. This epic makes the package *extractable* — E1–E4 are the properties that make the
+eventual `git filter-repo` a move rather than a rewrite.
+
+---
+
 ## 4. Goals & Non-Goals
 
 ### Goals
-1. **Dedicated infrastructure package (`Packages/AppLogging`)** — `LogRecord`, `LogAppender`,
-   `LogManager`, `LoggerProtocol`, `AppLogger`; standardised on `apple/swift-log`
-   (`LoggingSystem.bootstrap`); `Packages/Core` preserved as the zero-dependency floor (K7).
+1. **Dedicated infrastructure package (`Packages/D3NexusLogging`)** — `LogRecord`, `LogAppender`,
+   `LogManager`, `LoggerProtocol`, `D3NexusLogger`; standardised on `apple/swift-log`
+   (`LoggingSystem.bootstrap`). The package depends on **swift-log alone** — not on `Packages/Core`,
+   which both preserves the `Core` floor (K7) and satisfies extraction constraint E1.
 2. **W3C distributed trace context & hierarchy** — 32-hex `traceId`, 16-hex `spanId`; `withSpan()`
    links `parentSpanId` with zero retain cycles; a pure, cycle-safe
    `buildTraceTree([LogRecord]) -> [TraceNode]`; `traceparent: 00-{traceId}-{spanId}-01` injected
@@ -112,7 +139,7 @@ These were found unowned during the Stage-2 audit and now have explicit owners.
    appender inherits it, and at the Pulse `URLSession` capture path, which records full bodies.
 7. **Memory leak & retain cycle guard** — `trackForMemoryLeaks` teardown helper; child loggers hold
    only value-type trace IDs; `leaks` / MallocStackLogging verification in Tier C.
-8. **Backward compatibility** — `CoreLoggerAdapter` implements `Core.Logger`, so the 22
+8. **Backward compatibility** — `D3NexusCoreLoggerAdapter` implements `Core.Logger`, so the 22
    existing call sites (§5.4) keep working unmodified.
 
 ### Non-Goals
@@ -135,7 +162,7 @@ graph TD
         App["App / AppComposition"]
         PulseApp["PulseAppender (#if DEBUG)"]
         PulseSession["Pulse-instrumented URLSession"]
-        TraceBind["AppTraceContextProvider"]
+        TraceBind["D3NexusTraceContextProvider"]
         PulseUI["PulseUI ConsoleView (#if DEBUG)"]
     end
 
@@ -146,7 +173,7 @@ graph TD
 
     subgraph L3["Layer 3 · Shared Infrastructure (no intra-layer edge)"]
         Shell["Packages/Shell"]
-        Logging["Packages/AppLogging"]
+        Logging["Packages/D3NexusLogging"]
         Network["Packages/Network"]
         Platform["Packages/Platform"]
         UIKitPkg["Packages/AppUIKit"]
@@ -171,7 +198,6 @@ graph TD
     PulseSession --> PulseCore
     PulseUI --> PulseCore
 
-    Logging --> Core
     Logging --> SwiftLog
     Network --> Core
     Platform --> Core
@@ -181,7 +207,7 @@ graph TD
     Settings --> Platform & Network & UIKitPkg & Logging
     Scanner --> Platform & UIKitPkg
 
-    TraceBind -.->|implements Core seam<br/>backed by AppLogging| Core
+    TraceBind -.->|implements Core seam<br/>backed by D3NexusLogging| Core
 ```
 
 **Invariant preserved:** every solid arrow still flows to a strictly lower tier. `Network` gains no
@@ -222,9 +248,9 @@ flowchart TD
 sequenceDiagram
     autonumber
     participant Caller as Feature ViewModel / UseCase
-    participant Logger as AppLogger ("Settings")
+    participant Logger as D3NexusLogger ("Settings")
     participant Child as Child logger (withSpan)
-    participant Provider as AppTraceContextProvider (App)
+    participant Provider as D3NexusTraceContextProvider (App)
     participant TraceIC as TraceContextInterceptor (Network)
     participant Session as Pulse-instrumented URLSession (App)
     participant LogMgr as LogManagerImpl
@@ -280,7 +306,7 @@ python3 skills/impact-analysis/resources/scripts/check_code_impact.py \
 - **Blast radius:** **22 downstream caller files** across `Core`, `Network`, `Platform`, `Settings`,
   `App` — and, critically, `bricks/ios_mvi_feature/__brick__/`, the Mason template. `Core.Logger` is
   threaded through `CacheStore`, `SecureCacheStore`, `SafeExecution`, `DeepLinkRouter`, `APIClient`
-  and every generated repository. This is precisely why `CoreLoggerAdapter` (Goal 8) is not
+  and every generated repository. This is precisely why `D3NexusCoreLoggerAdapter` (Goal 8) is not
   optional: without it the epic touches all 22.
 - **Cross-platform bridges:** none — no `MethodChannel` in this repo.
 - **Coverage safety net:** the script reports 0% on the listed files because its pairing heuristic
@@ -292,20 +318,20 @@ python3 skills/impact-analysis/resources/scripts/check_code_impact.py \
 
 **Created**
 ```
-Packages/AppLogging/Package.swift
-Packages/AppLogging/Sources/AppLogging/Model/{LogLevel,LogRecord}.swift
-Packages/AppLogging/Sources/AppLogging/Trace/{TraceIdentifier,TraceNode,TraceTree}.swift
-Packages/AppLogging/Sources/AppLogging/Redaction/{Redactor,RedactionRule}.swift
-Packages/AppLogging/Sources/AppLogging/Appender/{LogAppender,OSLogAppender}.swift
-Packages/AppLogging/Sources/AppLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift
-Packages/AppLogging/Sources/AppLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift
-Packages/AppLogging/Sources/AppLogging/Facade/AppLogger.swift
-Packages/AppLogging/Sources/AppLogging/Bridge/AppLogHandler.swift
-Packages/AppLogging/Tests/AppLoggingTests/**
+Packages/D3NexusLogging/Package.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Model/{LogLevel,LogRecord}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/{TraceIdentifier,TraceNode,TraceTree}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Redaction/{Redactor,RedactionRule}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/{LogAppender,OSLogAppender}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/D3NexusLogHandler.swift
+Packages/D3NexusLogging/Tests/D3NexusLoggingTests/**
 Packages/Core/Sources/Core/Logging/TraceContextProviding.swift
 Packages/Network/Sources/Network/Interceptor/TraceContextInterceptor.swift
 App/Sources/Composition/LoggingComposition.swift
-App/Sources/Composition/AppTraceContextProvider.swift
+App/Sources/Composition/D3NexusTraceContextProvider.swift
 App/Sources/Composition/PulseAppender.swift              (#if DEBUG)
 App/Sources/UI/ShakeGestureModifier.swift                (#if DEBUG)
 Features/Settings/Sources/Settings/Presentation/Diagnostics/**   (#if DEBUG)
@@ -317,8 +343,8 @@ scripts/check_coverage_thresholds.sh
 Tuist/Package.swift          — marker region (enterprise) AND the hand-written lean array
 Project.swift                — enterprise AND lean target dependency lists
 Workspace.swift              — verify package inclusion
-ArchTests/Tests/ArchTests/HostRulesTests.swift  — add "AppLogging" to coreSiblings
-App/Sources/Composition/AppComposition.swift    — ConsoleLogger -> CoreLoggerAdapter
+ArchTests/Tests/ArchTests/HostRulesTests.swift  — add "D3NexusLogging" to coreSiblings
+App/Sources/Composition/AppComposition.swift    — ConsoleLogger -> D3NexusCoreLoggerAdapter
 App/Sources/Composition/NetworkComposition.swift — accept the instrumented URLSession
 Features/Settings/Sources/Settings/Presentation/SettingsView.swift  (#if DEBUG section)
 bricks/ios_mvi_feature/__brick__/**             — generated features use the new seam
@@ -344,11 +370,11 @@ adapter, so rollback is one file).
 
 ## 6. Rollout Strategy & Mitigation
 
-1. **Phase 1 (Tasks 1–5)** — build `Packages/AppLogging` standalone: models, dispatch, redaction,
+1. **Phase 1 (Tasks 1–5)** — build `Packages/D3NexusLogging` standalone: models, dispatch, redaction,
    `OSLogAppender`, swift-log bridge. Nothing in the app changes; `swift test --package-path
-   Packages/AppLogging` is the only gate.
+   Packages/D3NexusLogging` is the only gate.
 2. **Phase 2 (Task 6)** — wire the package into all three template modes and swap the composition
-   root behind `CoreLoggerAdapter`. First point at which app behaviour changes.
+   root behind `D3NexusCoreLoggerAdapter`. First point at which app behaviour changes.
 3. **Phase 3 (Task 7)** — `Core` trace seam and the `Network` interceptor.
 4. **Phase 4 (Task 8)** — Pulse at the composition root: appender + instrumented `URLSession`.
 5. **Phase 5 (Tasks 9–10)** — PulseUI console, Settings diagnostics, acceptance and governance.
@@ -372,7 +398,7 @@ adapter, so rollback is one file).
 | 2 | [LogManager dispatch engine, LoggerProtocol & facade](task_2_log_manager_and_facade.md) | 1 |
 | 3 | [Redactor — secret masking & PII patterns](task_3_redactor_pii_masking.md) | 1 |
 | 4 | [OSLogAppender & toggle persistence](task_4_oslog_appender.md) | 2, 3 |
-| 5 | [swift-log bridge — AppLogHandler](task_5_swift_log_bridge.md) | 2 |
+| 5 | [swift-log bridge — D3NexusLogHandler](task_5_swift_log_bridge.md) | 2 |
 | 6 | [Graph wiring across template modes, Core.Logger adapter & Mason brick](task_6_graph_wiring_and_core_adapter.md) | 4, 5 |
 | 7 | [Core.TraceContextProviding seam & Network TraceContextInterceptor](task_7_trace_context_seam_and_interceptor.md) | 6 |
 | 8 | [Pulse appender & instrumented URLSession capture](task_8_pulse_appender_and_session_capture.md) | 6, 7 |

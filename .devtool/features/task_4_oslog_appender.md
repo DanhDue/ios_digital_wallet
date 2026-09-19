@@ -29,18 +29,21 @@ is unaffected because it does not share a package with it (HLD §6, D5).
 
 ## Relevant Files & Context Pointers
 
-- `Packages/AppLogging/Sources/AppLogging/Appender/OSLogAppender.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Manager/ToggleStore.swift` — modify if the
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/OSLogAppender.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/ToggleStore.swift` — modify if the
   persistence seam needs widening for the appender id
-- `Packages/AppLogging/Tests/AppLoggingTests/OSLogAppenderTests.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/OSLogAppenderTests.swift` — create
 - Read and preserve the behaviour of: `App/Sources/Composition/ConsoleLogger.swift` — the existing
   `os.Logger` wrapper this eventually replaces, including its `@unchecked Sendable` rationale and
   its `privacy: .public` choice
 
 ## Design Rationale
 
-- **Subsystem and category**: subsystem from the bundle identifier, category from `LogRecord.module`,
-  so Console.app filtering by module works without string surgery.
+- **Subsystem is injected, with no app-derived default (extraction constraint E2).** `init` takes
+  `subsystem: String` as a required parameter. It must **not** default to this app's bundle
+  identifier: a consumer of the extracted SDK has its own subsystem, and a silent default would
+  publish their logs under our name. The composition root in Task 6 supplies it. Category comes from
+  `LogRecord.module`, so Console.app filtering by module works without string surgery (HLD §3.2).
 - **Correlation prefix**: messages are emitted as `[traceId][spanId] message`, which is what makes a
   `sysdiagnose` capture joinable with backend APM traces carrying the same `traceparent`.
 - **Privacy annotation**: `ConsoleLogger` currently uses `privacy: .public`. That is correct only
@@ -93,7 +96,7 @@ Scenario: The correlation prefix is present and well formed
 - [ ] **GREEN** — implement `OSLogAppender`.
 - [ ] **REFACTOR** — `swiftformat`; `swiftlint --strict`; confirm no `@unchecked Sendable` beyond the
       documented `os.Logger` case.
-- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green with
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green with
       `trackForMemoryLeaks` on the appender.
 
 ## Definition of Done (DoD)

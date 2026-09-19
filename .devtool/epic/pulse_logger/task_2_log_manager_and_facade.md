@@ -20,7 +20,7 @@ Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenario
 
 Implement the dispatch core: the `LogAppender` / `LogManager` contracts, a thread-safe
 `LogManagerImpl` enforcing the module × appender toggle matrix, `LoggerProtocol` with leak-free
-`withSpan()`, and the `AppLogger` facade. Toggle state persists to `UserDefaults` under
+`withSpan()`, and the `D3NexusLogger` facade. Toggle state persists to `UserDefaults` under
 `logging.module_toggles` and `logging.appender_toggles`.
 
 Two corrections from the source spec apply here:
@@ -30,17 +30,17 @@ Two corrections from the source spec apply here:
    `swiftlint --strict`, and the repo already resolved this exact conflict once — see the doc comment
    in `Packages/Core/Sources/Core/Logging/Logger.swift`. The full names also make Task 6's
    `Core.Logger` adapter a 1:1 mapping (HLD D2).
-2. `AppLogger.getLogger` returns a **`NoOpLogger`** when uninitialised instead of calling
+2. `D3NexusLogger.getLogger` returns a **`NoOpLogger`** when uninitialised instead of calling
    `fatalError`. The spec put that `fatalError` behind a default argument, which is evaluated at
    every call site — a change in composition order would crash production (HLD D8).
 
 ## Relevant Files & Context Pointers
 
-- `Packages/AppLogging/Sources/AppLogging/Appender/LogAppender.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Facade/AppLogger.swift` — create
-- `Packages/AppLogging/Tests/AppLoggingTests/{DispatchMatrixTests,SpanTests,ToggleStoreTests,FacadeTests}.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Appender/LogAppender.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImpl,ToggleStore}.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/{DispatchMatrixTests,SpanTests,ToggleStoreTests,FacadeTests}.swift` — create
 - Read for conventions: `Packages/Core/Sources/Core/Logging/Logger.swift`,
   `Packages/Network/Sources/Network/Interceptor/RefreshCoordinator.swift` (existing concurrency style)
 
@@ -70,7 +70,7 @@ Applicable skills: `architecture-audit`, `code-health-audit`, `test-driven-devel
 ## Impact Analysis & Blast Radius
 
 - **Target symbols**: `LogAppender`, `LogManager`, `LogManagerImpl`, `ToggleStore`, `LoggerProtocol`,
-  `LoggerImpl`, `NoOpLogger`, `AppLogger`.
+  `LoggerImpl`, `NoOpLogger`, `D3NexusLogger`.
 - **Downstream callers**: none in the app yet; Tasks 4, 5, 6, 7, 8 all build on these contracts, so
   **this task freezes the public API** for the rest of the epic (parallel-execution Rule 1).
 - **Cross-platform bridges**: none.
@@ -104,9 +104,9 @@ Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task implemen
       `ToggleStoreTests`, `FacadeTests`. Confirm failures are for the right reason.
 - [ ] **GREEN** — minimal `LogManagerImpl`, `LoggerImpl`, `NoOpLogger`, `ToggleStore`, facade.
 - [ ] **REFACTOR** — run the concurrency tests under Thread Sanitizer
-      (`swift test --package-path Packages/AppLogging --sanitize=thread`); `swiftformat`;
+      (`swift test --package-path Packages/D3NexusLogging --sanitize=thread`); `swiftformat`;
       `swiftlint --strict`.
-- [ ] **Verify** — `swift test --package-path Packages/AppLogging` green, including
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` green, including
       `trackForMemoryLeaks` on `LogManagerImpl`, `LoggerImpl` and every child span created in tests.
 
 ## Definition of Done (DoD)

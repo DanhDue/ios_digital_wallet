@@ -18,7 +18,7 @@ Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenario
 
 ## Requirement Analysis
 
-Bring `Packages/AppLogging` into the buildable project graph and swap the composition root onto
+Bring `Packages/D3NexusLogging` into the buildable project graph and swap the composition root onto
 it **without touching any of the 22 downstream call sites** found by Check 1. This is the first task
 whose changes alter app behaviour.
 
@@ -41,10 +41,10 @@ audit found that insufficient in four separate ways, all of which fail silently 
 - `Tuist/Package.swift` — modify **both** the marker region and the `lean` array
 - `Project.swift` — modify **both** the `enterprise` and `lean` dependency lists
 - `Workspace.swift` — verify the package is included; modify if not
-- `ArchTests/Tests/ArchTests/HostRulesTests.swift` — add `"AppLogging"` to `coreSiblings`
+- `ArchTests/Tests/ArchTests/HostRulesTests.swift` — add `"D3NexusLogging"` to `coreSiblings`
 - `App/Sources/Composition/LoggingComposition.swift` — create: builds `LogManagerImpl`, registers
-  `OSLogAppender`, calls `AppLogger.initialize` and `LoggingSystem.bootstrap` exactly once
-- `App/Sources/Composition/CoreLoggerAdapter.swift` — create
+  `OSLogAppender`, calls `D3NexusLogger.initialize` and `LoggingSystem.bootstrap` exactly once
+- `App/Sources/Composition/D3NexusCoreLoggerAdapter.swift` — create
 - `App/Sources/Composition/AppComposition.swift` — modify: replace `ConsoleLogger()` with the adapter
 - `App/Sources/Composition/ConsoleLogger.swift` — **retain unchanged** until the DoD is met
 - `bricks/ios_mvi_feature/__brick__/**` — modify
@@ -55,7 +55,7 @@ audit found that insufficient in four separate ways, all of which fail silently 
 
 - **The adapter is the whole backward-compatibility story.** `Core.Logger` is threaded through
   `CacheStore`, `SecureCacheStore`, `SafeExecution`, `DeepLinkRouter`, `APIClient`,
-  `SettingsRepositoryImpl` and every generated repository — 22 files. `CoreLoggerAdapter`
+  `SettingsRepositoryImpl` and every generated repository — 22 files. `D3NexusCoreLoggerAdapter`
   implements `Core.Logger`'s three methods over `LoggerProtocol`, so not one of them changes. Task 2's
   naming decision (`debug` / `info` / `error` rather than `d` / `i` / `e`) makes this a direct 1:1
   mapping (HLD D2).
@@ -74,7 +74,7 @@ Applicable skills: `architecture-audit`, `code-health-audit`; Tuist (`tuist gene
 
 ## Impact Analysis & Blast Radius
 
-- **Target symbols**: `CoreLoggerAdapter`, `LoggingComposition`, `AppComposition.init`,
+- **Target symbols**: `D3NexusCoreLoggerAdapter`, `LoggingComposition`, `AppComposition.init`,
   `HostRulesTests.coreSiblings`, both Tuist manifests, the brick templates.
 - **Downstream callers**: all 22 files from Check 1 — reached **transitively and unmodified** through
   the adapter. If any of them needs editing, the adapter is wrong; stop and fix the adapter.
@@ -103,7 +103,7 @@ Scenario: The composition root bootstraps logging exactly once
 ```gherkin
 [Tier A - Unit]
 Scenario: Call-site provenance survives the adapter
-  Given a CoreLoggerAdapter over a spy logger
+  Given a D3NexusCoreLoggerAdapter over a spy logger
   When debug("m", file: "F.swift", function: "f()", line: 42) is called
   Then the dispatched LogRecord level is .debug and message is "m"
   And its metadata records file "F.swift", function "f()" and line "42"
@@ -112,7 +112,7 @@ Scenario: Call-site provenance survives the adapter
 ```gherkin
 [Tier B - Governance]
 Scenario: K7 now guards the logging package
-  Given an injected `import AppLogging` in a Packages/Core source file
+  Given an injected `import D3NexusLogging` in a Packages/Core source file
   When swift test --package-path ArchTests is executed
   Then testK7_CoreSourcesImportNoSiblingInfraModule fails and names the offending file
   # RED-then-GREEN: prove the rule fires before trusting it, per the repo's ArchTests convention.

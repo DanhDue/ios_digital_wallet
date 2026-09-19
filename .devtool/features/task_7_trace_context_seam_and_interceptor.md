@@ -43,7 +43,7 @@ Task 8 (HLD D3).
 - `Packages/Network/Sources/Network/Interceptor/TraceContextInterceptor.swift` — create
 - `Packages/Network/Sources/Network/Interceptor/LoggingInterceptor.swift` — leave as is; it keeps
   logging status through `Core.Logger`, which now resolves to the adapter from Task 6
-- `App/Sources/Composition/AppTraceContextProvider.swift` — create
+- `App/Sources/Composition/D3NexusTraceContextProvider.swift` — create
 - `App/Sources/Composition/NetworkComposition.swift` — modify: add the interceptor to the chain
 - `Packages/Network/Tests/NetworkTests/TraceContextInterceptorTests.swift` — create
 - Read first: `Packages/Network/Sources/Network/Interceptor/RequestInterceptor.swift` (the real
@@ -65,7 +65,7 @@ Task 8 (HLD D3).
   cheaper and more reversible than widening an existing type.
 - **Idempotency.** If an upstream caller already set `traceparent`, do not overwrite or duplicate it.
   This matters the moment the app participates in a trace started elsewhere.
-- **Where the span comes from.** `AppTraceContextProvider` in `App` calls `withSpan()` per
+- **Where the span comes from.** `D3NexusTraceContextProvider` in `App` calls `withSpan()` per
   request and formats `00-{traceId}-{spanId}-01`. Because Task 2's child loggers hold only value-type
   identifiers, the per-request span creates no retain cycle with the interceptor's async context.
 
@@ -74,7 +74,7 @@ Applicable skills: `security-audit`, `architecture-audit`, `test-driven-developm
 ## Impact Analysis & Blast Radius
 
 - **Target symbols**: `Core.TraceContextProviding`, `TraceContextInterceptor`,
-  `AppTraceContextProvider`, `NetworkComposition.makeAPIClient`.
+  `D3NexusTraceContextProvider`, `NetworkComposition.makeAPIClient`.
 - **Downstream callers**: `URLSessionAPIClient`'s interceptor chain; every outgoing request gains one
   header.
 - **Cross-platform bridges**: backend APM systems consuming `traceparent`. The header format is a
@@ -95,7 +95,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 - **UC-3.2** — a request already carrying `traceparent` ends with exactly one; a nil trace context
   leaves the request header-free and still dispatchable.
 - **UC-3.3** — `Packages/Network/Package.swift` declares `Core` and nothing else, and no file under
-  `Packages/Network/Sources` imports `AppLogging`.
+  `Packages/Network/Sources` imports `D3NexusLogging`.
 - **UC-3.4** — `didReceive(_:)` emits an error-level record naming status 500, reads no body, and
   returns without throwing.
 
@@ -118,7 +118,7 @@ Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md
 - `traceparent` present and regex-valid on outgoing requests.
 - **`Packages/Network/Package.swift` still declares `Core` only** — this is the load-bearing
   acceptance criterion of the task.
-- No file under `Packages/Network/Sources` imports `AppLogging`.
+- No file under `Packages/Network/Sources` imports `D3NexusLogging`.
 - Idempotent injection; nil context handled without a malformed header.
 - Existing `LoggingInterceptorTests` still pass unmodified.
 - `ArchTests` and `check_module_boundaries.sh` clean.

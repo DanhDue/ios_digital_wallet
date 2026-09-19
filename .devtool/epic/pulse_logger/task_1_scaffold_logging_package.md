@@ -18,28 +18,34 @@ Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenario
 
 ## Requirement Analysis
 
-Create the local SPM package `Packages/AppLogging` and its pure foundation: log levels, the
+Create the local SPM package `Packages/D3NexusLogging` and its pure foundation: log levels, the
 immutable `LogRecord`, W3C-correct identifier generation, and a trace-tree builder that cannot
 recurse forever or leak. **Zero remote dependencies at this task** — swift-log arrives in Task 5,
 Pulse never enters this package at all (HLD D5).
 
-The package name is `AppLogging` — not `Logging`, and not `Logger`. `apple/swift-log` ships its
-module as `Logging`, so a local target of that name is a SwiftPM duplicate-module error and makes
-every consumer's `import Logging` ambiguous. `Logger` is unavailable for a different reason:
-`Core` already declares `public protocol Logger` and 19 call sites reference it unqualified,
-including the Mason brick. `AppLogging` mirrors the existing `AppUIKit` convention and collides with
-neither (HLD D1, D1.1).
+The package name is `D3NexusLogging` — not `Logging`, not `Logger`, not `AppLogging`.
+`apple/swift-log` ships its module as `Logging`, so a local target of that name is a SwiftPM
+duplicate-module error. `Logger` is unavailable for a different reason: `Core` already declares
+`public protocol Logger` and 19 call sites reference it unqualified, including the Mason brick.
+`AppLogging` would fit this repo's conventions but is wrong for a package intended to ship to other
+teams — "App" names nothing once it leaves this app (HLD D1, D1.1).
+
+**Extraction constraint E1 applies from this task onward:** the package **must not depend on
+`Packages/Core`**, nor on any other package in this repository. Nothing in the file list below needs
+it. `Package.swift` declares **no dependencies at all** at this task, and only `apple/swift-log` from
+Task 5. If a later task finds itself reaching for `Core`, that is a design error — the abstraction
+belongs in the package or the glue belongs in `App/` (HLD §3.2).
 
 ## Relevant Files & Context Pointers
 
-- `Packages/AppLogging/Package.swift` — **create**
-- `Packages/AppLogging/Sources/AppLogging/Model/LogLevel.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Model/LogRecord.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Trace/TraceIdentifier.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Trace/TraceNode.swift` — create
-- `Packages/AppLogging/Sources/AppLogging/Trace/TraceTree.swift` — create
-- `Packages/AppLogging/Tests/AppLoggingTests/TestSupport/MemoryLeakTestSupport.swift` — create
-- `Packages/AppLogging/Tests/AppLoggingTests/{LogRecordTests,TraceIdentifierTests,TraceTreeTests}.swift` — create
+- `Packages/D3NexusLogging/Package.swift` — **create**
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Model/LogLevel.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Model/LogRecord.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceIdentifier.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceNode.swift` — create
+- `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceTree.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/TestSupport/MemoryLeakTestSupport.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/{LogRecordTests,TraceIdentifierTests,TraceTreeTests}.swift` — create
 - Read for conventions: `Packages/Core/Package.swift` (manifest style, the `.macOS(.v13)` host-test
   rationale), `Packages/Network/Tests/NetworkTests/TestSupport.swift`
 
@@ -105,15 +111,16 @@ Authoritative copies live in [bdd_scenarios.md](bdd_scenarios.md). This task imp
 - [ ] **REFACTOR** — full `Sendable` conformance with no `@unchecked` anywhere in this task;
       `swiftformat --config quality/.swiftformat .`;
       `swiftlint lint --strict --config quality/.swiftlint.yml`.
-- [ ] **Verify** — `swift test --package-path Packages/AppLogging` passes;
-      `swift build --package-path Packages/AppLogging` succeeds standalone and offline.
+- [ ] **Verify** — `swift test --package-path Packages/D3NexusLogging` passes;
+      `swift build --package-path Packages/D3NexusLogging` succeeds standalone and offline.
 
 **TDD note**: the deep-chain and cycle tests are the point of this task. A green suite without them
 does not satisfy the DoD.
 
 ## Definition of Done (DoD)
 
-- `Packages/AppLogging` builds under Swift 6 with zero warnings and **zero remote dependencies**.
+- `Packages/D3NexusLogging` builds under Swift 6 with zero warnings, **zero remote dependencies**,
+  and **no dependency on any package in this repository** (extraction constraint E1).
 - Every listed BDD scenario passes.
 - `Trace/**` reaches 100% line coverage; `Model/**` ≥ 90%.
 - No `@unchecked Sendable` in this task's code.
@@ -129,4 +136,4 @@ does not satisfy the DoD.
 
 - W3C Trace Context — <https://www.w3.org/TR/trace-context/>
 - HLD deviations D1, D6, D7 — [pulse_logger.en.md](pulse_logger.en.md) §3
-- Rollback: delete `Packages/AppLogging/`. Nothing else references it yet.
+- Rollback: delete `Packages/D3NexusLogging/`. Nothing else references it yet.

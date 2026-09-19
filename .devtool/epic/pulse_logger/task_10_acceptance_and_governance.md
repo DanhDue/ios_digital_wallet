@@ -74,7 +74,7 @@ Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task verifies
 - **UC-7.2** — a host-app session under `MallocStackLogging` shows zero leaked logging objects after
   a flow that logs and performs a request.
 - **Cross-cutting** — `ArchTests` K1–K10 all pass with the new package present, `HostRulesTests`
-  lists `AppLogging` among the forbidden `Core` siblings, and both `enterprise` and `lean`
+  lists `D3NexusLogging` among the forbidden `Core` siblings, and both `enterprise` and `lean`
   generate and build while `plugin` is unaffected.
 
 Plus, specific to this task:
@@ -100,7 +100,7 @@ Scenario: Check 2 confirms the predicted blast radius held
 ## Test & Verification Checklist
 
 - [ ] **Tier A** — every package suite green:
-      `swift test --package-path Packages/AppLogging`,
+      `swift test --package-path Packages/D3NexusLogging`,
       `Packages/Core`, `Packages/Network`, `Features/Settings`, with `trackForMemoryLeaks` clean.
 - [ ] **Coverage** — build `scripts/check_coverage_thresholds.sh`, prove it fires on an injected
       gap, revert the injection, and confirm every HLD §5.6 threshold is met.
@@ -114,6 +114,11 @@ Scenario: Check 2 confirms the predicted blast radius held
       repeat for `lean`; confirm `plugin` untouched.
 - [ ] **Leak gate** — `MallocStackLogging` enabled, `leaks` reports zero logging retention.
 - [ ] **Check 2** — `check_code_impact.py --base-ref develop` over the cumulative diff.
+- [ ] **Extraction readiness (E1–E4)** — verify `Packages/D3NexusLogging/Package.swift` declares no
+      `.package(path:)` dependency on this repository; copy the package directory to a scratch
+      location outside the repo and confirm `swift build` and `swift test` still pass there; confirm
+      every `public` symbol carries a doc comment; confirm `OSLogAppender` has no app-derived default
+      subsystem and `Redactor` accepts injected rules.
 - [ ] **Final** — invoke the `quality_check` skill for the Gate 4 verdict. A 🟢 must come from a
       complete run, never from re-running only what previously failed.
 
