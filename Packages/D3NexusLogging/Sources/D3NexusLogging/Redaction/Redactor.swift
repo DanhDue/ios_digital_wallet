@@ -77,9 +77,10 @@ public struct Redactor: Sendable {
         let sanitizedMetadata = redactHeaders(record.metadata)
         let sanitizedError = record.errorDescription.map { redact($0) }
 
-        if sanitizedMessage == record.message,
-           sanitizedMetadata == record.metadata,
-           sanitizedError == record.errorDescription {
+        let isUnchanged = sanitizedMessage == record.message &&
+            sanitizedMetadata == record.metadata &&
+            sanitizedError == record.errorDescription
+        if isUnchanged {
             return record
         }
 

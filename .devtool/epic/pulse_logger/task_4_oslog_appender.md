@@ -1,13 +1,13 @@
 ---
 id: "task_4_oslog_appender"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:11:52Z"
+completedAt: "2026-09-19T12:11:52Z"
 labels: ["logging", "appender", "oslog", "memory-safety"]
 order: "a4"
 ---
