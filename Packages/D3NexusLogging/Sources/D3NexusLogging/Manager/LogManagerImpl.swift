@@ -4,11 +4,16 @@ import os
 /// Thread-safe central logging engine managing appenders and dispatching log records.
 public final class LogManagerImpl: LogManager, @unchecked Sendable {
     private let toggleStore: ToggleStore
+    private let redactor: Redactor
     private let lock = OSAllocatedUnfairLock()
     private var appenders: [any LogAppender] = []
 
-    public init(toggleStore: ToggleStore = ToggleStore()) {
+    public init(
+        toggleStore: ToggleStore = ToggleStore(),
+        redactor: Redactor = Redactor()
+    ) {
         self.toggleStore = toggleStore
+        self.redactor = redactor
     }
 
     public func getLogger(module: String) -> any LoggerProtocol {
@@ -28,8 +33,9 @@ public final class LogManagerImpl: LogManager, @unchecked Sendable {
     }
 
     public func log(_ record: LogRecord) {
+        let sanitizedRecord = redactor.redact(record)
         let activeAppenders = lock.withLock { appenders }
-        let isModuleMuted = !isModuleEnabled(record.module)
+        let isModuleMuted = !isModuleEnabled(sanitizedRecord.module)
 
         for appender in activeAppenders {
             guard isAppenderEnabled(appender.id) else { continue }
@@ -37,7 +43,7 @@ public final class LogManagerImpl: LogManager, @unchecked Sendable {
                 continue
             }
 
-            appender.append(record)
+            appender.append(sanitizedRecord)
         }
     }
 

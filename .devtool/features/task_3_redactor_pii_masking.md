@@ -1,13 +1,13 @@
 ---
 id: "task_3_redactor_pii_masking"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:09:05Z"
+completedAt: "2026-09-19T12:09:05Z"
 labels: ["security", "logging", "pii", "fintech"]
 order: "a3"
 ---

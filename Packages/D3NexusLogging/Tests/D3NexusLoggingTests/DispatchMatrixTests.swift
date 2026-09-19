@@ -48,56 +48,56 @@ final class DispatchMatrixTests: XCTestCase {
                 respectsToggle: true,
                 appenderEnabled: true,
                 moduleEnabled: true,
-                expectedDispatched: 1,
+                expectedDispatched: 1
             ),
             TruthCase(
                 appenderId: "pulse",
                 respectsToggle: true,
                 appenderEnabled: true,
                 moduleEnabled: false,
-                expectedDispatched: 0,
+                expectedDispatched: 0
             ),
             TruthCase(
                 appenderId: "pulse",
                 respectsToggle: true,
                 appenderEnabled: false,
                 moduleEnabled: true,
-                expectedDispatched: 0,
+                expectedDispatched: 0
             ),
             TruthCase(
                 appenderId: "pulse",
                 respectsToggle: true,
                 appenderEnabled: false,
                 moduleEnabled: false,
-                expectedDispatched: 0,
+                expectedDispatched: 0
             ),
             TruthCase(
                 appenderId: "oslog",
                 respectsToggle: false,
                 appenderEnabled: true,
                 moduleEnabled: true,
-                expectedDispatched: 1,
+                expectedDispatched: 1
             ),
             TruthCase(
                 appenderId: "oslog",
                 respectsToggle: false,
                 appenderEnabled: true,
                 moduleEnabled: false,
-                expectedDispatched: 1,
+                expectedDispatched: 1
             ),
             TruthCase(
                 appenderId: "oslog",
                 respectsToggle: false,
                 appenderEnabled: false,
                 moduleEnabled: true,
-                expectedDispatched: 0,
+                expectedDispatched: 0
             ),
             TruthCase(
                 appenderId: "oslog",
                 respectsToggle: false,
                 appenderEnabled: false,
                 moduleEnabled: false,
-                expectedDispatched: 0,
+                expectedDispatched: 0
             ),
         ]
     }
