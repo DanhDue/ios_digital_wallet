@@ -58,7 +58,10 @@ Two corrections from the source spec apply here:
   construction.
 - **`withSpan()`**: returns a new `LoggerImpl` carrying the parent's `traceId`, a fresh `spanId`,
   and `parentSpanId` **as a `String` value**. It holds no reference to the parent, so a parent can
-  deallocate while its children are still live (HLD Goal 7).
+  deallocate while its children are still live (HLD Goal 7). Task 1's `CyclicLoggerPair` fixture is
+  the counter-example this must be tested against: same shape, strong parent reference, asserted to
+  leak. An `EscapingClosureLogger` fixture is added here for the other realistic shape — an escaping
+  closure capturing `self` strongly — since `withSpan()` is most often called inside one.
 - **Dispatch order**: appender kill-switch is checked before the module toggle — a disabled appender
   receives nothing regardless of module state. This is the truth table in UC-4.1 and it is the
   single most test-worthy branch in the package.

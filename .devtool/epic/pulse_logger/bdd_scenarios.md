@@ -386,6 +386,8 @@ Scenario: A deep chain does not overflow the stack
 
 ## UC-7 · Assert zero memory leaks on teardown
 
+*Test-time and CI-time only. For the runtime counterpart — a leak becoming a visible log record while the app runs — see UC-10.*
+
 ### 7.1 Unit teardown
 ```gherkin
 [Tier A - Unit]
@@ -541,6 +543,124 @@ Scenario: Removing the instrumentation leaves the network stack fully functional
   Then the request succeeds identically
   And no logging-related failure occurs
   # Proves the rollback path in HLD §6 is real.
+```
+
+---
+
+## UC-10 · Detect a runtime leak and surface it in the console
+
+Everything in UC-7 runs outside the app. This use case is the one that runs *inside* it: a leak on a
+real screen becomes a log record a developer can see, rather than staying silent until CI or
+production notices.
+
+### 10.1 Happy path — the sentinel reports
+```gherkin
+[Tier A - Unit]
+Scenario: An object that outlives its declared scope is reported
+  Given a LeakSentinel with a manually advanced clock and a spy LogManager
+  And an object registered with a grace period of 3 seconds, held by a deliberate strong reference
+  When its scope is ended and the clock advances past 3 seconds
+  Then exactly one LogRecord at level .error is dispatched
+  And the message names the registered object
+  And the metadata carries the registered name and the elapsed grace period
+```
+
+### 10.2 The control — silence is also a result
+```gherkin
+[Tier A - Unit]
+Scenario: An object that deallocates within its grace period is not reported
+  Given a LeakSentinel with a manually advanced clock and a spy LogManager
+  And an object registered with a grace period of 3 seconds, then released
+  When the clock advances past 3 seconds
+  Then zero LogRecords are dispatched
+```
+
+### 10.3 Edge cases & boundaries
+```gherkin
+[Tier A - Unit]
+Scenario: A cancelled registration never reports, even while the object is alive
+  Given an object registered with the sentinel and still strongly held
+  When the returned token is cancelled before the grace period elapses
+  And the clock advances well past the grace period
+  Then zero LogRecords are dispatched
+  # Guards the SwiftUI onDisappear-then-onAppear false positive.
+```
+
+```gherkin
+[Tier A - Unit]
+Scenario: The sentinel holds nothing it tracks
+  Given an object registered with the sentinel and tracked for memory leaks
+  When the caller releases its own reference
+  Then the object deallocates immediately
+  And the sentinel deallocates cleanly at teardown
+```
+
+```gherkin
+[Tier A - Unit]
+Scenario: Registering the same object twice reports it once, not twice
+  Given an object registered with the sentinel twice under the same name
+  When the grace period elapses while it is still held
+  Then exactly one LogRecord is dispatched
+```
+
+### 10.4 The sample must really leak — a discriminating pair
+```gherkin
+[Tier A - Unit]
+Scenario: The leaking demo flow really leaks
+  Given a LeakDemoViewModel driven through the leaking action
+  When the view model goes out of scope
+  Then a weak reference to it is still non-nil
+  # If this ever passes as nil, the demo has stopped demonstrating anything
+  # and every assertion built on it is worthless.
+```
+
+```gherkin
+[Tier A - Unit]
+Scenario: The control demo flow does not leak
+  Given a LeakDemoViewModel driven through the non-leaking action
+  When the view model goes out of scope
+  Then a weak reference to it is nil
+```
+
+### 10.5 End to end — the whole pipeline in one gesture
+```gherkin
+[Tier C - Integration]
+Scenario: A leak triggered from Settings is visible in the in-app console
+  Given a DEBUG build with the diagnostics section reachable from Settings
+  When the developer opens Leak Demo, taps the leaking action, and navigates back
+  And the grace period elapses
+  And the developer opens the console by shaking the device
+  Then a .error record from the leak sentinel module is listed
+  And it names LeakDemoViewModel
+```
+
+```gherkin
+[Tier C - Integration]
+Scenario: The same journey with the control action produces no leak record
+  Given the same DEBUG build
+  When the developer performs the identical journey using the non-leaking action
+  And the grace period elapses
+  Then the console lists no leak-sentinel record
+```
+
+### 10.6 Governance
+```gherkin
+[Tier B - Governance]
+Scenario: The sample obeys the architecture rules like a real feature
+  Given the LeakDemo sources under Features/Settings/Sources/Settings/Presentation
+  When swift test --package-path ArchTests runs
+  Then K5 confirms LeakDemoViewModel conforms to MviViewModel and LeakDemoView conforms to View
+  And K2 confirms the Presentation layer references no Data-layer type
+  And K1 and check_module_boundaries.sh stay green
+```
+
+```gherkin
+[Tier B - Governance]
+Scenario: None of the leak diagnostics reaches Release
+  Given a Release configuration build
+  When check_release_isolation.sh inspects the binary
+  Then no LeakSentinel symbol is present
+  And no LeakDemo symbol is present
 ```
 
 ---

@@ -137,8 +137,11 @@ eventual `git filter-repo` a move rather than a rewrite.
    network timing / JSON inspection, cURL export; 100% compiled out under `#if !DEBUG`.
 6. **PII redaction as a first-class component** — applied at the `LogManagerImpl` boundary so every
    appender inherits it, and at the Pulse `URLSession` capture path, which records full bodies.
-7. **Memory leak & retain cycle guard** — `trackForMemoryLeaks` teardown helper; child loggers hold
-   only value-type trace IDs; `leaks` / MallocStackLogging verification in Tier C.
+7. **Memory leak & retain cycle guard, at four layers** — `trackForMemoryLeaks` at unit-test
+   teardown, proven to fire against deliberate leak fixtures; child loggers holding only value-type
+   trace IDs; `leaks` / MallocStackLogging in Tier C; and a DEBUG-only **runtime `LeakSentinel`**
+   that reports an object outliving its declared scope as a `LogRecord`, so a leak on a real user
+   path is visible in the console instead of silent.
 8. **Backward compatibility** — `D3NexusCoreLoggerAdapter` implements `Core.Logger`, so the 22
    existing call sites (§5.4) keep working unmodified.
 
@@ -149,6 +152,14 @@ eventual `git filter-repo` a move rather than a rewrite.
 - Third-party cloud APM SDKs — Datadog / Sentry arrive later as pluggable `LogAppender`s, which D5
   keeps cheap.
 - Changing the `plugin` template mode: `PluginDevbed.xcworkspace` is out of scope and untouched.
+- **MetricKit (evaluated and deferred, 2026-09-19).** It has no leak-detection API — no
+  `MXLeakDiagnostic` exists; `MXMemoryMetric` reports footprint (`peakMemoryUsage`,
+  `averageSuspendedMemory`), not retain cycles. Payloads arrive at most once per 24 hours on a real
+  device, which serves neither unit-test teardown nor a CI gate. Its real fit is as a *production
+  telemetry source* feeding this pipeline (`MXMemoryMetric` + `MXCrashDiagnostic` +
+  `MXHangDiagnostic` as `LogRecord`s) — a separate capability, deferred to its own epic because its
+  value only materialises in the field and this epic's Tier C therefore cannot verify it. The
+  development-time half of that gap is covered here by `LeakSentinel` (Task 10).
 
 ---
 
@@ -233,9 +244,10 @@ flowchart TD
         UC7["UC-7: Assert zero memory leaks on teardown"]
         UC8["UC-8: Redact secrets and PII before persistence"]
         UC9["UC-9: Capture network timing, body and cURL"]
+        UC10["UC-10: Detect a runtime leak and surface it in the console"]
     end
 
-    Developer --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7
+    Developer --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7 & UC10
     HTTPStack --> UC3 --> BackendSvc
     HTTPStack --> UC9
     SecAuditor --> UC8
@@ -327,6 +339,7 @@ Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImp
 Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift
 Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift
 Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/D3NexusLogHandler.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Diagnostics/{LeakSentinel,LeakSentinelClock}.swift  (#if DEBUG)
 Packages/D3NexusLogging/Tests/D3NexusLoggingTests/**
 Packages/Core/Sources/Core/Logging/TraceContextProviding.swift
 Packages/Network/Sources/Network/Interceptor/TraceContextInterceptor.swift
@@ -335,6 +348,8 @@ App/Sources/Composition/D3NexusTraceContextProvider.swift
 App/Sources/Composition/PulseAppender.swift              (#if DEBUG)
 App/Sources/UI/ShakeGestureModifier.swift                (#if DEBUG)
 Features/Settings/Sources/Settings/Presentation/Diagnostics/**   (#if DEBUG)
+Features/Settings/Sources/Settings/Presentation/Diagnostics/LeakDemo/**  (#if DEBUG, MVI quartet)
+scripts/check_release_isolation.sh
 scripts/check_coverage_thresholds.sh
 ```
 
@@ -363,7 +378,8 @@ adapter, so rollback is one file).
 | `Trace/**` — ID generation, tree building | **100%** line |
 | `Manager/**`, `Logger/**` — dispatch, toggles, spans | ≥ 90% line |
 | `Appender/**`, `Bridge/**` | ≥ 85% line |
-| Diagnostics view model (UI state) | ≥ 80% line |
+| `Diagnostics/**` — leak sentinel (clock-injected, fully testable) | ≥ 90% line |
+| Diagnostics view model, `LeakDemoViewModel` (UI state) | ≥ 80% line |
 | `ArchTests` K1–K10 | 100% pass |
 
 ---
@@ -377,7 +393,9 @@ adapter, so rollback is one file).
    root behind `D3NexusCoreLoggerAdapter`. First point at which app behaviour changes.
 3. **Phase 3 (Task 7)** — `Core` trace seam and the `Network` interceptor.
 4. **Phase 4 (Task 8)** — Pulse at the composition root: appender + instrumented `URLSession`.
-5. **Phase 5 (Tasks 9–10)** — PulseUI console, Settings diagnostics, acceptance and governance.
+5. **Phase 5 (Tasks 9–10)** — PulseUI console, Settings diagnostics, then the runtime `LeakSentinel`
+   and the leak demo sample that proves the whole pipeline end to end.
+6. **Phase 6 (Task 11)** — acceptance, governance and coverage tooling.
 
 **Mitigation & fallback**
 - If Pulse storage misbehaves, `OSLogAppender` is unaffected — it is in a different package with no
@@ -403,7 +421,8 @@ adapter, so rollback is one file).
 | 7 | [Core.TraceContextProviding seam & Network TraceContextInterceptor](task_7_trace_context_seam_and_interceptor.md) | 6 |
 | 8 | [Pulse appender & instrumented URLSession capture](task_8_pulse_appender_and_session_capture.md) | 6, 7 |
 | 9 | [PulseUI console, shake gesture & Settings diagnostics](task_9_pulse_ui_and_settings.md) | 8 |
-| 10 | [Tier C acceptance, governance & coverage tooling](task_10_acceptance_and_governance.md) | 9 |
+| 10 | [Runtime leak sentinel & leak demo sample](task_10_leak_sentinel_and_demo.md) | 9 |
+| 11 | [Tier C acceptance, governance & coverage tooling](task_11_acceptance_and_governance.md) | 10 |
 
 ```mermaid
 flowchart LR
@@ -418,5 +437,6 @@ flowchart LR
     T6 --> T8[8 Pulse capture]
     T7 --> T8
     T8 --> T9[9 PulseUI + Settings]
-    T9 --> T10[10 Acceptance]
+    T9 --> T10[10 Leak sentinel + demo]
+    T10 --> T11[11 Acceptance]
 ```

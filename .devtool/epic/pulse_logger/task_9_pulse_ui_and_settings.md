@@ -47,6 +47,9 @@ a claim.
 - **Shake detection via `UIDevice.deviceDidShakeNotification`** through a `ViewModifier`. The
   observer must be torn down with the view — UC-5.2's "repeated shakes do not stack sheets" is the
   behavioural symptom of getting that wrong, and `trackForMemoryLeaks` covers the structural side.
+  Add an `UnremovedObserverFixture` to Task 1's `LeakFixtures` for this shape and test it as a
+  discriminating pair against the real modifier: an observer that is never removed must be asserted
+  to leak, the real one asserted not to.
 - **`Features/Settings` gains a `D3NexusLogging` dependency.** This is a Feature → Layer 3 edge,
   which the architecture permits; it is *not* a cross-feature import, so K1 is unaffected. Confirm
   with `check_module_boundaries.sh` regardless.
@@ -137,7 +140,7 @@ Scenario: Settings gains an infrastructure dependency without a cross-feature ed
 ## Dependencies & Blockers
 
 - Blocked by: [Task 8](task_8_pulse_appender_and_session_capture.md).
-- Blocks: [Task 10](task_10_acceptance_and_governance.md).
+- Blocks: [Task 10](task_10_leak_sentinel_and_demo.md).
 
 ## References & Rollback
 

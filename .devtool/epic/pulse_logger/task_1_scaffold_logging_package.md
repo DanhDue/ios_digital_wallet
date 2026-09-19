@@ -45,6 +45,10 @@ belongs in the package or the glue belongs in `App/` (HLD §3.2).
 - `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceNode.swift` — create
 - `Packages/D3NexusLogging/Sources/D3NexusLogging/Trace/TraceTree.swift` — create
 - `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/TestSupport/MemoryLeakTestSupport.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/LeakFixtures/LeakFixtures.swift` — create
+  (**`Tests/` only — a deliberately leaking type must never ship in the extracted SDK, E1**)
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/LeakDetectorMetaTests.swift` — create
+- `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/TeardownTests.swift` — create
 - `Packages/D3NexusLogging/Tests/D3NexusLoggingTests/{LogRecordTests,TraceIdentifierTests,TraceTreeTests}.swift` — create
 - Read for conventions: `Packages/Core/Package.swift` (manifest style, the `.macOS(.v13)` host-test
   rationale), `Packages/Network/Tests/NetworkTests/TestSupport.swift`
@@ -71,6 +75,21 @@ belongs in the package or the glue belongs in `App/` (HLD §3.2).
 - **`buildTraceTree`** stays a pure, side-effect-free function: parent resolution by `spanId`, a
   visited set for cycle detection, a depth cap for pathological chains, orphans promoted to roots,
   and a guarantee that the node count out equals the record count in.
+- **The leak detector is itself proven to fire.** This repo already requires it of its other guards:
+  *"Each rule was proven to fire before being trusted"* (`docs/architecture/ARCHITECTURE.md` §VI.1,
+  on ArchTests K7). `LeakFixtures` supplies deliberately leaking shapes that mirror this module's
+  real risks — `CyclicLoggerPair` (child holding its parent, the thing `withSpan()` must never do),
+  `RetainingAppender` (appender ↔ manager cycle), and `ClassBasedTraceNode` (the source spec's D7
+  implementation, kept as evidence). Each fixture is tested **as a discriminating pair**: the leaking
+  shape asserts `XCTAssertNotNil` on a weak reference, the real type asserts `XCTAssertNil`. A suite
+  where only the second half exists proves nothing, because a detector that never fires passes it.
+- **No `XCTExpectFailure`.** It appears nowhere in this repo and it fights teardown ordering. The
+  meta-test instead gives `trackForMemoryLeaks` an injectable failure handler (defaulting to
+  `XCTFail`) and asserts a spy handler was invoked. Small seam, deterministic result.
+- **A `TeardownTests.swift` alongside the fixtures**, matching the convention already present in
+  `Packages/Network`, `Packages/Framework`, `Packages/Shell` and `Features/Settings`: a scoped
+  closure, `weak var`, `XCTAssertNil`. `trackForMemoryLeaks` is the low-ceremony complement to that
+  convention, **not** a replacement — do not invent a third idiom.
 
 Applicable skills: `code-health-audit`, `architecture-audit`, `test-driven-development`.
 
@@ -103,9 +122,14 @@ Authoritative copies live in [bdd_scenarios.md](bdd_scenarios.md). This task imp
 ## Test & Verification Checklist
 
 - [ ] **RED** — write `LogRecordTests`, `TraceIdentifierTests`, `TraceTreeTests` covering every
-      scenario above. Confirm each fails for the right reason. The cycle test must be written
-      **before** the algorithm, and must be shown to hang or crash against the source spec's
-      class-based implementation.
+      scenario above. Confirm each fails for the right reason.
+- [ ] **RED (detector)** — write `LeakDetectorMetaTests` and the `LeakFixtures` pairs. The leaking
+      fixture must assert `XCTAssertNotNil`; the real type must assert `XCTAssertNil`.
+- [ ] **Cycle demonstration** — the class-based D7 implementation is used **once, manually**, to
+      watch the cycle test not terminate. That demonstration is **never committed**: a test that
+      hangs is a bad CI artifact because it blocks the run until timeout. The committed test asserts
+      *bounded termination* — the call returns within an explicit deadline — not the absence of a
+      hang.
 - [ ] **GREEN** — minimal implementation of `LogLevel`, `LogRecord`, `TraceIdentifier`, `TraceNode`,
       `TraceTree`, `MemoryLeakTestSupport`.
 - [ ] **REFACTOR** — full `Sendable` conformance with no `@unchecked` anywhere in this task;
@@ -124,7 +148,12 @@ does not satisfy the DoD.
 - Every listed BDD scenario passes.
 - `Trace/**` reaches 100% line coverage; `Model/**` ≥ 90%.
 - No `@unchecked Sendable` in this task's code.
-- `trackForMemoryLeaks` available to every later task.
+- `trackForMemoryLeaks` available to every later task, **with its own failure path proven** by the
+  meta-test rather than assumed.
+- Every leak fixture is verified to actually leak; every real type is verified not to. Both halves
+  of each pair are present.
+- `TeardownTests.swift` exists and follows the convention of the four sibling packages.
+- No committed test hangs; the cycle test asserts bounded termination.
 - SwiftLint and SwiftFormat clean; `git status` clean apart from the intended files.
 
 ## Dependencies & Blockers

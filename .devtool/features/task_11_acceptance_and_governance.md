@@ -1,5 +1,5 @@
 ---
-id: "task_10_acceptance_and_governance"
+id: "task_11_acceptance_and_governance"
 status: "todo"
 priority: "high"
 assignee: null
@@ -9,10 +9,10 @@ created: "2026-09-19T03:32:30+07:00"
 modified: "2026-09-19T04:47:44+07:00"
 completedAt: null
 labels: ["integration", "acceptance", "archtests", "governance", "coverage", "tier-c"]
-order: "a10"
+order: "a11"
 ---
 
-# Task 10: Tier C Acceptance, Governance & Coverage Tooling
+# Task 11: Tier C Acceptance, Governance & Coverage Tooling
 
 Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md) · BDD: [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md) UC-7, Cross-cutting
 
@@ -113,6 +113,9 @@ Scenario: Check 2 confirms the predicted blast radius held
       `xcodebuild test -workspace iOSDigitalWallet.xcworkspace -scheme iOSDigitalWallet -destination 'platform=iOS Simulator,name=iPhone 16 Pro' CODE_SIGNING_ALLOWED=NO`;
       repeat for `lean`; confirm `plugin` untouched.
 - [ ] **Leak gate** — `MallocStackLogging` enabled, `leaks` reports zero logging retention.
+- [ ] **Leak gate fires** — run the same check against a build that exercises Task 10's leaking demo
+      flow and confirm `leaks` **does** report it, then revert. Same RED-then-GREEN discipline the
+      coverage gate and K7 are held to: a gate that has never been seen to fail is not evidence.
 - [ ] **Check 2** — `check_code_impact.py --base-ref develop` over the cumulative diff.
 - [ ] **Extraction readiness (E1–E4)** — verify `Packages/D3NexusLogging/Package.swift` declares no
       `.package(path:)` dependency on this repository; copy the package directory to a scratch
@@ -135,7 +138,7 @@ Scenario: Check 2 confirms the predicted blast radius held
 
 ## Dependencies & Blockers
 
-- Blocked by: [Task 9](task_9_pulse_ui_and_settings.md).
+- Blocked by: [Task 10](task_10_leak_sentinel_and_demo.md).
 - Blocks: Gate 5 (developer Kanban review and sign-off).
 
 ## References & Rollback

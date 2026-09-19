@@ -136,8 +136,11 @@ chỗ chứ không phải viết lại.
    loại bỏ 100% dưới `#if !DEBUG`.
 6. **Che PII như một thành phần hạng nhất** — áp dụng ngay tại biên `LogManagerImpl` để mọi appender
    đều kế thừa, và áp lên đường capture `URLSession` của Pulse vốn ghi lại toàn bộ body.
-7. **Phòng ngừa rò rỉ bộ nhớ & retain cycle** — helper `trackForMemoryLeaks` ở teardown; child logger
-   chỉ giữ trace ID dạng value; kiểm chứng bằng `leaks` / MallocStackLogging ở Tier C.
+7. **Phòng ngừa rò rỉ bộ nhớ & retain cycle, ở bốn lớp** — `trackForMemoryLeaks` lúc teardown của
+   unit test, được chứng minh là biết kêu bằng các fixture leak cố ý; child logger chỉ giữ trace ID
+   dạng value; `leaks` / MallocStackLogging ở Tier C; và một **`LeakSentinel` lúc chạy** chỉ có trong
+   DEBUG, báo cáo đối tượng sống lâu hơn phạm vi đã khai dưới dạng `LogRecord`, để một rò rỉ trên
+   luồng người dùng thật hiện ra trong console thay vì im lặng.
 8. **Tương thích ngược** — `D3NexusCoreLoggerAdapter` hiện thực `Core.Logger`, nên 22 call site hiện
    hữu (§5.4) tiếp tục chạy mà không cần sửa.
 
@@ -148,6 +151,14 @@ chỗ chứ không phải viết lại.
 - SDK APM đám mây bên thứ ba — Datadog / Sentry sẽ đến sau dưới dạng `LogAppender` cắm-rút, và D5 giữ
   cho việc đó rẻ.
 - Thay đổi template mode `plugin`: `PluginDevbed.xcworkspace` ngoài phạm vi và không bị đụng tới.
+- **MetricKit (đã cân nhắc và hoãn, 2026-09-19).** Nó không có API phát hiện leak — không tồn tại
+  `MXLeakDiagnostic`; `MXMemoryMetric` báo footprint (`peakMemoryUsage`, `averageSuspendedMemory`),
+  không phải retain cycle. Payload về tối đa một lần mỗi 24 giờ trên thiết bị thật, nên không phục vụ
+  được cả teardown của unit test lẫn một cổng CI. Chỗ đứng thật của nó là *nguồn telemetry production*
+  chảy vào chính pipeline này (`MXMemoryMetric` + `MXCrashDiagnostic` + `MXHangDiagnostic` thành
+  `LogRecord`) — một năng lực riêng, hoãn sang epic của nó vì giá trị chỉ hiện ra ngoài thực địa và
+  Tier C của epic này do đó không nghiệm thu được. Nửa "lúc phát triển" của lỗ hổng đó được `LeakSentinel`
+  (Task 10) phủ ở đây.
 
 ---
 
@@ -232,9 +243,10 @@ flowchart TD
         UC7["UC-7: Khẳng định không rò rỉ bộ nhớ khi teardown"]
         UC8["UC-8: Che secret và PII trước khi lưu"]
         UC9["UC-9: Thu thập thời gian, body và cURL của request"]
+        UC10["UC-10: Phát hiện leak lúc chạy và hiện nó trong console"]
     end
 
-    Developer --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7
+    Developer --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7 & UC10
     HTTPStack --> UC3 --> BackendSvc
     HTTPStack --> UC9
     SecAuditor --> UC8
@@ -326,6 +338,7 @@ Packages/D3NexusLogging/Sources/D3NexusLogging/Manager/{LogManager,LogManagerImp
 Packages/D3NexusLogging/Sources/D3NexusLogging/Logger/{LoggerProtocol,LoggerImpl,NoOpLogger}.swift
 Packages/D3NexusLogging/Sources/D3NexusLogging/Facade/D3NexusLogger.swift
 Packages/D3NexusLogging/Sources/D3NexusLogging/Bridge/D3NexusLogHandler.swift
+Packages/D3NexusLogging/Sources/D3NexusLogging/Diagnostics/{LeakSentinel,LeakSentinelClock}.swift  (#if DEBUG)
 Packages/D3NexusLogging/Tests/D3NexusLoggingTests/**
 Packages/Core/Sources/Core/Logging/TraceContextProviding.swift
 Packages/Network/Sources/Network/Interceptor/TraceContextInterceptor.swift
@@ -334,6 +347,8 @@ App/Sources/Composition/D3NexusTraceContextProvider.swift
 App/Sources/Composition/PulseAppender.swift              (#if DEBUG)
 App/Sources/UI/ShakeGestureModifier.swift                (#if DEBUG)
 Features/Settings/Sources/Settings/Presentation/Diagnostics/**   (#if DEBUG)
+Features/Settings/Sources/Settings/Presentation/Diagnostics/LeakDemo/**  (#if DEBUG, bộ tứ MVI)
+scripts/check_release_isolation.sh
 scripts/check_coverage_thresholds.sh
 ```
 
@@ -362,7 +377,8 @@ minh adapter hoạt động, để rollback chỉ là một file).
 | `Trace/**` — sinh ID, dựng cây | **100%** line |
 | `Manager/**`, `Logger/**` — dispatch, toggle, span | ≥ 90% line |
 | `Appender/**`, `Bridge/**` | ≥ 85% line |
-| ViewModel của Diagnostics (state UI) | ≥ 80% line |
+| `Diagnostics/**` — leak sentinel (clock inject được, test đầy đủ) | ≥ 90% line |
+| ViewModel của Diagnostics, `LeakDemoViewModel` (state UI) | ≥ 80% line |
 | `ArchTests` K1–K10 | 100% pass |
 
 ---
@@ -376,7 +392,9 @@ minh adapter hoạt động, để rollback chỉ là một file).
    `D3NexusCoreLoggerAdapter`. Đây là thời điểm đầu tiên hành vi app thay đổi.
 3. **Giai đoạn 3 (Task 7)** — seam trace trong `Core` và interceptor trong `Network`.
 4. **Giai đoạn 4 (Task 8)** — Pulse tại composition root: appender + `URLSession` đã instrument.
-5. **Giai đoạn 5 (Task 9–10)** — console PulseUI, mục Diagnostics trong Settings, nghiệm thu và quản trị.
+5. **Giai đoạn 5 (Task 9–10)** — console PulseUI, mục Diagnostics trong Settings, rồi `LeakSentinel`
+   lúc chạy cùng sample demo leak chứng minh toàn bộ pipeline từ đầu tới cuối.
+6. **Giai đoạn 6 (Task 11)** — nghiệm thu, quản trị và công cụ đo coverage.
 
 **Giảm thiểu & phương án lùi**
 - Nếu bộ lưu trữ của Pulse gặp sự cố, `OSLogAppender` không bị ảnh hưởng — nó nằm ở package khác và
@@ -402,7 +420,8 @@ minh adapter hoạt động, để rollback chỉ là một file).
 | 7 | [Seam Core.TraceContextProviding & TraceContextInterceptor](task_7_trace_context_seam_and_interceptor.md) | 6 |
 | 8 | [Pulse appender & thu thập qua URLSession đã instrument](task_8_pulse_appender_and_session_capture.md) | 6, 7 |
 | 9 | [Console PulseUI, cử chỉ lắc & Diagnostics trong Settings](task_9_pulse_ui_and_settings.md) | 8 |
-| 10 | [Nghiệm thu Tier C, quản trị & công cụ đo coverage](task_10_acceptance_and_governance.md) | 9 |
+| 10 | [Leak sentinel lúc chạy & sample demo leak](task_10_leak_sentinel_and_demo.md) | 9 |
+| 11 | [Nghiệm thu Tier C, quản trị & công cụ đo coverage](task_11_acceptance_and_governance.md) | 10 |
 
 ```mermaid
 flowchart LR
@@ -417,5 +436,6 @@ flowchart LR
     T6 --> T8[8 Pulse capture]
     T7 --> T8
     T8 --> T9[9 PulseUI + Settings]
-    T9 --> T10[10 Acceptance]
+    T9 --> T10[10 Leak sentinel + demo]
+    T10 --> T11[11 Acceptance]
 ```
