@@ -13,15 +13,22 @@ let package = Package(
             targets: ["D3NexusLogging"]
         ),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.2"),
+    ],
     targets: [
         .target(
             name: "D3NexusLogging",
-            dependencies: []
+            dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+            ]
         ),
         .testTarget(
             name: "D3NexusLoggingTests",
-            dependencies: ["D3NexusLogging"]
+            dependencies: [
+                "D3NexusLogging",
+                .product(name: "Logging", package: "swift-log"),
+            ]
         ),
     ]
 )

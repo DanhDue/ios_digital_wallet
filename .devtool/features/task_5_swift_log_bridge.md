@@ -1,13 +1,13 @@
 ---
 id: "task_5_swift_log_bridge"
-status: "todo"
+status: "done"
 priority: "medium"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:14:44Z"
+completedAt: "2026-09-19T12:14:44Z"
 labels: ["logging", "swift-log", "interoperability"]
 order: "a5"
 ---
