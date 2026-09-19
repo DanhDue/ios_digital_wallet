@@ -142,9 +142,11 @@ struct AppComposition {
         secureCacheStore: SecureCacheStore
     ) -> (sessionManager: any SessionManaging, apiClient: any APIClient) {
         let sessionManager = SessionManager(secureCacheStore: secureCacheStore)
+        let traceContextProvider = D3NexusTraceContextProvider()
         let apiClient = NetworkComposition.makeAPIClient(
             eventBus: eventBus,
             logger: logger,
+            traceContextProvider: traceContextProvider,
             sessionManager: sessionManager,
             tokenRefresher: NoTokenRefresher()
         )

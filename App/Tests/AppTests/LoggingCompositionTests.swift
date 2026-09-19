@@ -4,43 +4,43 @@ import os
 import XCTest
 @testable import iOSDigitalWallet
 
+private struct SpyLogEntry {
+    let level: LogLevel
+    let message: String
+    let metadata: [String: String]
+}
+
 final class LoggingCompositionTests: XCTestCase {
     private final class SpyLogger: LoggerProtocol, @unchecked Sendable {
-        struct Entry {
-            let level: LogLevel
-            let message: String
-            let metadata: [String: String]
-        }
-
         let module: String = "Test"
         let traceId: String = "4bf92f3577b34da6a3ce929d0e0e4736"
         let spanId: String = "00f067aa0ba902b7"
         let parentSpanId: String? = nil
 
-        private let storage = os.OSAllocatedUnfairLock<[Entry]>(initialState: [])
+        private let storage = os.OSAllocatedUnfairLock<[SpyLogEntry]>(initialState: [])
 
-        var entries: [Entry] {
+        var entries: [SpyLogEntry] {
             storage.withLock { $0 }
         }
 
         func verbose(_ message: String, error _: (any Error)?, metadata: [String: String]?) {
-            storage.withLock { $0.append(Entry(level: .verbose, message: message, metadata: metadata ?? [:])) }
+            storage.withLock { $0.append(SpyLogEntry(level: .verbose, message: message, metadata: metadata ?? [:])) }
         }
 
         func debug(_ message: String, error _: (any Error)?, metadata: [String: String]?) {
-            storage.withLock { $0.append(Entry(level: .debug, message: message, metadata: metadata ?? [:])) }
+            storage.withLock { $0.append(SpyLogEntry(level: .debug, message: message, metadata: metadata ?? [:])) }
         }
 
         func info(_ message: String, error _: (any Error)?, metadata: [String: String]?) {
-            storage.withLock { $0.append(Entry(level: .info, message: message, metadata: metadata ?? [:])) }
+            storage.withLock { $0.append(SpyLogEntry(level: .info, message: message, metadata: metadata ?? [:])) }
         }
 
         func warning(_ message: String, error _: (any Error)?, metadata: [String: String]?) {
-            storage.withLock { $0.append(Entry(level: .warning, message: message, metadata: metadata ?? [:])) }
+            storage.withLock { $0.append(SpyLogEntry(level: .warning, message: message, metadata: metadata ?? [:])) }
         }
 
         func error(_ message: String, error _: (any Error)?, metadata: [String: String]?) {
-            storage.withLock { $0.append(Entry(level: .error, message: message, metadata: metadata ?? [:])) }
+            storage.withLock { $0.append(SpyLogEntry(level: .error, message: message, metadata: metadata ?? [:])) }
         }
 
         func withSpan() -> any LoggerProtocol {

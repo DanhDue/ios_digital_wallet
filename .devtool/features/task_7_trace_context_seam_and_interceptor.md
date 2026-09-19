@@ -1,13 +1,13 @@
 ---
 id: "task_7_trace_context_seam_and_interceptor"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T04:47:44+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T12:29:16Z"
+completedAt: "2026-09-19T12:29:16Z"
 labels: ["architecture", "network", "w3c", "interceptor"]
 order: "a7"
 ---

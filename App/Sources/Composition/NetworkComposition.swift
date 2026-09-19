@@ -32,28 +32,34 @@ enum NetworkComposition {
         environment: any Environment = AppEnvironment.debug,
         session: URLSession = .shared,
         logger: any Core.Logger,
+        traceContextProvider: (any TraceContextProviding)? = nil,
         sessionManager: any SessionManaging = SessionManager(),
         tokenRefresher: any TokenRefresher = NoTokenRefresher(),
         refreshEndpoint: RefreshTokenEndpoint = RefreshTokenEndpoint(pathSuffix: "auth/refresh")
     ) -> URLSessionAPIClient {
-        URLSessionAPIClient(
+        var interceptors: [any RequestInterceptor] = [
+            RefreshingAuthInterceptor(
+                session: sessionManager,
+                refresher: tokenRefresher,
+                coordinator: RefreshCoordinator(),
+                authEventSink: BusAuthEventSink(eventBus: eventBus),
+                refreshEndpoint: refreshEndpoint
+            ),
+        ]
+        if let traceContextProvider {
+            interceptors.append(TraceContextInterceptor(provider: traceContextProvider))
+        }
+        interceptors.append(LoggingInterceptor(logger: logger))
+
+        return URLSessionAPIClient(
             session: session,
-            interceptors: [
-                RefreshingAuthInterceptor(
-                    session: sessionManager,
-                    refresher: tokenRefresher,
-                    coordinator: RefreshCoordinator(),
-                    authEventSink: BusAuthEventSink(eventBus: eventBus),
-                    refreshEndpoint: refreshEndpoint
-                ),
-                LoggingInterceptor(logger: logger),
-            ],
+            interceptors: interceptors,
             environment: environment,
             logger: logger
         )
     }
 
-    /// A bare, unauthenticated client carrying **only** `LoggingInterceptor` —
+    /// A bare, unauthenticated client carrying **only** `LoggingInterceptor` and optional `TraceContextInterceptor` —
     /// no `RefreshingAuthInterceptor`, no `AuthTokenInterceptor`.
     ///
     /// A `TokenRefresher` adapter MUST call the refresh endpoint through this
@@ -69,14 +75,22 @@ enum NetworkComposition {
     ///   - session: transport; injectable so tests can stub it with a
     ///     `URLProtocol`.
     ///   - logger: `Core.Logger` sink for transport / status errors.
+    ///   - traceContextProvider: optional W3C `traceparent` header provider.
     static func makeBareAPIClient(
         environment: any Environment = AppEnvironment.debug,
         session: URLSession = .shared,
-        logger: any Core.Logger
+        logger: any Core.Logger,
+        traceContextProvider: (any TraceContextProviding)? = nil
     ) -> URLSessionAPIClient {
-        URLSessionAPIClient(
+        var interceptors: [any RequestInterceptor] = []
+        if let traceContextProvider {
+            interceptors.append(TraceContextInterceptor(provider: traceContextProvider))
+        }
+        interceptors.append(LoggingInterceptor(logger: logger))
+
+        return URLSessionAPIClient(
             session: session,
-            interceptors: [LoggingInterceptor(logger: logger)],
+            interceptors: interceptors,
             environment: environment,
             logger: logger
         )
