@@ -9,8 +9,16 @@ import PackageDescription
     let packageSettings = PackageSettings(
         productTypes: [
             "Network": .staticLibrary,
+            "Pulse": .staticLibrary,
+            "PulseUI": .staticLibrary,
         ],
         targetSettings: [
+            "Network": [
+                "PRODUCT_MODULE_NAME": "AppNetwork",
+            ],
+            "Settings": [
+                "OTHER_SWIFT_FLAGS": "$(inherited) -module-alias Network=AppNetwork",
+            ],
             "Pulse": [
                 "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
             ],

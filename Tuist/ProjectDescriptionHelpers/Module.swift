@@ -80,6 +80,7 @@ public enum Module {
             dependencies: dependencies,
             settings: .settings(base: [
                 "DEEPLINK_SCHEME": .string(deepLinkScheme),
+                "OTHER_SWIFT_FLAGS": "$(inherited) -module-alias Network=AppNetwork",
             ])
         )
     }
@@ -105,7 +106,10 @@ public enum Module {
             infoPlist: .default,
             sources: sources,
             scripts: [swiftLintScript],
-            dependencies: [.target(name: appName)]
+            dependencies: [.target(name: appName)],
+            settings: .settings(base: [
+                "OTHER_SWIFT_FLAGS": "$(inherited) -module-alias Network=AppNetwork",
+            ])
         )
     }
 

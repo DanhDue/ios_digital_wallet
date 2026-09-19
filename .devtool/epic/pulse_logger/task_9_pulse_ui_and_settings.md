@@ -1,20 +1,20 @@
 ---
 id: "task_9_pulse_ui_and_settings"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-19T13:25:00Z"
+completedAt: "2026-09-19T13:25:00Z"
 labels: ["ui", "pulseui", "settings", "developer-tools", "release-isolation"]
 order: "a9"
 ---
 
 # Task 9: PulseUI Console, Shake Gesture & Settings Diagnostics
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-5, UC-4
+Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md) · BDD: [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md) UC-5, UC-4
 
 ## Requirement Analysis
 
@@ -79,7 +79,7 @@ Applicable skills: `ios-ui-audit`, `architecture-audit`, `code-health-audit`.
 
 ### BDD SCENARIOS
 
-Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task implements:
+Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md). This task implements:
 
 - **UC-5.1** — a shake notification in DEBUG flips presentation state and the console lists captured
   records.
@@ -111,17 +111,17 @@ Scenario: Settings gains an infrastructure dependency without a cross-feature ed
 
 ## Test & Verification Checklist
 
-- [ ] **Decide** — confirm the localization approach (literals vs. catalog keys) with the
+- [x] **Decide** — confirm the localization approach (literals vs. catalog keys) with the
       engineering lead before writing the view.
-- [ ] **RED** — `LoggingDiagnosticsViewModelTests` covering toggle behaviour, persistence,
+- [x] **RED** — `LoggingDiagnosticsViewModelTests` covering toggle behaviour, persistence,
       idempotent presentation, and `trackForMemoryLeaks`.
-- [ ] **GREEN** — implement the modifier, view model and view; wire the Settings section.
-- [ ] **REFACTOR** — run the `ios-ui-audit` skill (body re-evaluation, state hoisting, `Task`
+- [x] **GREEN** — implement the modifier, view model and view; wire the Settings section.
+- [x] **REFACTOR** — run the `ios-ui-audit` skill (body re-evaluation, state hoisting, `Task`
       cancellation); `swiftformat`; `swiftlint --strict`.
-- [ ] **Tier B** — `bash scripts/check_module_boundaries.sh`;
+- [x] **Tier B** — `bash scripts/check_module_boundaries.sh`;
       `swift test --package-path ArchTests`.
-- [ ] **Release gate** — `bash scripts/check_release_isolation.sh` exits 0 against a Release build.
-- [ ] **Tier C** — `tuist generate --no-open` then `xcodebuild test` on the simulator.
+- [x] **Release gate** — `bash scripts/check_release_isolation.sh` exits 0 against a Release build.
+- [x] **Tier C** — `tuist generate --no-open` then `xcodebuild test` on the simulator.
 
 ## Definition of Done (DoD)
 

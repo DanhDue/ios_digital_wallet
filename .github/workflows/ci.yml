@@ -124,6 +124,9 @@ jobs:
             -only-testing:iOSDigitalWalletTests \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Verify release isolation
+        run: ./scripts/check_release_isolation.sh
+
   plugin-devbed:
     name: Plugin DevBed verification
     runs-on: macos-15

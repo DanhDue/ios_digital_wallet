@@ -152,6 +152,33 @@ public struct SettingsView: View {
                                 set: { viewModel.dispatch(.toggleDeveloperMode($0)) }
                             ))
                         )
+                        #if DEBUG
+                            Divider().padding(.leading, 48)
+                            NavigationLink {
+                                LoggingDiagnosticsView(viewModel: LoggingDiagnosticsViewModel())
+                            } label: {
+                                HStack(spacing: AppSpacing.md) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.indigo)
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: "waveform.path.ecg")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(Color.white)
+                                    }
+                                    Text("Logging & Diagnostics")
+                                        .font(.body)
+                                        .foregroundStyle(Color.appTextPrimary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.appTextSecondary)
+                                }
+                                .padding(.vertical, AppSpacing.sm)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        #endif
                     }
 
                     // SECTION 4: THÔNG TIN ỨNG DỤNG (APP INFORMATION)

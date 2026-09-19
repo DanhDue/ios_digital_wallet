@@ -483,3 +483,11 @@ Cấu trúc JSON này hoàn toàn tương thích với schema của Remote Backe
    - Khi có vi phạm, script thoát với mã lỗi `sys.exit(1)`, hiển thị thông báo lỗi màu đỏ trực tiếp trong Xcode Issue Navigator.
    - GitHub Actions CI sẽ tự động đánh fail PR nếu có bất kỳ vi phạm nào lọt qua.
 
+---
+
+## 10. Miễn trừ áp dụng (Exemptions)
+
+### Developer Diagnostics & Internal Debug Tools (`#if DEBUG`)
+Các màn hình, công cụ chẩn đoán nội bộ (Diagnostics, Telemetry Console, Developer Mode tools) chỉ biên dịch trong cấu hình `#if DEBUG` (ví dụ: `LoggingDiagnosticsView`, `PulseUI Console`) được **miễn trừ** khỏi yêu cầu bắt buộc phải đưa vào `Localizable.xcstrings`.
+- **Lý do kỹ thuật**: Tránh làm phình và rò rỉ các chuỗi nội bộ cho lập trình viên/QA vào file master catalog xuất bản cho backend OTA (`App/Resources/backend_translations/`).
+- **Quy ước**: Sử dụng chuỗi ký tự tiếng Anh trực tiếp (English string literals) trong các view/view model được bao bọc hoàn toàn bởi `#if DEBUG`.

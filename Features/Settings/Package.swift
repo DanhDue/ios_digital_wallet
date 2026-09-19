@@ -40,6 +40,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Packages/AppUIKit"),
+        .package(path: "../../Packages/D3NexusLogging"),
         .package(path: "../../Packages/Framework"),
         .package(path: "../../Packages/Network"),
         .package(path: "../../Packages/Platform"),
@@ -49,6 +50,7 @@ let package = Package(
             name: "Settings",
             dependencies: [
                 .product(name: "AppUIKit", package: "AppUIKit"),
+                .product(name: "D3NexusLogging", package: "D3NexusLogging"),
                 .product(name: "Framework", package: "Framework"),
                 .product(name: "Network", package: "Network"),
                 .product(name: "Platform", package: "Platform"),
@@ -59,7 +61,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SettingsTests",
-            dependencies: ["Settings"]
+            dependencies: [
+                "Settings",
+                .product(name: "D3NexusLogging", package: "D3NexusLogging"),
+            ]
         ),
     ]
 )

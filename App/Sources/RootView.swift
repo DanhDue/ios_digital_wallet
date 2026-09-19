@@ -35,6 +35,9 @@ struct RootView: View {
             .environmentObject(themeManager)
             .environmentObject(localizationManager)
             .preferredColorScheme(themeManager.colorScheme)
+        #if DEBUG
+            .onShakePresentConsole()
+        #endif
     }
 }
 
