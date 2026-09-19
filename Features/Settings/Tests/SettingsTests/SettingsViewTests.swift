@@ -111,4 +111,18 @@ final class SettingsViewTests: XCTestCase {
         )
         _ = row4.body
     }
+
+    #if DEBUG
+        func testLoggingDiagnosticsViewBuilds() {
+            let diagnosticsViewModel = LoggingDiagnosticsViewModel()
+            let view = LoggingDiagnosticsView(viewModel: diagnosticsViewModel)
+            _ = view.body
+        }
+
+        func testLeakDemoViewBuilds() {
+            let demoViewModel = LeakDemoViewModel()
+            let view = LeakDemoView(viewModel: demoViewModel)
+            _ = view.body
+        }
+    #endif
 }

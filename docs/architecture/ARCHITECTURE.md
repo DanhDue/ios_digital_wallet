@@ -315,7 +315,7 @@ package on a tier has an edge to a sibling on the same tier.
 | `App` | — (app target) | Thin host: `@main`, manual DI wiring, `RouteProvider` registration, lifecycle events, 401 → bus. | `Shell` + every feature + `Platform` + `D3NexusLogging` |
 | `Shell` | `Packages/Shell` | Tab layout + per-tab `NavigationStack` (one path each). **Feature-blind.** `HomeStubView` lives here. | `Platform`, `Framework`, `AppUIKit` |
 | `Core` | `Packages/Core` | Dependency floor: `DataState`, `AppError`, `Logger`, `SafeExecution`, `ReplayQueue`, `CacheStore` / `SecureCacheStore`, `SessionManager`, `AuthEventSink`. stdlib + Foundation + Security only. | *none* |
-| `D3NexusLogging` | `Packages/D3NexusLogging` | Centralized logging SDK: `LogManager`, `LoggerProtocol`, `OSLogAppender`, `Redactor`, `swift-log` bridge. | *none* (remote `swift-log` only) |
+| `D3NexusLogging` | `Packages/D3NexusLogging` | Centralized logging SDK: `LogManager`, `LoggerProtocol`, `OSLogAppender`, `Redactor`, `swift-log` bridge, `LeakSentinel`. | *none* (remote `swift-log` only) |
 | `Framework` | `Packages/Framework` | `MvvmViewModel` / `MviViewModel` / `ViewState` + the `launch(key:)` async-effect. | `Core` |
 | `Network` | `Packages/Network` | `APIClient` / `URLSessionAPIClient`, interceptors, `Environment` / `AppEnvironment`, `NetworkError`, `MockAPIClient`. Refresh subsystem: `RefreshingAuthInterceptor` + `RefreshCoordinator` (single-flight) drive `Core`'s `TokenRefresher` seam and `SessionManager` (Keychain-backed via `SecureCacheStore`); a dead session is surfaced via `Core.AuthEventSink`. See `NETWORKING.md` / `REFRESH_TOKEN.md`. | `Core` |
 | `AppUIKit` | `Packages/AppUIKit` | SwiftUI design system: `AppColor` / `AppFont` / `AppSpacing` / `AppTheme` tokens, `AppButton` / `AppTextField` / `AppLoadingView` / `AppErrorView` / `AppEmptyStateView`. Purely presentational. | `Core` — **not** `Framework` |
@@ -347,7 +347,7 @@ flowchart TD
         FRAMEWORK["Framework\nMviViewModel · MvvmViewModel · ViewState"]
         NETWORK["Network\nAPIClient · Interceptor · Environment"]
         UIKIT["AppUIKit\nDesign System · Common Components"]
-        LOGGING["D3NexusLogging\nLogManager · LoggerProtocol · OSLogAppender · Redactor"]
+        LOGGING["D3NexusLogging\nLogManager · LoggerProtocol · OSLogAppender · Redactor · LeakSentinel"]
     end
 
     %% Layer 4 · Foundation

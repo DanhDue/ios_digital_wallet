@@ -1,13 +1,13 @@
 ---
 id: "task_11_acceptance_and_governance"
-status: "todo"
+status: "done"
 priority: "high"
 assignee: null
 epic: "pulse_logger"
 dueDate: null
 created: "2026-09-19T03:32:30+07:00"
-modified: "2026-09-19T04:47:44+07:00"
-completedAt: null
+modified: "2026-09-20T00:19:00+07:00"
+completedAt: "2026-09-20T00:19:00+07:00"
 labels: ["integration", "acceptance", "archtests", "governance", "coverage", "tier-c"]
 order: "a11"
 ---
@@ -99,30 +99,30 @@ Scenario: Check 2 confirms the predicted blast radius held
 
 ## Test & Verification Checklist
 
-- [ ] **Tier A** — every package suite green:
+- [x] **Tier A** — every package suite green:
       `swift test --package-path Packages/D3NexusLogging`,
       `Packages/Core`, `Packages/Network`, `Features/Settings`, with `trackForMemoryLeaks` clean.
-- [ ] **Coverage** — build `scripts/check_coverage_thresholds.sh`, prove it fires on an injected
+- [x] **Coverage** — build `scripts/check_coverage_thresholds.sh`, prove it fires on an injected
       gap, revert the injection, and confirm every HLD §5.6 threshold is met.
-- [ ] **Tier B** — `swift test --package-path ArchTests`;
+- [x] **Tier B** — `swift test --package-path ArchTests`;
       `bash scripts/check_module_boundaries.sh`;
       `swiftlint lint --strict --config quality/.swiftlint.yml`;
       `swiftformat --config quality/.swiftformat . --lint`;
       `bash scripts/check_release_isolation.sh`.
-- [ ] **Tier C** — `tuist generate --no-open` then
-      `xcodebuild test -workspace iOSDigitalWallet.xcworkspace -scheme iOSDigitalWallet -destination 'platform=iOS Simulator,name=iPhone 16 Pro' CODE_SIGNING_ALLOWED=NO`;
+- [x] **Tier C** — `tuist generate --no-open` then
+      `xcodebuild test -workspace iOSDigitalWallet.xcworkspace -scheme iOSDigitalWallet -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO`;
       repeat for `lean`; confirm `plugin` untouched.
-- [ ] **Leak gate** — `MallocStackLogging` enabled, `leaks` reports zero logging retention.
-- [ ] **Leak gate fires** — run the same check against a build that exercises Task 10's leaking demo
+- [x] **Leak gate** — `MallocStackLogging` enabled, `leaks` reports zero logging retention.
+- [x] **Leak gate fires** — run the same check against a build that exercises Task 10's leaking demo
       flow and confirm `leaks` **does** report it, then revert. Same RED-then-GREEN discipline the
       coverage gate and K7 are held to: a gate that has never been seen to fail is not evidence.
-- [ ] **Check 2** — `check_code_impact.py --base-ref develop` over the cumulative diff.
-- [ ] **Extraction readiness (E1–E4)** — verify `Packages/D3NexusLogging/Package.swift` declares no
+- [x] **Check 2** — `check_code_impact.py --base-ref develop` over the cumulative diff.
+- [x] **Extraction readiness (E1–E4)** — verify `Packages/D3NexusLogging/Package.swift` declares no
       `.package(path:)` dependency on this repository; copy the package directory to a scratch
       location outside the repo and confirm `swift build` and `swift test` still pass there; confirm
       every `public` symbol carries a doc comment; confirm `OSLogAppender` has no app-derived default
       subsystem and `Redactor` accepts injected rules.
-- [ ] **Final** — invoke the `quality_check` skill for the Gate 4 verdict. A 🟢 must come from a
+- [x] **Final** — invoke the `quality_check` skill for the Gate 4 verdict. A 🟢 must come from a
       complete run, never from re-running only what previously failed.
 
 ## Definition of Done (DoD)
