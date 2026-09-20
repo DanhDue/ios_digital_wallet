@@ -10,13 +10,20 @@ cd "$ROOT_DIR"
 
 # 1. Build the Release configuration
 echo "Building iOSDigitalWallet (Release configuration)..."
-BUILD_OUTPUT=$(xcodebuild build \
+xcodebuild build \
   -workspace iOSDigitalWallet.xcworkspace \
   -scheme iOSDigitalWallet \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
+  -quiet
+
+BUILD_OUTPUT=$(xcodebuild \
+  -workspace iOSDigitalWallet.xcworkspace \
+  -scheme iOSDigitalWallet \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
   -showBuildSettings)
 
 TARGET_BUILD_DIR=$(echo "$BUILD_OUTPUT" | grep -E '^\s*TARGET_BUILD_DIR =' | head -n 1 | awk '{print $3}')
