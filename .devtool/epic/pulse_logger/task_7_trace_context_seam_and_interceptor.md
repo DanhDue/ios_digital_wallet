@@ -14,7 +14,7 @@ order: "a7"
 
 # Task 7: `Core.TraceContextProviding` Seam & Network `TraceContextInterceptor`
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-3
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-3
 
 ## Requirement Analysis
 

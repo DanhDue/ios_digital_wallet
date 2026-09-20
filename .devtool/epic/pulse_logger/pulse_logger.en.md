@@ -2,7 +2,7 @@
 
 ## 1. Meta Data
 - **Epic Name:** `pulse_logger`
-- **Status:** Planning — Gate 2 passed (task breakdown confirmed 2026-09-19)
+- **Status:** Done
 - **Target Release:** v1.1.0
 - **Platform:** iOS Native (Swift 6, iOS 16+)
 - **Template Mode:** `enterprise` (see `Tuist/ProjectDescriptionHelpers/ActiveMode.swift`)

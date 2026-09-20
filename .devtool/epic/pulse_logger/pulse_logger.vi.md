@@ -2,7 +2,7 @@
 
 ## 1. Thông tin chung
 - **Tên Epic:** `pulse_logger`
-- **Trạng thái:** Planning — đã qua Gate 2 (chốt task breakdown ngày 2026-09-19)
+- **Trạng thái:** Done
 - **Bản phát hành đích:** v1.1.0
 - **Nền tảng:** iOS Native (Swift 6, iOS 16+)
 - **Template Mode:** `enterprise` (xem `Tuist/ProjectDescriptionHelpers/ActiveMode.swift`)

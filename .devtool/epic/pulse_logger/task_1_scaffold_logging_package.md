@@ -14,7 +14,7 @@ order: "a1"
 
 # Task 1: Package Scaffolding, Data Models & Cycle-Safe Trace Tree
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-6
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-6
 
 ## Requirement Analysis
 

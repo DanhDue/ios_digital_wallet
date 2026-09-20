@@ -14,7 +14,7 @@ order: "a6"
 
 # Task 6: Graph Wiring Across Template Modes, `Core.Logger` Adapter & Mason Brick
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) Cross-cutting
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) Cross-cutting
 
 ## Requirement Analysis
 

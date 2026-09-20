@@ -14,7 +14,7 @@ order: "a9"
 
 # Task 9: PulseUI Console, Shake Gesture & Settings Diagnostics
 
-Epic Reference: [pulse_logger](../epic/pulse_logger/pulse_logger.en.md) · BDD: [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md) UC-5, UC-4
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-5, UC-4
 
 ## Requirement Analysis
 
@@ -79,7 +79,7 @@ Applicable skills: `ios-ui-audit`, `architecture-audit`, `code-health-audit`.
 
 ### BDD SCENARIOS
 
-Authoritative copies in [bdd_scenarios.md](../epic/pulse_logger/bdd_scenarios.md). This task implements:
+Authoritative copies in [bdd_scenarios.md](bdd_scenarios.md). This task implements:
 
 - **UC-5.1** — a shake notification in DEBUG flips presentation state and the console lists captured
   records.

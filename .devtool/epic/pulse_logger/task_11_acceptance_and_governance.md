@@ -14,7 +14,7 @@ order: "a11"
 
 # Task 11: Tier C Acceptance, Governance & Coverage Tooling
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-7, Cross-cutting
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-7, Cross-cutting
 
 ## Requirement Analysis
 

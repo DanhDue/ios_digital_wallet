@@ -14,7 +14,7 @@ order: "a4"
 
 # Task 4: OSLogAppender & Toggle Persistence Wiring
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-4
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-4
 
 ## Requirement Analysis
 

@@ -14,7 +14,7 @@ order: "a10"
 
 # Task 10: Runtime Leak Sentinel & Leak Demo Sample
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-10
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-10
 
 ## Requirement Analysis
 

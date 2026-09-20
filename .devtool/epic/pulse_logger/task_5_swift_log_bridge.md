@@ -14,7 +14,7 @@ order: "a5"
 
 # Task 5: swift-log Bridge — `D3NexusLogHandler`
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1
 
 ## Requirement Analysis
 

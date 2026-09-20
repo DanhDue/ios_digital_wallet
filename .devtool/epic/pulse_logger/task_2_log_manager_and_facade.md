@@ -14,7 +14,7 @@ order: "a2"
 
 # Task 2: LogManager Dispatch Engine, LoggerProtocol & Facade
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-2, UC-4
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-1, UC-2, UC-4
 
 ## Requirement Analysis
 

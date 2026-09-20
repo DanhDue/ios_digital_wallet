@@ -14,7 +14,7 @@ order: "a3"
 
 # Task 3: Redactor — Secret Masking & PII Patterns
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-8
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-8
 
 ## Requirement Analysis
 

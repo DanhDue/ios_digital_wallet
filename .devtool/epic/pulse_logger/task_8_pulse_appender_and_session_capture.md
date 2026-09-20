@@ -14,7 +14,7 @@ order: "a8"
 
 # Task 8: Pulse Appender & Instrumented `URLSession` Capture
 
-Epic: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-9
+Epic Reference: [pulse_logger](pulse_logger.en.md) · BDD: [bdd_scenarios.md](bdd_scenarios.md) UC-9
 
 ## Requirement Analysis
 
