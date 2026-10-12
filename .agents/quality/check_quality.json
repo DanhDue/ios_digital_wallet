@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "providers": [
+    {
+      "id": "ios-core",
+      "skill": "d3nexus:ios-quality-check",
+      "required": true,
+      "profiles": [
+        "pr",
+        "epic"
+      ]
+    }
+  ]
+}

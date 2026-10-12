@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "capabilities": {
+    "format": [
+      "mise",
+      "exec",
+      "--",
+      "swiftformat",
+      "--config",
+      "quality/.swiftformat",
+      "--lint",
+      "."
+    ],
+    "lint": [
+      "mise",
+      "exec",
+      "--",
+      "swiftlint",
+      "lint",
+      "--config",
+      "quality/.swiftlint.yml",
+      "--strict"
+    ],
+    "architecture": [
+      "swift",
+      "test",
+      "--package-path",
+      "ArchTests"
+    ],
+    "boundaries": [
+      "./scripts/check_module_boundaries.sh"
+    ],
+    "test": [
+      "./scripts/test_packages.sh"
+    ],
+    "coverage": {
+      "command": [
+        "./scripts/check_coverage_thresholds.sh"
+      ],
+      "profdata_path": "default.profdata",
+      "threshold": 0.85
+    },
+    "acceptance": [
+      "./scripts/acceptance_check.sh"
+    ]
+  },
+  "profiles": {
+    "pr": [
+      "format",
+      "lint",
+      "test"
+    ],
+    "epic": [
+      "format",
+      "lint",
+      "architecture",
+      "boundaries",
+      "test",
+      "coverage"
+    ]
+  }
+}
